@@ -18,7 +18,7 @@ MACRO(MEXIFY TARGET)
             #MESSAGE("Win 32")
             SET_TARGET_PROPERTIES(${TARGET} PROPERTIES SUFFIX .mexw32 LINK_FLAGS /export:mexFunction)
         ENDIF()
-    ELSE(APPLE)
+    ELSEIF(APPLE)
         IF(CMAKE_SIZEOF_VOID_P MATCHES "8")
             #MESSAGE("Mac 64")
             SET_TARGET_PROPERTIES(${TARGET} PROPERTIES SUFFIX .mexmaci64)
@@ -26,7 +26,7 @@ MACRO(MEXIFY TARGET)
             #MESSAGE("Mac 32")
             SET_TARGET_PROPERTIES(${TARGET} PROPERTIES SUFFIX .mexmaci)
         ENDIF()
-    ELSE(UNIX)
+    ELSEIF(UNIX)
         IF(CMAKE_SIZEOF_VOID_P MATCHES "8")
             #MESSAGE("Linux 64")
             SET_TARGET_PROPERTIES(${TARGET} PROPERTIES SUFFIX .mexa64)
@@ -65,15 +65,15 @@ ENDMACRO(BUILD_INSTALL_REG_MEX)
 
 MACRO(BUILD_INSTALL_TT_MEX MEX_NAME)
     ADD_LIBRARY(${MEX_NAME} MODULE _${MEX_NAME}.cpp)
-    IF(USE_GPU)
-        TARGET_LINK_LIBRARIES(${MEX_NAME} ${MATLAB_MEX_LIBRARY} ${MATLAB_MX_LIBRARY} _tt _tt_array_interface ${NIFTY_REC_LIBRARIES_GPU} ${NIFTY_REG_LIBRARIES} ${ZLIB} ${CUDA_LIBRARIES})
+    IF(USE_CUDA)
+        TARGET_LINK_LIBRARIES(${MEX_NAME} ${MATLAB_MEX_LIBRARY} ${MATLAB_MX_LIBRARY} tt_project_ray_gpu tt_backproject_ray_gpu _tt_common ${CUDA_LIBRARIES})
         CUDA_ADD_CUFFT_TO_TARGET(${MEX_NAME})
         CUDA_ADD_CUBLAS_TO_TARGET(${MEX_NAME})
-    ELSE(USE_GPU)
-        TARGET_LINK_LIBRARIES(${MEX_NAME} ${MATLAB_MEX_LIBRARY} ${MATLAB_MX_LIBRARY} _tt _tt_array_interface ${NIFTY_REG_LIBRARIES} ${ZLIB})
-    ENDIF(USE_GPU)
+    ELSE(USE_CUDA)
+        TARGET_LINK_LIBRARIES(${MEX_NAME} ${MATLAB_MEX_LIBRARY} ${MATLAB_MX_LIBRARY} tt_project_ray tt_backproject_ray_gpu _tt_common)
+    ENDIF(USE_CUDA)
     MEXIFY(${MEX_NAME})
-    INSTALL(TARGETS ${MEX_NAME} LIBRARY DESTINATION ${MEX_INSTALL_DIR})
+    INSTALL(TARGETS ${MEX_NAME} DESTINATION ${MEX_INSTALL_DIR})
 ENDMACRO(BUILD_INSTALL_TT_MEX)
 
 #-----------------------------------------------------------------------------
@@ -86,14 +86,12 @@ ENDIF(BUILD_MEX)
 
 #-----------------------------------------------------------------------------
 
-BUILD_INSTALL_TT_MEX(tt_project_mex)
-
-#-----------------------------------------------------------------------------
-
 BUILD_INSTALL_REG_MEX(reg_control_points_from_affine_mex)
 BUILD_INSTALL_REG_MEX(reg_gradient_NMI_nodes_mex)
 BUILD_INSTALL_REG_MEX(reg_gradient_voxel_to_nodes_mex)
 BUILD_INSTALL_REG_MEX(reg_resample_spline_mex)
+BUILD_INSTALL_TT_MEX(tt_project_ray_mex)
+BUILD_INSTALL_TT_MEX(tt_backproject_ray_mex)
 
 #-----------------------------------------------------------------------------
 
