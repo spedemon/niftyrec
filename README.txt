@@ -33,6 +33,18 @@ of the GPU accelerated algorithms, while maintaining the full speed.
     * Python interface
     * Documentation: Programmer's manual
 
+-- NiftyRec 1.2 -- 
+    * Bug Fixes
+
+-- NiftyRec 1.3 --  
+    * Embedded NiftyReg
+    * Demo
+
+-- NiftyRec 1.4 --
+    * Ray-cating based Projector for Transmission Tomography
+    * Graphical User Interface
+    * Documentation update
+
 ##############################################################################
 
 ------------------

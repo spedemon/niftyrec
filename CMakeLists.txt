@@ -13,7 +13,7 @@ endif(COMMAND cmake_policy)
 
 #-----------------------------------------------------------------------------
 SET(Nifty_Rec_VERSION_MAJOR 1)
-SET(Nifty_Rec_VERSION_MINOR 3)
+SET(Nifty_Rec_VERSION_MINOR 4)
 
 #-----------------------------------------------------------------------------
 
@@ -36,11 +36,11 @@ ENDIF(CMAKE_CONFIGURATION_TYPES)
 SET(CMAKE_BUILD_TYPE "Release")
 
 IF(UNIX)
-    IF(APPLE)
-        SET(CMAKE_INSTALL_PREFIX "/Library/NiftyRec/")
-    ELSE(APPLE)
+#    IF(APPLE)
+#        SET(CMAKE_INSTALL_PREFIX "/Library/NiftyRec/")
+#    ELSE(APPLE)
         SET(CMAKE_INSTALL_PREFIX "/usr/local/")
-    ENDIF(APPLE)
+#    ENDIF(APPLE)
 ENDIF(UNIX)
 
 #-----------------------------------------------------------------------------
@@ -56,7 +56,7 @@ ENDIF(BUILD_PY)
 #-----------------------------------------------------------------------------
 
 SET(LIB_INSTALL_DIR "lib")
-SET(BIN_INSTALL_DIR "bin")
+SET(BIN_INSTALL_DIR "niftyrec/bin")
 SET(INC_INSTALL_DIR "include")
 SET(DOC_INSTALL_DIR "niftyrec/doc")
 SET(MEX_INSTALL_DIR "niftyrec/matlab")
@@ -65,7 +65,7 @@ SET(PYTHON_INSTALL_DIR "niftyrec/python")
 #-----------------------------------------------------------------------------
 
 #Point rpath of all libraries to lib install dir 
-#This avoids setting LD_LIBRARY_PATH
+#This avoids setting LD_LIBRARY_PATH 
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR})
 
@@ -135,8 +135,12 @@ SET(NIFTY_REC_LIBRARIES_GPU _et_line_integral_gpu _et_line_integral_attenuated_g
 SET(NIFTY_REC_ET_MEX et_project_mex et_backproject_mex et_project_backproject_mex et_convolve_mex et_rotate_mex et_list_gpus_mex et_set_gpu_mex et_affine_mex et_reorder_activity_in et_reorder_activity_out)
 SET(NIFTY_REC_TT_MEX tt_project_mex)
 
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/lib_gpu)
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/lib)
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/emission-lib)
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/transmission-lib)
+IF(USE_CUDA)
+    INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/emission-lib_gpu)
+    INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/transmission-lib_gpu)
+ENDIF(USE_CUDA)
 
 #Build NiftyReg Libraries (they have been added to the source tree to remove 
 #dependency - there is currently no binary installer for NiftyReg)
@@ -149,7 +153,8 @@ SUBDIRS(reg-lib_gpu)
 SET(NIFTY_REG_LIBRARIES reg_nifti _reg_tools _reg_resampling _reg_affineTransformation _reg_bspline _reg_ssd _reg_mutualinformation _reg_blockMatching 
 _reg_cudaCommon _reg_resampling_gpu _reg_affineTransformation_gpu _reg_mutualinformation_gpu _reg_bspline_gpu _reg_tools_gpu _reg_blockMatching_gpu)
 
-SUBDIRS(lib)
+
+SUBDIRS(emission-lib)
 IF(BUILD_MEX)
         SUBDIRS(Matlab)
 ENDIF(BUILD_MEX)
@@ -157,7 +162,8 @@ IF(BUILD_PY)
         SUBDIRS(NiftyRec)
 ENDIF(BUILD_PY)
 IF(USE_CUDA)
-	SUBDIRS(lib_gpu)
+	SUBDIRS(emission-lib_gpu)
+	SUBDIRS(transmission-lib_gpu)
 ENDIF(USE_CUDA)
 IF(COMPILE_DOC)
         SUBDIRS(doc)
