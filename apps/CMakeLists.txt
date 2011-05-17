@@ -1,2 +1,2 @@
 
-SUBDIRS(simple_gui)
+SUBDIRS(niftyrec_gui)
