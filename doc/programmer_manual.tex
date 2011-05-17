@@ -40,13 +40,10 @@
 \vspace*{4.0cm} 
 \large
 \begin{flushright}
-  Alexandre Bousse\\
-%  Manuel Jorge Cardoso\\
-  Marc Modat\\
-%  Matt Clarkson\\
-%  Pankaj Daga\\
-  Sebastien Ourselin\\
   Stefano Pedemonte\\
+  Alexandre Bousse\\
+  Marc Modat\\
+  Sebastien Ourselin\\
 \end{flushright}
 
 \vspace*{1.5cm}
@@ -70,7 +67,7 @@
 
 \section{Overview}
 
-NiftyRec provides routines for Emission Tomographic reconstruction. 
+NiftyRec provides routines for Emission and Transmission Tomographic reconstruction. 
 The software is written in C and computationally intensive functions have a 
 GPU accelerated version based on NVidia CUDA.
 NiftyRec includes a mex-based Matlab Toolbox and a Python module that 
@@ -125,7 +122,7 @@ NiftyRec has been designed for performance, ease of use, modularity, accessibili
 \end{itemize}
 
 
-\section{Algorithms}
+\section{Algorithms for Emission Tomography}
 \subsection{Projection and Backprojection}
 Iterative reconstruction methods based on a stochastic model of the emission process \cite{shepp_1982,qi_2006,borman_2004} 
 have been widely shown to provide better image quality than analytic reconstruction \cite{johnson_1997,frese_2003}. 
@@ -410,6 +407,93 @@ NiftyRec implements the Reconstruction Based Scatter Compenstation (RBSC) algori
  \hat{y}_b^{(k+1)} = \hat{y}_b^{(k)} \frac{1}{\sum_{d}{p_{bd}}} \sum_{d}{p_{bd}\frac{z_d}{\sum_{b^{\prime}}p_{b^{\prime}d}\ \hat{y}^{(k)}_{b^{\prime}} + \hat{n_d}^{SC} }}
 \end{equation}
 
+\section{Algorithms for Transmission Tomography}
+\subsection{Projection}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=4.3in]{tt_ray_raycast}
+\caption{ }
+\label{fig_raycast}
+\end{figure}
+
+The GPU accelerated projection algorithm is inspired on the volume render example included in the CUDA SDK $2.3$. 
+The attenuation map is defined on a 3D grid of size $(N_x, N_y, N_z)$ voxels. 
+Each GPU thread computes one ray from the light source to a detector pixel, accumulates the absorption coefficient along the ray and stores 
+the result in the corresponding pixel of the 2D detector matrix. 
+Attenuation is stored as a 3D CUDA array and is accessed by means of the the CUDA Texture Fetch Unit in order to exploit the cache 
+system of the GPU and the hardware trilinear interpolation feature. \\
+The algorithm scales for any size of the detector and of the attenuation map by launching a variable number of blocks of $(16\times 16)$ threads, in order 
+to cover all the detector pixels. The bigger the attenuation map volume, the longer each threads needs to iterate (not all threads perform the same amount of operations, some 
+terminate earlier). The position of the source is the same for all threads and is stored in constant memory; given detector size in number of pixels $(imageW,imageH)$, 
+each thread computes its coordinate in a reference normalized plane: 
+
+\vspace{5mm}
+\lstset{language=C,basicstyle=\scriptsize}
+\begin{lstlisting}
+    uint x = blockIdx.x*blockDim.x + threadIdx.x;
+    uint y = blockIdx.y*blockDim.y + threadIdx.y;
+    if ((x >= imageW) || (y >= imageH)) return;
+
+    //u and v are in normalized detector pixel [-1,-1]->[1,1]
+    float u = (x / (float) imageW)*2.0f-1.0f;
+    float v = (y / (float) imageH)*2.0f-1.0f;
+\end{lstlisting}
+\vspace{5mm}
+
+\noindent Then each thread computes the position of the detector pixel by multiplying its position in the reference plane by 
+the ($4\times 4$) transformation matrix that represents the position of the detector with respect of the reference plane ($c_invViewMatrix$). 
+Finally the thread computes the unit vector $\vec{D}$ that points from the source to the detector pixel: 
+
+\vspace{5mm}
+\lstset{language=C,basicstyle=\scriptsize}
+\begin{lstlisting}
+    Ray eyeRay;
+    eyeRay.o = source;
+    eyeRay.d = normalize(make_float3(mul(c_invViewMatrix, 
+                         make_float4(u,v,-1.0f,1.0f)))-eyeRay.o); 
+\end{lstlisting}
+\vspace{5mm}
+
+\noindent The attenuation map is defined between $(-1,-1,-1)$ and $(1,1,1)$. Each thread computes the intersection with the 
+attenuation map bounding box in order to accumulate attenuation only where it is defined. The ray-box intersection 
+is based on the method of "slabs" implemented in the Volume Rebderer in the CUDA SDK and explained in 
+\url{http://www.siggraph.org/education/materials/HyperGraph/raytrace/rtinter3.htm}. 
+If the ray does not intersect the box then the thread terminates, otherwise it loads from texture memory the attenuation 
+at distance $t_near$ (see figure \ref{fig_raycast}) from the source along direction $\vec{D}$ and iteratively loads attenuation 
+moving at constant steps $\Delta t$ until the end of the box is reached: 
+
+\vspace{5mm}
+\lstset{language=C,basicstyle=\scriptsize}
+\begin{lstlisting}
+    float  sum; 
+    float  t = tnear;
+    float3 pos = eyeRay.o + eyeRay.d*tnear;
+    float3 step = eyeRay.d*tstep;
+
+    for(int i=0; i<maxSteps; i++) {
+        float sample = tex3D(tex, pos.x*0.5f+0.5f, pos.y*0.5f+0.5f, 
+                                                   pos.z*0.5f+0.5f);
+
+        sum = sum + sample;
+        t += tstep;
+        if (t > tfar) break;
+
+        pos += step;
+\end{lstlisting}
+\vspace{5mm}
+
+\noindent Finally the thread writes the result back in global memory and terminates: 
+
+\vspace{5mm}
+\lstset{language=C,basicstyle=\scriptsize}
+\begin{lstlisting}
+    d_output[y*imageW + x] = sum;
+\end{lstlisting}
+\vspace{5mm}
+
+
+
 %%=================================================================================
 %%Developer Guide
 
@@ -497,10 +581,10 @@ Studio.
 .2 \textcolor{gray}{CMakeLists.txt} \DTcomment{\begin{minipage}[t]{7cm} 
                   Main CMake list file, sets up build options and includes all the subfolders.
                   \end{minipage}}. 
-.2 et-lib         \DTcomment{\begin{minipage}[t]{7cm} 
-                  Source code of NiftyRec core libraries. All of NiftyRec libraries are here except for the mex extensions and the GPU accelerated routines, which are in  
-                  et-lib\_gpu.
-                  \end{minipage}}.  
+.2 emission-lib   \DTcomment{\begin{minipage}[t]{7cm} 
+                  Source code of NiftyRec Emission Tomography core libraries. All of NiftyRec libraries for Emission Tomography are here except for the mex extensions and the GPU accelerated routines, which are in  
+                  emission-lib\_gpu.
+                  \end{minipage}}. 
 .3 \textcolor{gray}{\_et.cpp.txt}            \DTcomment{\begin{minipage}[t]{7cm}
                                              Implements the Nifti Interface. The subset of the NiftyRec functions defined here allows to use all the functionalities of NiftyRec. 
                                              The C Array Interface only imports this library, which binds to all other libraries of NiftyRec, including the libraries 
@@ -509,13 +593,21 @@ Studio.
 .3 \textcolor{gray}{\_et\_array\_interface.cpp} \DTcomment{\begin{minipage}[t]{7cm}
                                              Implements the C Array Interface. 
                                              \end{minipage}}. 
-.2 et-lib\_gpu    \DTcomment{\begin{minipage}[t]{7cm}
-                  Routines for GPU acceleration. They are functinoally identical to some of the functions in et-lib but these make use of the NVidia CUDA Runtime interface 
+.2 emission-lib\_gpu    \DTcomment{\begin{minipage}[t]{7cm}
+                  Routines for GPU acceleration. They are functinoally identical to some of the functions in emission-lib but these make use of the NVidia CUDA Runtime interface 
                   for GPU acceleration. 
                   \end{minipage}}. 
-.2 et-mex         \DTcomment{\begin{minipage}[t]{7cm}
+.2 transmission-lib    \DTcomment{\begin{minipage}[t]{7cm} 
+                  Source code of NiftyRec Transmission Tomography core libraries. All of NiftyRec libraries for Transmission Tomography are here except for the mex extensions and the GPU accelerated routines, which are in  
+                  transmission-lib\_gpu.
+                  \end{minipage}}. 
+.2 transmission-lib\_gpu    \DTcomment{\begin{minipage}[t]{7cm}
+                  Routines for GPU acceleration. They are functinoally identical to some of the functions in transmission-lib but these make use of the NVidia CUDA Runtime interface 
+                  for GPU acceleration. 
+                  \end{minipage}}. 
+.2 Matlab         \DTcomment{\begin{minipage}[t]{7cm}
                   Contains the source code for the Matlab extensions. Each Matlab extension function has a .cpp and a .h file. 
-                  The Matlab Toolbox is made up of mex extensions, m files and documentation. Subfolders of et-mex contain the m files 
+                  The Matlab Toolbox is made up of mex extensions, m files and documentation. Subfolders of Matlab contain the m files 
                   and the Documentation. 
                   \end{minipage}}. 
 .3 m                                         \DTcomment{\begin{minipage}[t]{7cm}
@@ -527,18 +619,24 @@ Studio.
 .2 NiftyRec       \DTcomment{\begin{minipage}[t]{7cm}
                   Python extension module.
                   \end{minipage}}. 
-.2 et-apps        \DTcomment{\begin{minipage}[t]{7cm}
+.2 apps           \DTcomment{\begin{minipage}[t]{7cm}
                   Standalone applications based on NiftyRec
                   \end{minipage}}. 
-.2 et-doc         \DTcomment{\begin{minipage}[t]{7cm}
+.3 niftyrec\_gui   \DTcomment{\begin{minipage}[t]{7cm}
+                  GTK based GUI for NiftyRec
+                  \end{minipage}}. 
+.2 doc           \DTcomment{\begin{minipage}[t]{7cm}
                   NiftyRec documentation.
+                  \end{minipage}}. 
+.2 nifti          \DTcomment{\begin{minipage}[t]{7cm}
+                  Niftilib source code. Defines Nifti data structures and routines for IO of Nifti files. 
                   \end{minipage}}. 
 %.2 images         \DTcomment{\begin{minipage}[t]{7cm}
 %                  Images.
 %                  \end{minipage}}. 
-%.2 misc           \DTcomment{\begin{minipage}[t]{7cm}
-%                  Miscellaneous functions not directly related to NiftyRec.
-%                  \end{minipage}}. 
+.2 misc           \DTcomment{\begin{minipage}[t]{7cm}
+                  Miscellaneous functions. 
+                  \end{minipage}}. 
 }
 
 
@@ -685,6 +783,41 @@ it's in the NiftyRec install directory, which defaults to C:/ProgramFiles/NiftyR
 Open Matlab help and click on Emission Tomography Toolbox 
 to visualize the documentation of NiftyRec Toolbox.
 
+\subsection{Transmission Tomography}
+In order to use NiftyRec-TT within Matlab, launch Matlab and add path to the NiftyRec-TT matlab folder: \\
+
+\emph{$>>$ addpath /usr/local/niftyrec/matlab}\\
+
+\noindent Or add permanently by clicking on File->Add path. 
+The path NiftyRec-TT matlab is set as an option in CMake. 
+It defaults to '/usr/local/matlab' in Linux and MAC OS and in Windows 
+it's in the NiftyRec-TT install directory, which defaults to C:/ProgramFiles/NiftyRec. 
+The Matlab interface consists on a mex file that wraps the projection function in the C API. 
+In order to hide the latency due to memory transfers, the function performs multiple 
+projections in one call and the parameters are vectors. See the example below. 
+
+\subsubsection{Example}
+
+\vspace{5mm}
+\lstset{language=Matlab,basicstyle=\scriptsize}
+\begin{lstlisting}
+N_projections = 200;
+attenuation = ones(256,256,256);
+source = zeros(N_projections,3);
+scale  = ones(N_projections,2);
+trans  = zeros(N_projections,3);
+rot    = zeros(N_projections,3);
+source(:,2)=linspace(-1,1,N_projections);
+p = tt_project_ray_mex(attenuation,[512,512],source,scale,trans,rot);
+for i = 1:N_projections
+    imagesc(p(:,:,i)); colormap gray; pause(0.1)
+end
+\end{lstlisting}
+\vspace{5mm}
+
+
+
+
 \section{Python Extension Module}
 \noindent The NiftyRec Python module is installed amongst the site-packages 
 by the binary installers and by 'make install'. 
@@ -696,6 +829,78 @@ Open the Python interpreter and import NiftyRec\\
 In order to build against NiftyRec, include in your project the 
 headers folder, installed under \emph{/usr/local/headers} or \emph{C:/ProgramFiles/NiftyRec/headers} (typically) 
 and instruct the linker to link against the NiftyRec libraries installed under \emph{/usr/local/headers} or \emph{C:/ProgramFiles/NiftyRec/lib}. 
+
+\subsection{Transmission Tomography}
+
+The C API currently implements one function for projection with the ray-cast algorithm. 
+In order to hide the latency due to memory transfers, the function performs multiple 
+projections in one call and the parameters are arrays: 
+
+\vspace{5mm}
+\lstset{language=C,basicstyle=\scriptsize}
+\begin{lstlisting}
+typedef unsigned short VolumeType;
+
+struct float_2
+{
+  float x, y;
+};
+typedef struct float_2 float_2;
+
+struct float_3
+{
+  float x, y, z;
+};
+typedef struct float_3 float_3;
+
+struct int_3
+{
+  int x, y, z;
+};
+typedef struct int_3 int_3;
+
+struct u_int_3
+{
+  u_int x, y, z;
+};
+typedef struct u_int_3 u_int_3;
+
+struct u_int_2
+{
+  u_int w, h;
+};
+typedef struct u_int_2 u_int_2;
+
+int tt_project_ray_array(VolumeType h_volume[], u_int_3 volume_voxels, 
+                         float out_projections[], u_int n_projections, 
+                         float_2 detector_scale[], float_3 detector_transl[], 
+                         float_3 detector_rotat[], u_int_2 detector_pixels, 
+                         float_3 source_pos[]);
+\end{lstlisting}
+\vspace{5mm}
+
+The function takes as input a 3D unsigned integer attenuation map, stored as a monolithic array of size $(N_x\times N_y\times N_z)$ and fills the float 
+array of size $(ImageW\times ImageH\times N_projections)$ ($N_projections$ needs to be specified as a parameter). 
+The parameter $detector_pixels$ sets the number of pixels of the detector: one ray is cast for each detector pixel $(ImageW=detector_pixels[0],
+ImageH=detector_pixels[1])$. \\
+All the remaining parameters represent the 3D position of the detector, its size, and the position of the source. 
+Each parameter is an array of length $N_projections$, where each element $i$ of the array represents the parameter for projection $i$. 
+Parameters are $detector_scale$, $detector_translation$, $detector_rotation$, $detector_pixels$, $source_position$. \\
+
+$detector_scale$ scales the detector in $X$ and $Y$ (see figure \ref{fig_api}), if it is set $(1,1)$, the detector is of size (2,2), (green plane in figure \ref{fig_api}). \\
+
+$detector_translation$ is the translation of the detector. If it is set to $(0,0,0)$, the detector is centered in $(0,0,-1)$. 
+
+$detector_rotation$ is the rotation of the detector with respect of axis $(X,Y,Z)$. 
+
+$source_position$ is the position 3D of the point source. 
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=4.3in]{tt_ray_api}
+\caption{ }
+\label{fig_api}
+\end{figure}
 
 
 
