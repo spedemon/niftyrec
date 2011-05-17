@@ -605,9 +605,10 @@ Studio.
                   Routines for GPU acceleration. They are functinoally identical to some of the functions in transmission-lib but these make use of the NVidia CUDA Runtime interface 
                   for GPU acceleration. 
                   \end{minipage}}. 
+
 .2 Matlab         \DTcomment{\begin{minipage}[t]{7cm}
                   Contains the source code for the Matlab extensions. Each Matlab extension function has a .cpp and a .h file. 
-                  The Matlab Toolbox is made up of mex extensions, m files and documentation. Subfolders of Matlab contain the m files 
+                  The Matlab Toolbox is made up of mex extensions, m files and documentation. Subfolders of et-mex contain the m files 
                   and the Documentation. 
                   \end{minipage}}. 
 .3 m                                         \DTcomment{\begin{minipage}[t]{7cm}
@@ -622,21 +623,18 @@ Studio.
 .2 apps           \DTcomment{\begin{minipage}[t]{7cm}
                   Standalone applications based on NiftyRec
                   \end{minipage}}. 
-.3 niftyrec\_gui   \DTcomment{\begin{minipage}[t]{7cm}
+.3 niftyrec_gui   \DTcomment{\begin{minipage}[t]{7cm}
                   GTK based GUI for NiftyRec
                   \end{minipage}}. 
 .2 doc           \DTcomment{\begin{minipage}[t]{7cm}
                   NiftyRec documentation.
                   \end{minipage}}. 
-.2 nifti          \DTcomment{\begin{minipage}[t]{7cm}
-                  Niftilib source code. Defines Nifti data structures and routines for IO of Nifti files. 
-                  \end{minipage}}. 
 %.2 images         \DTcomment{\begin{minipage}[t]{7cm}
 %                  Images.
 %                  \end{minipage}}. 
-.2 misc           \DTcomment{\begin{minipage}[t]{7cm}
-                  Miscellaneous functions. 
-                  \end{minipage}}. 
+%.2 misc           \DTcomment{\begin{minipage}[t]{7cm}
+%                  Miscellaneous functions not directly related to NiftyRec.
+%                  \end{minipage}}. 
 }
 
 
