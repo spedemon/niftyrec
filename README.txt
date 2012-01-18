@@ -22,28 +22,31 @@ of the GPU accelerated algorithms, while maintaining the full speed.
 2 RELEASE NOTES
 ---------------
 
--- NiftyRec 1.0 -- 
+-- NiftyRec 1.0 (Rel. Nov 2010)-- 
     * Rotation-based projection and backprojection with depth dependent point spread function
     * GPU accelerated version working ok (non accelerated version not working)
     * mex-based Matlab Toolbox
     * Matlab inline documentation
     * Matlab functions for reconstruction
 
--- NiftyRec 1.1 -- 
+-- NiftyRec 1.1 (Rel. Jan 2011) -- 
     * Python interface
     * Documentation: Programmer's manual
 
--- NiftyRec 1.2 -- 
+-- NiftyRec 1.2 (Rel. Mar 2011) -- 
     * Bug Fixes
 
--- NiftyRec 1.3 --  
+-- NiftyRec 1.3 (Rel. May 2011) --  
     * Embedded NiftyReg
     * Demo
 
--- NiftyRec 1.4 --
+-- NiftyRec 1.4 (Rel. Sep 2011) --
     * Ray-cating based Projector for Transmission Tomography
     * Graphical User Interface
     * Documentation update
+
+-- NiftyRec 1.5 (Rel. Jan 2012) --
+    * Fast Fisher Information Estimation
 
 ##############################################################################
 
@@ -150,7 +153,7 @@ Further details are in the Programming Manual of NiftyRec.
 6 LICENSE
 ---------
 
-Copyright (c) 2009, University College London, United-Kingdom
+Copyright (c) 2009-2012, University College London, United-Kingdom
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without

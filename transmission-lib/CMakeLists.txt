@@ -15,5 +15,23 @@ ENDMACRO(BUILD_INSTALL_LIBRARY)
 
 #-----------------------------------------------------------------------------
 
-BUILD_INSTALL_LIBRARY(_tt_common ${LIB_TYPE} ${USE_CUDA})
+FOREACH(LIBRARY_NAME ${NIFTY_REC_TT_LIBRARIES})
+    BUILD_INSTALL_LIBRARY(${LIBRARY_NAME} ${LIB_TYPE} ${NiftyRec_USE_CUDA})
+ENDFOREACH(LIBRARY_NAME)
+
+#-----------------------------------------------------------------------------
+
+SET(LIBRARY_NAME _tt)
+BUILD_INSTALL_LIBRARY(${LIBRARY_NAME} ${LIB_TYPE} ${NiftyRec_USE_CUDA})
+TARGET_LINK_LIBRARIES(${LIBRARY_NAME} ${NIFTY_REC_ET_LIBRARIES} ${NIFTY_REC_TT_LIBRARIES})
+IF(NiftyRec_USE_CUDA)
+    TARGET_LINK_LIBRARIES(${LIBRARY_NAME} ${NIFTY_REC_TT_LIBRARIES_GPU} ${NIFTY_REC_ET_LIBRARIES_GPU})
+    CUDA_ADD_CUFFT_TO_TARGET(${LIBRARY_NAME})
+    CUDA_ADD_CUBLAS_TO_TARGET(${LIBRARY_NAME})
+ENDIF(NiftyRec_USE_CUDA)
+
+SET(LIBRARY_NAME _tt_array_interface)
+BUILD_INSTALL_LIBRARY(${LIBRARY_NAME} ${LIB_TYPE} ${NiftyRec_USE_CUDA})
+TARGET_LINK_LIBRARIES(${LIBRARY_NAME} _tt)
+
 #-----------------------------------------------------------------------------

@@ -3,7 +3,9 @@
 #include "_et_common.h"
 #include<stdio.h>
 
-
+#define eps 0.000000000001f
+#define max(a,b)	(((a) > (b)) ? (a) : (b))
+#define min(a,b)	(((a) < (b)) ? (a) : (b))
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////   CPU   ///////////////////////////////////////////////////////////////////////////////////
@@ -418,6 +420,7 @@ int et_project_gpu(nifti_image *activity, nifti_image *sinoImage, nifti_image *p
 
 	for(unsigned int cam=0; cam<n_cameras; cam++){
 
+                fprintf_verbose( "et_project: Rotation: %f  %f  %f  \n",cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam]);
 		// Apply affine //
 		et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], center_x, center_y, center_z);
 		reg_affine_positionField_gpu(	affineTransformation,
@@ -584,6 +587,8 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *accumulatorImage, ni
 		
 	for(int cam=0; cam<n_cameras; cam++){
 
+                fprintf_verbose( "et_project: Rotation: %f  %f  %f  \n",cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam]);
+
                 // Rotate attenuation //
                 if (attenuationImage != NULL)
                     et_create_rotation_matrix(	affineTransformation,
@@ -705,6 +710,373 @@ int et_project_backproject_gpu(nifti_image *activity, nifti_image *sino, nifti_i
 }
 
 
+int et_fisher_grid_gpu(int from_projection, nifti_image *inputImage, nifti_image *gridImage, nifti_image *fisherImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float epsilon, float background, float background_attenuation)
+{
+    int status = 0;
+    float *fisher_matrix = (float *) fisherImage->data;
+    int psf_size_x = psfImage->nx;
+    int psf_size_y = psfImage->ny;
+    int psf_size_semi_x = (psf_size_x-1)/2;
+    int psf_size_semi_y = (psf_size_y-1)/2;
+
+    if (epsilon<=eps) epsilon=eps;
+    // 1) Project object and invert the sinogram elements
+    int dim[8];
+    dim[0] = 3;
+    dim[1] = gridImage->dim[1];
+    dim[2] = gridImage->dim[3];
+    dim[3] = n_cameras;	  
+    dim[4] = 1;	  
+    dim[5] = 1;	  
+    dim[6] = 1;	  
+    dim[7] = 1;	  
+    nifti_image *invsinogramImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+    float *invsinogram;
+    if (from_projection==0)
+        {
+        invsinogram = (float*) malloc(dim[1]*dim[2]*dim[3]*sizeof(float));
+        invsinogramImage->data = (float *)(invsinogram);
+        status = et_project_gpu(inputImage, invsinogramImage, psfImage, attenuationImage, cameras, n_cameras, background, background_attenuation);
+        if (status)
+            {
+            fprintf(stderr,"'et_fisher_grid': error while calculating projection\n");
+            return status;
+            } 
+        }
+    else
+        {
+        invsinogramImage = inputImage;
+        invsinogram = (float*)invsinogramImage->data;
+        }
+//    for (int i=0; i<invsinogramImage->nvox; i++)
+//        invsinogram[i]=1/(invsinogram[i]+epsilon);
+
+    // 2) Create (3xN) matrix of coordinates of the grid points; these will be rotated according to each camera position. 
+    int n_grid_elements = fisherImage->dim[1];
+    int *grid_coords  = (int*) malloc(n_grid_elements*sizeof(int)*3); 
+    for (int i=0; i<n_grid_elements*3; i++)
+        grid_coords[i]=-1;
+    int n=0;
+    float *grid_data = (float*)gridImage->data;
+    for (int x=0; x<gridImage->nx; x++) {
+        for (int y=0; y<gridImage->ny; y++) {
+            for (int z=0; z<gridImage->nz; z++) {
+                if (grid_data[z*gridImage->ny*gridImage->nx+y*gridImage->nx+x] !=0) { //FIXME: make sure this works for non cubic images
+                    n = grid_data[z*gridImage->ny*gridImage->nx+y*gridImage->nx+x] - 1;
+                    if (grid_coords[n*3]!=-1)
+                        return ET_ERROR_BADGRID;     // this happens if there are two elements of the grid with the same index
+                    if (n > n_grid_elements) 
+                        return ET_ERROR_BADGRID;     // this happens if at least one of the elements of the grid is bigger than the numbe of elements 
+                    if (n < 0) 
+                        return ET_ERROR_BADGRID;     // this happens if at least one of the elements of the grid is negative
+                    grid_coords[n*3]=x;
+                    grid_coords[n*3+1]=y;
+                    grid_coords[n*3+2]=z;
+                    }
+                }
+            }
+        }
+    // 3) For each camera position, update the FIM
+    for (int i=0; i<n_grid_elements*n_grid_elements; i++)
+        fisher_matrix[i]=0;
+
+    float center_x = ((float)(gridImage->nx - 1)) / 2.0;
+    float center_y = ((float)(gridImage->ny - 1)) / 2.0;
+    float center_z = ((float)(gridImage->nz - 1)) / 2.0;
+		
+    mat44 *affineTransformation = (mat44 *)calloc(1,sizeof(mat44));
+    int *grid_coords_rotated = (int*) malloc(n_grid_elements*sizeof(int)*3); 
+    float position[3]; float position_rotated[3];
+    
+    for (int cam=0; cam<n_cameras; cam++)
+        {
+        float *invsino_data = (float *) (invsinogramImage->data) + cam*gridImage->nx*gridImage->nz ;
+        // 3a) rotate the grid coordinates
+        et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], center_x, center_y, center_z);
+        for (int n=0; n<n_grid_elements; n++)
+            {
+            position[0]=grid_coords[3*n]; position[1]=grid_coords[3*n+1]; position[2]=grid_coords[3*n+2]; 
+            reg_mat44_mul(affineTransformation, position, position_rotated);
+            grid_coords_rotated[3*n] = position_rotated[0]; grid_coords_rotated[3*n+1] = position_rotated[1]; grid_coords_rotated[3*n+2] = position_rotated[2]; //implicit rounding (NN interpolation)
+            }
+        // 3b) for each pair, compute the FIM element (for the current camera, then it all sums up)
+        int bbox0[2];
+        int bbox1[2];
+        int bbox_size[2];
+        int Z;
+        int psf_i_x, psf_i_y, psf_j_x, psf_j_y;
+        float *PSF_i; float *PSF_j;
+        float fisher_element;
+        for (int i=0; i<n_grid_elements; i++)
+            {
+            int i_x = grid_coords_rotated[3*i];
+            int i_y = grid_coords_rotated[3*i+1];
+            int i_z = grid_coords_rotated[3*i+2];
+            for (int j=i; j<n_grid_elements; j++)
+                {
+                int j_x = grid_coords_rotated[3*j];
+                int j_y = grid_coords_rotated[3*j+1];
+                int j_z = grid_coords_rotated[3*j+2];
+                // 3b1) compute bounding box
+                int B_x = psf_size_x - abs(j_x-i_x);     // Bounding box size
+                int B_y = psf_size_y - abs(j_y-i_y);
+                int p_x = max(i_x,j_x)-psf_size_semi_x;  // start of bounding box in projection space
+                int p_y = max(i_y,j_y)-psf_size_semi_y;
+                // 3b2) compute coordinates of the PSFs
+                if (B_x>0 && B_y>0 && i_z>=0 && j_z>=0 && i_z<gridImage->nz && j_z<gridImage->nz)  // check if the PSFs overlap and if the plane if within the field of view 
+                    {
+                    if ((j_x >= i_x) && (j_y > i_y))
+                        {
+                        psf_i_x = j_x - i_x;
+                        psf_i_y = j_y - i_y;
+                        psf_j_x = 0;
+                        psf_j_y = 0;
+                        }
+                    else if ((j_x < i_x) && (j_y >= i_y))
+                        {
+                        psf_i_x = 0;
+                        psf_i_y = j_y-i_y;
+                        psf_j_x = i_x-j_x;
+                        psf_j_y = 0;
+                        }
+                    else if ((j_x <= i_x) && (j_y < i_y))
+                        {
+                        psf_i_x = 0;
+                        psf_i_y = 0;
+                        psf_j_x = i_x-j_x;
+                        psf_j_y = i_y-j_y;
+                        }
+                    else
+                        {
+                        psf_i_x = j_x-i_x;
+                        psf_i_y = 0;
+                        psf_j_x = 0;
+                        psf_j_y = i_y-j_y;
+                        }         
+                    // 3b3) update pointers to the PSFs (function of z)
+                    PSF_i = (float*) (psfImage->data) + i_z * psf_size_x*psf_size_y; 
+                    PSF_j = (float*) (psfImage->data) + j_z * psf_size_x*psf_size_y; 
+                    // 3b4) update the Fisher Information matrix
+                    for (int x=0; x<B_x; x++)
+                        {
+                        for (int y=0; y<B_y; y++)
+                            {
+                            // check if the point is within the projection space
+                            int proj_x = p_x+x;
+                            int proj_y = p_y+y;
+                            if (proj_x>=0 && proj_y>=0 && proj_x<invsinogramImage->nx && proj_y<invsinogramImage->ny)
+                                {
+                                fisher_element = fisher_matrix[i*n_grid_elements+j] + PSF_j[(psf_j_y+y)*psf_size_x+(psf_j_x+x)]*PSF_i[(psf_i_y+y)*psf_size_x+(psf_i_x+x)]*invsino_data[proj_y*invsinogramImage->nx + proj_x];
+                                //invsinogram[cam*invsinogramImage->nx*invsinogramImage->nx+proj_y*invsinogramImage->nx + proj_x];
+                                fisher_matrix[i*n_grid_elements+j] = fisher_element;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+    // 4) Fill matrix (the other half)
+    for (int i=0; i<n_grid_elements; i++)
+        for (int j=i+1; j<n_grid_elements; j++)
+            fisher_matrix[j*n_grid_elements+i] = fisher_matrix[i*n_grid_elements+j];
+    // Free
+    free(grid_coords);
+    free(affineTransformation);
+    free(grid_coords_rotated);
+    if (from_projection==0)
+        {
+        free(invsinogram);
+        (void)nifti_free_extensions( invsinogramImage) ;
+        free(invsinogramImage) ;
+        }
+    return status;
+} 
+
+int et_fisher_grid(int from_projection, nifti_image *inputImage, nifti_image *gridImage, nifti_image *fisherImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float epsilon, float background, float background_attenuation)
+{
+    int status = 0;
+    float *fisher_matrix = (float *) fisherImage->data;
+    int psf_size_x = psfImage->nx;
+    int psf_size_y = psfImage->ny;
+    int psf_size_semi_x = (psf_size_x-1)/2;
+    int psf_size_semi_y = (psf_size_y-1)/2;
+
+    if (epsilon<=eps) epsilon=eps;
+    // 1) Project object and invert the sinogram elements
+    int dim[8];
+    dim[0] = 3;
+    dim[1] = gridImage->dim[1];
+    dim[2] = gridImage->dim[3];
+    dim[3] = n_cameras;	  
+    dim[4] = 1;	  
+    dim[5] = 1;	  
+    dim[6] = 1;	  
+    dim[7] = 1;	  
+    nifti_image *invsinogramImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+    float *invsinogram;
+    if (from_projection==0)
+        {
+        invsinogram = (float*) malloc(dim[1]*dim[2]*dim[3]*sizeof(float));
+        invsinogramImage->data = (float *)(invsinogram);
+        status = et_project(inputImage, invsinogramImage, psfImage, attenuationImage, cameras, n_cameras, background, background_attenuation);
+        if (status)
+            {
+            fprintf(stderr,"'et_fisher_grid': error while calculating projection\n");
+            return status;
+            } 
+        }
+    else
+        {
+        invsinogramImage = inputImage;
+        invsinogram = (float*)invsinogramImage->data;
+        }
+//    for (int i=0; i<invsinogramImage->nvox; i++)
+//        invsinogram[i]=1/(invsinogram[i]+epsilon);
+
+    // 2) Create (3xN) matrix of coordinates of the grid points; these will be rotated according to each camera position. 
+    int n_grid_elements = fisherImage->dim[1];
+    int *grid_coords  = (int*) malloc(n_grid_elements*sizeof(int)*3); 
+    for (int i=0; i<n_grid_elements*3; i++)
+        grid_coords[i]=-1;
+    int n=0;
+    float *grid_data = (float*)gridImage->data;
+    for (int x=0; x<gridImage->nx; x++) {
+        for (int y=0; y<gridImage->ny; y++) {
+            for (int z=0; z<gridImage->nz; z++) {
+                if (grid_data[z*gridImage->ny*gridImage->nx+y*gridImage->nx+x] !=0) { //FIXME: make sure this works for non cubic images
+                    n = grid_data[z*gridImage->ny*gridImage->nx+y*gridImage->nx+x] - 1;
+                    if (grid_coords[n*3]!=-1)
+                        return ET_ERROR_BADGRID;     // this happens if there are two elements of the grid with the same index
+                    if (n > n_grid_elements) 
+                        return ET_ERROR_BADGRID;     // this happens if at least one of the elements of the grid is bigger than the numbe of elements 
+                    if (n < 0) 
+                        return ET_ERROR_BADGRID;     // this happens if at least one of the elements of the grid is negative
+                    grid_coords[n*3]=x;
+                    grid_coords[n*3+1]=y;
+                    grid_coords[n*3+2]=z;
+                    }
+                }
+            }
+        }
+    // 3) For each camera position, update the FIM
+    for (int i=0; i<n_grid_elements*n_grid_elements; i++)
+        fisher_matrix[i]=0;
+
+    float center_x = ((float)(gridImage->nx - 1)) / 2.0;
+    float center_y = ((float)(gridImage->ny - 1)) / 2.0;
+    float center_z = ((float)(gridImage->nz - 1)) / 2.0;
+		
+    mat44 *affineTransformation = (mat44 *)calloc(1,sizeof(mat44));
+    int *grid_coords_rotated = (int*) malloc(n_grid_elements*sizeof(int)*3); 
+    float position[3]; float position_rotated[3];
+    
+    for (int cam=0; cam<n_cameras; cam++)
+        {
+        float *invsino_data = (float *) (invsinogramImage->data) + cam*gridImage->nx*gridImage->nz ;
+        // 3a) rotate the grid coordinates
+        et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], center_x, center_y, center_z);
+        for (int n=0; n<n_grid_elements; n++)
+            {
+            position[0]=grid_coords[3*n]; position[1]=grid_coords[3*n+1]; position[2]=grid_coords[3*n+2]; 
+            reg_mat44_mul(affineTransformation, position, position_rotated);
+            grid_coords_rotated[3*n] = position_rotated[0]; grid_coords_rotated[3*n+1] = position_rotated[1]; grid_coords_rotated[3*n+2] = position_rotated[2]; //implicit rounding (NN interpolation)
+            }
+        // 3b) for each pair, compute the FIM element (for the current camera, then it all sums up)
+        int bbox0[2];
+        int bbox1[2];
+        int bbox_size[2];
+        int Z;
+        int psf_i_x, psf_i_y, psf_j_x, psf_j_y;
+        float *PSF_i; float *PSF_j;
+        float fisher_element;
+        for (int i=0; i<n_grid_elements; i++)
+            {
+            int i_x = grid_coords_rotated[3*i];
+            int i_y = grid_coords_rotated[3*i+1];
+            int i_z = grid_coords_rotated[3*i+2];
+            for (int j=i; j<n_grid_elements; j++)
+                {
+                int j_x = grid_coords_rotated[3*j];
+                int j_y = grid_coords_rotated[3*j+1];
+                int j_z = grid_coords_rotated[3*j+2];
+                // 3b1) compute bounding box
+                int B_x = psf_size_x - abs(j_x-i_x);     // Bounding box size
+                int B_y = psf_size_y - abs(j_y-i_y);
+                int p_x = max(i_x,j_x)-psf_size_semi_x;  // start of bounding box in projection space
+                int p_y = max(i_y,j_y)-psf_size_semi_y;
+                // 3b2) compute coordinates of the PSFs
+                if (B_x>0 && B_y>0 && i_z>=0 && j_z>=0 && i_z<gridImage->nz && j_z<gridImage->nz)  // check if the PSFs overlap and if the plane if within the field of view 
+                    {
+                    if ((j_x >= i_x) && (j_y > i_y))
+                        {
+                        psf_i_x = j_x - i_x;
+                        psf_i_y = j_y - i_y;
+                        psf_j_x = 0;
+                        psf_j_y = 0;
+                        }
+                    else if ((j_x < i_x) && (j_y >= i_y))
+                        {
+                        psf_i_x = 0;
+                        psf_i_y = j_y-i_y;
+                        psf_j_x = i_x-j_x;
+                        psf_j_y = 0;
+                        }
+                    else if ((j_x <= i_x) && (j_y < i_y))
+                        {
+                        psf_i_x = 0;
+                        psf_i_y = 0;
+                        psf_j_x = i_x-j_x;
+                        psf_j_y = i_y-j_y;
+                        }
+                    else
+                        {
+                        psf_i_x = j_x-i_x;
+                        psf_i_y = 0;
+                        psf_j_x = 0;
+                        psf_j_y = i_y-j_y;
+                        }         
+                    // 3b3) update pointers to the PSFs (function of z)
+                    PSF_i = (float*) (psfImage->data) + i_z * psf_size_x*psf_size_y; 
+                    PSF_j = (float*) (psfImage->data) + j_z * psf_size_x*psf_size_y; 
+                    // 3b4) update the Fisher Information matrix
+                    for (int x=0; x<B_x; x++)
+                        {
+                        for (int y=0; y<B_y; y++)
+                            {
+                            // check if the point is within the projection space
+                            int proj_x = p_x+x;
+                            int proj_y = p_y+y;
+                            if (proj_x>=0 && proj_y>=0 && proj_x<invsinogramImage->nx && proj_y<invsinogramImage->ny)
+                                {
+                                fisher_element = fisher_matrix[i*n_grid_elements+j] + PSF_j[(psf_j_y+y)*psf_size_x+(psf_j_x+x)]*PSF_i[(psf_i_y+y)*psf_size_x+(psf_i_x+x)]*invsino_data[proj_y*invsinogramImage->nx + proj_x];
+                                //invsinogram[cam*invsinogramImage->nx*invsinogramImage->nx+proj_y*invsinogramImage->nx + proj_x];
+                                fisher_matrix[i*n_grid_elements+j] = fisher_element;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+    // 4) Fill matrix (the other half)
+    for (int i=0; i<n_grid_elements; i++)
+        for (int j=i+1; j<n_grid_elements; j++)
+            fisher_matrix[j*n_grid_elements+i] = fisher_matrix[i*n_grid_elements+j];
+    // Free
+    free(grid_coords);
+    free(affineTransformation);
+    free(grid_coords_rotated);
+    if (from_projection==0)
+        {
+        free(invsinogram);
+        (void)nifti_free_extensions( invsinogramImage) ;
+        free(invsinogramImage) ;
+        }
+    return status;
+}
 
 int et_convolve_gpu(nifti_image *inImage, nifti_image *outImage, nifti_image *psfImage)
 {

@@ -1,6 +1,6 @@
 
-MACRO(BUILD_INSTALL_LIBRARY LIBRARY_NAME LIBRARY_TYPE)
-        CUDA_ADD_LIBRARY(${LIBRARY_NAME} ${LIB_TYPE} ${LIBRARY_NAME}.h ${LIBRARY_NAME}.cu ${LIBRARY_NAME}_kernels.cu)
+MACRO(BUILD_INSTALL_LIBRARY LIBRARY_NAME LIBRARY_TYPE OPTS)
+        CUDA_ADD_LIBRARY(${LIBRARY_NAME} ${LIB_TYPE} ${LIBRARY_NAME}.h ${LIBRARY_NAME}.cu ${LIBRARY_NAME}_kernels.cu OPTIONS ${OPTS})
         #TARGET_LINK_LIBRARIES(${LIBRARY_NAME} ${CUDA_SDK_LIBRARIES} ${CUDA_CUT_LIBRARY} )
         INSTALL(TARGETS ${LIBRARY_NAME} DESTINATION ${LIB_INSTALL_DIR})
         INSTALL(FILES ${LIBRARY_NAME}.h DESTINATION ${INC_INSTALL_DIR})
@@ -8,8 +8,11 @@ ENDMACRO(BUILD_INSTALL_LIBRARY)
 
 #-----------------------------------------------------------------------------
 IF(USE_CUDA)
-        BUILD_INSTALL_LIBRARY(tt_project_ray_gpu ${LIB_TYPE})
-        BUILD_INSTALL_LIBRARY(tt_backproject_ray_gpu ${LIB_TYPE})
+        set(GENCODE_SM13 -gencode=arch=compute_13,code=sm_13 -gencode=arch=compute_13,code=compute_13)
+        set(GENCODE_SM20 -gencode=arch=compute_20,code=sm_20 -gencode=arch=compute_20,code=compute_20)
+        FOREACH(LIBRARY_NAME ${NIFTY_REC_TT_LIBRARIES_GPU})
+                BUILD_INSTALL_LIBRARY(${LIBRARY_NAME} ${LIB_TYPE} ${GENCODE_SM13})
+        ENDFOREACH(LIBRARY_NAME)
 ENDIF(USE_CUDA)
 
 #-----------------------------------------------------------------------------

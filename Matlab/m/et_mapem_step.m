@@ -106,6 +106,8 @@ proj = proj.*(proj>0) + epsilon ;
 update = et_backproject(sinogram ./ proj, cameras, attenuation, psf, GPU, background, background_attenuation);
 update = update.*(update>0);
 activity_new = activity_old .* update;
-activity_new = activity_new ./ (normalization - beta * gradient_prior);
+normalization = normalization - beta * gradient_prior;
+normalization = normalization.*(normalization>0) + epsilon;
+activity_new = activity_new ./ (normalization);
 
 return 
