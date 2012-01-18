@@ -130,8 +130,7 @@ return 1;
 
 int tt_backproject_ray(float h_projections[], u_int_2 detector_pixels, u_int n_projections, float out_backprojection[], float_2 detector_size[], float_3 detector_transl[], float_3 detector_rotat[], float_3 source_pos[], u_int_3 volume_voxels, float_3 volume_size, float t_step, int interpolation, int use_gpu)
 {
-    dim3 blockSize(16, 16);
-    dim3 gridSize;
+#ifdef _USE_CUDA
 
     float  invViewMatrix[12];
     float3 sourcePosition;
@@ -143,7 +142,8 @@ int tt_backproject_ray(float h_projections[], u_int_2 detector_pixels, u_int n_p
     float *d_output;
     float *d_current_projection;
 
-#ifdef _USE_CUDA
+    dim3 blockSize(16, 16);
+    dim3 gridSize;
     if (use_gpu)
     {
       cuInit(0);
@@ -155,7 +155,6 @@ int tt_backproject_ray(float h_projections[], u_int_2 detector_pixels, u_int n_p
       CUDA_SAFE_CALL(cudaMalloc((void **)&d_output, volume_voxels.x*volume_voxels.y*volume_voxels.z*sizeof(float) ));
       CUDA_SAFE_CALL(cudaMemset((void *)d_output,0, volume_voxels.x*volume_voxels.y*volume_voxels.z*sizeof(float) ));
     }
-#endif
 
     struct timeval start_time; gettimeofday( &start_time, 0);
     struct timeval t_time;
@@ -180,7 +179,7 @@ int tt_backproject_ray(float h_projections[], u_int_2 detector_pixels, u_int n_p
         sourcePosition.y = source_pos[proj].y;
         sourcePosition.z = source_pos[proj].z;
         //backproject
-#ifdef _USE_CUDA
+
         if (use_gpu)
         {
             copyInvViewMatrix_bk(invViewMatrix, sizeof(float4)*3);
@@ -190,13 +189,13 @@ int tt_backproject_ray(float h_projections[], u_int_2 detector_pixels, u_int n_p
         }
         else
         {
-#endif
+
             float *current_projection = (float*) h_projections + proj * detector_pixels.w * detector_pixels.h;
             fprintf(stderr,"\nBack-projection %d/%d",proj+1,n_projections);
             tt_backproject_cpu(out_backprojection, current_projection, invViewMatrix, detectorPixels, sourcePosition, volumeVoxels, volumeSize, t_step, interpolation);
-#ifdef _USE_CUDA
+
         }
-#endif
+
     }
     gettimeofday( &t_time, 0);
     elapsed_time = (float) (1000.0 * ( t_time.tv_sec - start_time.tv_sec) + (0.001 * (t_time.tv_usec - start_time.tv_usec)) );
@@ -205,7 +204,7 @@ int tt_backproject_ray(float h_projections[], u_int_2 detector_pixels, u_int n_p
 //cudaMemset(d_output, 100, volume_voxels.x*volume_voxels.y*volume_voxels.z*sizeof(float) );
 
     //Copy result back to host
-#ifdef _USE_CUDA
+
     if(use_gpu)
     {
         CUDA_SAFE_CALL(cudaMemcpy(out_backprojection, d_output, volume_voxels.x*volume_voxels.y*volume_voxels.z*sizeof(float), cudaMemcpyDeviceToHost));
@@ -216,8 +215,10 @@ int tt_backproject_ray(float h_projections[], u_int_2 detector_pixels, u_int n_p
 
         cudaThreadExit();
     }
-#endif
     return 0;
+#else
+    return 1;
+#endif
 }
 
 

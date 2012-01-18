@@ -12,6 +12,8 @@
 #include "_et_clear_accumulator.h"
 //#include "_et_joint_histogram.h"
 
+#define ET_ERROR_BADGRID 2
+
 #ifdef _USE_CUDA
 #include "_reg_cudaCommon.h"
 #include "_reg_resampling_gpu.h"
@@ -24,8 +26,6 @@
 #include "_et_clear_accumulator_gpu.h"
 #include "_et_convolveFFT2D_gpu.h"
 //#include "_et_joint_histogram_gpu.h"
-
-#define ET_ERROR_BADGRID 2
 
 int et_rotate_gpu(nifti_image *sourceImage, nifti_image *resultImage, float alpha, float beta, float gamma, float center_x, float center_y, float center_z, float background);
 int et_project_gpu(nifti_image *activity, nifti_image *sinoImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float backgroundAttenuation);
@@ -46,5 +46,7 @@ int et_joint_histogram(nifti_image *matrix_A_Image, nifti_image *matrix_B_Image,
 int et_project_backproject(nifti_image *activity, nifti_image *sino, nifti_image *psf, int n_cameras, float *cameras_alpha, float *cameras_beta, float *cameras_gamma);
 int et_affine(nifti_image *sourceImage, nifti_image *transformedImage, mat44 *affineTransformation, float background);
 int et_convolve(nifti_image *inImage, nifti_image *outImage, nifti_image *psfImage);
-int et_fisher_grid(int from_projection, nifti_image *inputImage, nifti_image *gridImage, nifti_image *fisherImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras_array, int n_cameras, float epsilon, float background, float background_attenuation); 
+int et_fisher_grid(int from_projection, nifti_image *inputImage, nifti_image *gridImage, nifti_image *fisherImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float epsilon, float background, float background_attenuation);
+
+
 
