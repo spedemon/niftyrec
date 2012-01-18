@@ -14,11 +14,11 @@ ENDMACRO(BUILD_INSTALL_LIBRARY)
 
 #-----------------------------------------------------------------------------
 
-IF(USE_CUDA)
-        FOREACH(LIBRARY_NAME ${NIFTY_REC_LIBRARIES_GPU})
+IF(NiftyRec_USE_CUDA)
+        FOREACH(LIBRARY_NAME ${NIFTY_REC_ET_LIBRARIES_GPU})
                 BUILD_INSTALL_LIBRARY(${LIBRARY_NAME} ${LIB_TYPE})
         ENDFOREACH(LIBRARY_NAME)
-ENDIF(USE_CUDA)
+ENDIF(NiftyRec_USE_CUDA)
 
 #-----------------------------------------------------------------------------
 

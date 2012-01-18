@@ -107,12 +107,35 @@ if not(exist('attenuation','var'))
 end
 
 
-%extract random cameras
+%extract random cameras: select randomly the first camera, 
+%then select successive camera by drawing from a Gaussian 
+%centred 'subset_order' indexes away 
+%and procede that way in the same direction until 'N_cameras/subset_order' 
+%cameras are selected
 N1 = size(activity_old,1);
 N3 = size(activity_old,3);
 N_cameras = size(cameras,1);
+if subset_order<2
+    subset_order=2;
+    disp 'Warning: Minimun subset order is 2, using subset_order=2'
+end
 N_cameras_sub = round(N_cameras/subset_order);
-cameras_indexes = round(0.5 + (N_cameras-0.5) * rand(1,N_cameras_sub)); 
+cameras_indexes=zeros(1,N_cameras_sub);
+cameras_indexes(1)=round(rand()*N_cameras);
+for cam = 2:N_cameras_sub
+    cameras_indexes(cam)=ceil(normrnd(cameras_indexes(1)+(cam-1)*subset_order,subset_order/2));
+    while not(cameras_indexes(cam)>cameras_indexes(cam-1))
+        cameras_indexes(cam)=ceil(normrnd(cameras_indexes(1)+(cam-1)*subset_order,subset_order/2));
+    end
+
+end
+cameras_indexes=rem(cameras_indexes,N_cameras);
+cameras_indexes(cameras_indexes<=0)=N_cameras;
+
+%Random without replacement
+ %N_cameras_sub = round(N_cameras/subset_order);
+ %cameras_indexes = round(0.5 + (N_cameras-0.5) * rand(1,N_cameras_sub)); 
+fprintf(' %d', cameras_indexes);
 cameras_sub = cameras(cameras_indexes,:);
 
 %compute sensitivity for the subset

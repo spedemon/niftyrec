@@ -444,6 +444,358 @@ extern "C" int et_array_backproject(float *sino, int *sino_size, float *bkpr, in
 }
 
 
+extern "C" int et_mlem_spect(float *sinogram_data, int size_x, int size_y, int n_cameras, float firstcamera, float lastcamera, int iterations, int use_psf, int use_ddpsf, int psf_size_x, int psf_size_y, float *psf_data, int use_attenuation, float *attenuation_data, float *activity_data, int GPU)
+{
+    return 0;
+}
+
+extern "C" int et_array_fisher_grid(float *activity_ptr, int *activity_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *grid_ptr, float *fisher_ptr, int *fisher_size, float *attenuation, int *attenuation_size, float epsilon, float background, float background_attenuation, int GPU)
+{
+        int from_projection = 0;
+	int status = 1;
+	int dims;
+        int n_cameras;
+        int n_cameras_axis;
+        int no_psf = 0;
+        int no_attenuation = 0;
+        float *cameras_array;
+
+        n_cameras = cameras_size[0];
+        n_cameras_axis = cameras_size[1];
+
+	// 2D or 3D?
+        dims = 3;
+	if (activity_size[2] == 1)
+            dims = 2;
+
+        //PSF or not?
+        if (psf_size[0] == 0 && psf_size[1] == 0 && psf_size[2] == 0)
+            no_psf = 1;
+
+        //attenuation or not?
+        if (attenuation_size[0] == 0 && attenuation_size[1] == 0 && attenuation_size[2] == 0)
+            no_attenuation = 1;
+
+        /* Check consistency of input */
+        // Cameras must specify all 3 axis of rotation (3D array) or can be a 1D array if rotation is only along z axis.
+        if (!(n_cameras_axis == 1 || n_cameras_axis == 3))
+            {
+            fprintf_verbose("et_array_project: Incorrect size of cameras %d %d. 'Cameras' must be either [n_cameras x 3] or [n_cameras x 1].\n",cameras_size[0],cameras_size[1]);
+            return status;
+            }
+        if (dims==2)
+            //Activity must be of size [NxN]
+            {
+            if (activity_size[0] != activity_size[1])
+                {
+                fprintf_verbose("et_array_project: 2D activity must be of size [N,N].\n");
+                return status;
+                }
+            //Size of psf must be odd
+            if (!no_psf)
+                {
+                if (psf_size[0]%2!=1 || psf_size[1]%2!=1)
+                    {
+                    fprintf_verbose("et_array_project: 2D psf must be of size [h,k]; h,k odd.\n");
+                    return status;
+                    }
+                }
+            }
+        if (dims==3)
+            //Activity must be of size [NxNxm]; m>=2
+            {
+            if (activity_size[0] != activity_size[1] || activity_size[2]<2)
+                {
+                fprintf_verbose("et_array_project: 3D activity must be of size [N,N,m]; m>=2.\n");
+                return status;
+                }
+            //Size of psf must be odd and consistent with activity size
+            if (!no_psf)
+                {
+                if (psf_size[0]%2!=1 || psf_size[1]%2!=1 || psf_size[2]!=activity_size[2])
+                    {
+                    fprintf_verbose("et_array_project: 3D psf must be of size [h,k,m] for activity of size [N,N,m]; h,k odd.\n");
+                    return status;
+                    }
+                }
+            }
+
+        // Allocate array for cameras
+        cameras_array = (float *)malloc(n_cameras*3*sizeof(float));
+        if (n_cameras_axis == 3)
+            memcpy((void*) cameras_array, (void*) cameras, n_cameras*3*sizeof(float));
+        if (n_cameras_axis == 1)
+            {
+            memset(cameras_array, 0, n_cameras*3*sizeof(float));
+            for (int cam=0; cam<n_cameras; cam++)
+                cameras_array[0*n_cameras+cam] = cameras[cam];
+            }
+
+	// Allocate source nifti image 
+        int dim[8];
+	dim[0]    = 3;//dims;            FIXME: bug in cudaCommon_transferNiftiToArrayOnDevice for 2D nifti images
+	dim[1]    = activity_size[0];
+	dim[2]    = activity_size[1];
+	dim[3]    = activity_size[2];
+	dim[4]    = 1;
+	dim[5]    = 1;
+	dim[6]    = 1;
+	dim[7]    = 1;
+	//fprintf_verbose("\nS: %d %d %d",activity_size[0],activity_size[1],activity_size[2]);
+	nifti_image *activityImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+        activityImage->data = (float *)(activity_ptr);
+
+        // Allocate grid nifti image
+        nifti_image *gridImage = NULL;
+        gridImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+        gridImage->data = (float *)(grid_ptr);        
+
+        // Allocate attenuation nifti image
+        nifti_image *attenuationImage = NULL;
+        if(!no_attenuation)
+            {
+            attenuationImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+            attenuationImage->data = (float *)(attenuation);        
+            }
+
+	// Allocate the result Fisher nifti image
+        dim[1] = fisher_size[0];
+        dim[2] = fisher_size[1];
+        dim[3] = 1;
+        nifti_image *fisherImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+        fisherImage->data = (float *)(fisher_ptr);
+
+	//Allocate Point Spread Function nifti image
+        nifti_image *psfImage = NULL;
+        if (!no_psf)
+            {
+            dim[1] = psf_size[0];
+            dim[2] = psf_size[1];
+            dim[3] = psf_size[2];
+            psfImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+            psfImage->data = (float *)(psf);
+            }
+
+        //Compute Fisher Information Matrix
+        #ifdef _USE_CUDA
+        if (GPU)
+            status = et_fisher_grid_gpu(from_projection, activityImage, gridImage, fisherImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
+        else
+            status = et_fisher_grid(from_projection, activityImage, gridImage, fisherImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
+        #else
+            if (GPU)
+                fprintf_verbose( "et_array_project: No GPU support. In order to activate GPU acceleration please configure with GPU flag and compile.");
+            status = et_fisher_grid(from_projection, activityImage, gridImage, fisherImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
+        #endif
+
+	//Free
+	if( activityImage->fname != NULL ) free(activityImage->fname) ;
+	if( activityImage->iname != NULL ) free(activityImage->iname) ;
+	(void)nifti_free_extensions( activityImage ) ;
+	free(activityImage) ;
+
+	(void)nifti_free_extensions( gridImage ) ;
+	free(gridImage) ;
+
+	(void)nifti_free_extensions( fisherImage ) ;
+	free(fisherImage) ;
+
+        if(!no_attenuation)
+            {
+            if( attenuationImage->fname != NULL ) free(attenuationImage->fname) ;
+            if( attenuationImage->iname != NULL ) free(attenuationImage->iname) ;
+            (void)nifti_free_extensions( attenuationImage ) ;
+            free(attenuationImage) ;
+            }
+
+        if (!no_psf)
+            {
+            if( psfImage->fname != NULL ) free(psfImage->fname) ;
+            if( psfImage->iname != NULL ) free(psfImage->iname) ;
+            (void)nifti_free_extensions( psfImage ) ;
+            free(psfImage) ;
+            }
+
+        free(cameras_array);
+
+	return status;
+}
+
+
+extern "C" int et_array_fisher_grid_projection(float *sinogram_ptr, int *sinogram_size, int *bkpr_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *grid_ptr, float *fisher_ptr, int *fisher_size, float *attenuation, int *attenuation_size, float epsilon, float background, float background_attenuation, int GPU)
+{
+        int from_projection = 1;
+	int status = 1;
+	int dims;
+        int n_cameras;
+        int n_cameras_axis;
+        int no_psf = 0;
+        int no_attenuation = 0;
+        float *cameras_array;
+
+        n_cameras = cameras_size[0];
+        n_cameras_axis = cameras_size[1];
+
+	// 2D or 3D?
+        dims = 3;
+	if (bkpr_size[2] == 1)
+            dims = 2;
+
+        //PSF or not?
+        if (psf_size[0] == 0 && psf_size[1] == 0 && psf_size[2] == 0)
+            no_psf = 1;
+
+        //attenuation or not?
+        if (attenuation_size[0] == 0 && attenuation_size[1] == 0 && attenuation_size[2] == 0)
+            no_attenuation = 1;
+
+        /* Check consistency of input */
+        // Cameras must specify all 3 axis of rotation (3D array) or can be a 1D array if rotation is only along z axis.
+        if (!(n_cameras_axis == 1 || n_cameras_axis == 3))
+            {
+            fprintf_verbose("et_array_project: Incorrect size of cameras %d %d. 'Cameras' must be either [n_cameras x 3] or [n_cameras x 1].\n",cameras_size[0],cameras_size[1]);
+            return status;
+            }
+        if (dims==2)
+            //Activity must be of size [NxN]
+            {
+            if (bkpr_size[0] != bkpr_size[1])
+                {
+                fprintf_verbose("et_array_project: 2D activity must be of size [N,N].\n");
+                return status;
+                }
+            //Size of psf must be odd
+            if (!no_psf)
+                {
+                if (psf_size[0]%2!=1 || psf_size[1]%2!=1)
+                    {
+                    fprintf_verbose("et_array_project: 2D psf must be of size [h,k]; h,k odd.\n");
+                    return status;
+                    }
+                }
+            }
+        if (dims==3)
+            //Activity must be of size [NxNxm]; m>=2
+            {
+            if (bkpr_size[0] != bkpr_size[1] || bkpr_size[2]<2)
+                {
+                fprintf_verbose("et_array_project: 3D activity must be of size [N,N,m]; m>=2.\n");
+                return status;
+                }
+            //Size of psf must be odd and consistent with activity size
+            if (!no_psf)
+                {
+                if (psf_size[0]%2!=1 || psf_size[1]%2!=1 || psf_size[2]!=bkpr_size[2])
+                    {
+                    fprintf_verbose("et_array_project: 3D psf must be of size [h,k,m] for activity of size [N,N,m]; h,k odd.\n");
+                    return status;
+                    }
+                }
+            }
+
+        // Allocate array for cameras
+        cameras_array = (float *)malloc(n_cameras*3*sizeof(float));
+        if (n_cameras_axis == 3)
+            memcpy((void*) cameras_array, (void*) cameras, n_cameras*3*sizeof(float));
+        if (n_cameras_axis == 1)
+            {
+            memset(cameras_array, 0, n_cameras*3*sizeof(float));
+            for (int cam=0; cam<n_cameras; cam++)
+                cameras_array[0*n_cameras+cam] = cameras[cam];
+            }
+
+	// Allocate source nifti image 
+        int dim[8];
+	dim[0]    = 3;//dims;            FIXME: bug in cudaCommon_transferNiftiToArrayOnDevice for 2D nifti images
+	dim[1]    = sinogram_size[0];
+	dim[2]    = sinogram_size[1];
+	dim[3]    = sinogram_size[2];
+	dim[4]    = 1;
+	dim[5]    = 1;
+	dim[6]    = 1;
+	dim[7]    = 1;
+	nifti_image *projectionImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+        projectionImage->data = (float *)(sinogram_ptr);
+
+        // Allocate grid nifti image
+	dim[1]    = bkpr_size[0];
+	dim[2]    = bkpr_size[1];
+	dim[3]    = bkpr_size[2];
+        nifti_image *gridImage = NULL;
+        gridImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+        gridImage->data = (float *)(grid_ptr);        
+
+        // Allocate attenuation nifti image
+        nifti_image *attenuationImage = NULL;
+        if(!no_attenuation)
+            {
+            attenuationImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+            attenuationImage->data = (float *)(attenuation);        
+            }
+
+	// Allocate the result Fisher nifti image
+        dim[1] = fisher_size[0];
+        dim[2] = fisher_size[1];
+        dim[3] = 1;
+        nifti_image *fisherImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+        fisherImage->data = (float *)(fisher_ptr);
+
+	//Allocate Point Spread Function nifti image
+        nifti_image *psfImage = NULL;
+        if (!no_psf)
+            {
+            dim[1] = psf_size[0];
+            dim[2] = psf_size[1];
+            dim[3] = psf_size[2];
+            psfImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+            psfImage->data = (float *)(psf);
+            }
+
+        //Compute Fisher Information Matrix
+        #ifdef _USE_CUDA
+        if (GPU)
+            status = et_fisher_grid_gpu(from_projection, projectionImage, gridImage, fisherImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
+        else
+            status = et_fisher_grid(from_projection, projectionImage, gridImage, fisherImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
+        #else
+            if (GPU)
+                fprintf_verbose( "et_array_project: No GPU support. In order to activate GPU acceleration please configure with GPU flag and compile.");
+            status = et_fisher_grid(from_projection, projectionImage, gridImage, fisherImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
+        #endif
+
+	//Free
+	if( projectionImage->fname != NULL ) free(projectionImage->fname) ;
+	if( projectionImage->iname != NULL ) free(projectionImage->iname) ;
+	(void)nifti_free_extensions( projectionImage ) ;
+	free(projectionImage) ;
+
+	(void)nifti_free_extensions( gridImage ) ;
+	free(gridImage) ;
+
+	(void)nifti_free_extensions( fisherImage ) ;
+	free(fisherImage) ;
+
+        if(!no_attenuation)
+            {
+            if( attenuationImage->fname != NULL ) free(attenuationImage->fname) ;
+            if( attenuationImage->iname != NULL ) free(attenuationImage->iname) ;
+            (void)nifti_free_extensions( attenuationImage ) ;
+            free(attenuationImage) ;
+            }
+
+        if (!no_psf)
+            {
+            if( psfImage->fname != NULL ) free(psfImage->fname) ;
+            if( psfImage->iname != NULL ) free(psfImage->iname) ;
+            (void)nifti_free_extensions( psfImage ) ;
+            free(psfImage) ;
+            }
+
+        free(cameras_array);
+
+	return status;
+}
+
 
 extern "C" int et_array_convolve(float *image, int *image_size, float *out, int *out_size, float *psf, int *psf_size, int GPU)
 {

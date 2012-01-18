@@ -27,7 +27,7 @@ int reg_gradient_NMI_nodes(nifti_image* targetImage, nifti_image* sourceImage, n
 	return status;
 }
 
-
+#ifdef _USE_CUDA
 int reg_gradient_NMI_nodes_gpu(nifti_image* targetImage, nifti_image* sourceImage, nifti_image* controlPointImage, nifti_image* nodeGradientImage, int binning)
 {
 	float *targetImageArray_d=NULL;
@@ -192,7 +192,7 @@ CUDA_SAFE_CALL(cudaMemcpy(nodeGradientImage->data, nodeNMIGradientArray_d, nodeG
 fprintf(stderr,"_reg Done \n\n");
 	return 0;
 }
-
+#endif
 
 
 
@@ -203,7 +203,7 @@ int reg_gradient_voxel_to_nodes(nifti_image *cpGradientImage, nifti_image *gradi
 }
 
 
-
+#ifdef _USE_CUDA
 int reg_gradient_voxel_to_nodes_gpu(nifti_image *cpGradientImage, nifti_image *gradientImage, nifti_image *controlPointImage)
 {
 	int status = 1;
@@ -239,7 +239,7 @@ fprintf(stderr, "\n CP    delta: %f %f %f\n",controlPointImage->dx,controlPointI
 	status = 0;
 	return status;
 }
-
+#endif
 
 
 int reg_resample_spline(nifti_image *resultImage, nifti_image *sourceImage, nifti_image *controlPointImage)
@@ -249,6 +249,7 @@ int reg_resample_spline(nifti_image *resultImage, nifti_image *sourceImage, nift
 }
 
 
+#ifdef _USE_CUDA
 int reg_resample_spline_gpu(nifti_image *resultImage, nifti_image *sourceImage, nifti_image *controlPointImage)
 {
 	int status = 1;
@@ -320,7 +321,7 @@ int reg_resample_spline_gpu(nifti_image *resultImage, nifti_image *sourceImage, 
 	status = 0;
 	return status;
 }
-
+#endif
 
 
 nifti_image* reg_initialize_control_points(int control_point_size[], float gridSpacing[])

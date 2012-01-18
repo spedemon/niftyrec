@@ -2,9 +2,9 @@
 #include <_tt_common.h>
 #include <stdlib.h>
 
-mat44 reg_mat44_mul(mat44 *A, mat44 *B)
+mat_44 reg_mat_44_mul(mat_44 *A, mat_44 *B)
 {
-	mat44 R;
+	mat_44 R;
 	
 	for(int i=0; i<4; i++){
 		for(int j=0; j<4; j++){
@@ -16,13 +16,13 @@ mat44 reg_mat44_mul(mat44 *A, mat44 *B)
 }
 
 
-int create_rotation_matrix44(mat44 *transformationMatrix, float theta_x, float theta_y, float theta_z, float center_x, float center_y, float center_z)
+int create_rotation_matrix44(mat_44 *transformationMatrix, float theta_x, float theta_y, float theta_z, float center_x, float center_y, float center_z)
 {
 	int status = 0;
 	float s_theta_x, c_theta_x, s_theta_y, c_theta_y, s_theta_z, c_theta_z;
-	mat44 *rotation_x = (mat44 *)calloc(1,sizeof(mat44));
-	mat44 *rotation_y = (mat44 *)calloc(1,sizeof(mat44));
-	mat44 *rotation_z = (mat44 *)calloc(1,sizeof(mat44));
+	mat_44 *rotation_x = (mat_44 *)calloc(1,sizeof(mat_44));
+	mat_44 *rotation_y = (mat_44 *)calloc(1,sizeof(mat_44));
+	mat_44 *rotation_z = (mat_44 *)calloc(1,sizeof(mat_44));
 	
 	// Initialize affine transform matrix
 	s_theta_x = sin(theta_x);
@@ -83,8 +83,8 @@ int create_rotation_matrix44(mat44 *transformationMatrix, float theta_x, float t
 	rotation_x->m[3][2] = 0.0;
 	rotation_x->m[3][3] = 1.0;	
 	
-	*transformationMatrix = reg_mat44_mul(rotation_y, rotation_x);
-	*transformationMatrix = reg_mat44_mul(rotation_z, transformationMatrix);
+	*transformationMatrix = reg_mat_44_mul(rotation_y, rotation_x);
+	*transformationMatrix = reg_mat_44_mul(rotation_z, transformationMatrix);
 	
 	free(rotation_x);
 	free(rotation_y);
