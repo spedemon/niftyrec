@@ -110,6 +110,7 @@ int stream_xml()
         return 0;   
 }
 
+#ifdef _SUPPORT_NRRD
 nifti_image *nrrd_to_nifti(Nrrd *nrrdImage)
 {
     nifti_image *niftiImage = NULL;
@@ -174,7 +175,7 @@ Nrrd *nifti_to_nrrd(nifti_image *niftiImage)
     std::cout << "-- Conversion done" << std::endl;
     return nrrdImage;
 }
-
+#endif
 
 
 
