@@ -30,6 +30,7 @@
 #include "_et_line_backproject_attenuated_gpu.h"
 #include "_et_clear_accumulator_gpu.h"
 #include "_et_convolveFFT2D_gpu.h"
+#include "_et_convolveSeparable2D_gpu.h"
 //#include "_et_joint_histogram_gpu.h"
 
 int et_rotate_gpu(nifti_image *sourceImage, nifti_image *resultImage, float alpha, float beta, float gamma, float center_x, float center_y, float center_z, float background);
