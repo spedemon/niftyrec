@@ -675,8 +675,10 @@ int et_project_gpu(nifti_image *activity, nifti_image *sinoImage, nifti_image *p
 	float4    *positionFieldImageArray_d;     //stores position field for rotation of activity and attenuation
 	int       *mask_d;                        //binary mask that defines active voxels (typically all active)
         float     *psfArray_d;                    //stores point spread function
+        float     *psfSeparatedArray_d;           //stores point spread function
         int       psf_size[3];
         int       image_size[3];
+        int       separable_psf=0;
 
         /* Check consistency of input */
         //..
@@ -708,13 +710,31 @@ int et_project_gpu(nifti_image *activity, nifti_image *sinoImage, nifti_image *p
             {
             if(cudaCommon_allocateArrayToDevice<float>(&psfArray_d, psfImage->dim)) return 1;
             if(cudaCommon_transferNiftiToArrayOnDevice<float>(&psfArray_d, psfImage)) return 1;
-            image_size[0] = activity->dim[1];
-            image_size[1] = activity->dim[2];
-            image_size[2] = activity->dim[3];
             psf_size[0] = psfImage->dim[1];
             psf_size[1] = psfImage->dim[2];
             psf_size[2] = psfImage->dim[3];
+            image_size[0] = activity->dim[1];
+            image_size[1] = activity->dim[2];
+            image_size[2] = activity->dim[3];
+
+            if (psf_size[0]<= (MAX_SEPARABLE_KERNEL_RADIUS*2)+1)
+                separable_psf=1;
             }
+
+        if (separable_psf)
+            {
+            CUDA_SAFE_CALL(cudaMalloc((void **)&psfSeparatedArray_d, psf_size[0]*psf_size[2]*2*sizeof(float)));
+            float *psfSeparatedArray_h = (float*) malloc(psf_size[0]*psf_size[2]*2*sizeof(float));
+            for (int n=0; n<psf_size[2];n++) {
+                for (int i=0;i<psf_size[0];i++) {
+                    psfSeparatedArray_h[2*psf_size[0]*n + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 * psf_size[0] + i];
+                    psfSeparatedArray_h[2*psf_size[0]*n + psf_size[0] + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 + i * psf_size[0]];
+                    }
+                }
+            CUDA_SAFE_CALL(cudaMemcpy(psfSeparatedArray_d, psfSeparatedArray_h, psf_size[0]*psf_size[2]*2*sizeof(float), cudaMemcpyHostToDevice));
+            free(psfSeparatedArray_h);
+            }
+
         if (attenuationImage != NULL)
             {
             if(cudaCommon_allocateArrayToDevice<float>(&attenuationArray_d, attenuationImage->dim)) return 1;
@@ -754,12 +774,20 @@ int et_project_gpu(nifti_image *activity, nifti_image *sinoImage, nifti_image *p
 
                 // Apply Depth Dependent Point Spread Function //
                 if (psfImage != NULL)
-                    et_convolveFFT2D_gpu(       &rotatedArray_d,
+                    {
+                    if (separable_psf)
+                        et_convolveSeparable2D_gpu(&rotatedArray_d, 
+                                                image_size,
+                                                &psfSeparatedArray_d,
+                                                psf_size,
+                                                &rotatedArray_d);
+                    else
+                        et_convolveFFT2D_gpu(   &rotatedArray_d, 
                                                 image_size,
                                                 &psfArray_d,
                                                 psf_size,
                                                 &rotatedArray_d);
-
+                    }
 		// Integrate along lines //
                 if (attenuationImage != NULL)
                     {
@@ -795,7 +823,11 @@ int et_project_gpu(nifti_image *activity, nifti_image *sinoImage, nifti_image *p
 	cudaCommon_free((void **)&mask_d);
 	cudaCommon_free((void **)&positionFieldImageArray_d);
         if (psfImage != NULL)
+            {
             cudaCommon_free((void **)&psfArray_d);
+            if (separable_psf)
+                cudaCommon_free((void **)&psfSeparatedArray_d);
+            }
 	free(affineTransformation);
         if (attenuationImage != NULL)
             {
@@ -820,8 +852,10 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *accumulatorImage, ni
 	float4    *positionFieldImageArray_d;
 	int       *mask_d;
         float     *psfArray_d;
+        float     *psfSeparatedArray_d;
         int       psf_size[3];
         int       image_size[3];
+        int       separable_psf=0;
 
 	/* Allocate the deformation Field image */
 	nifti_image *positionFieldImage = nifti_copy_nim_info(accumulatorImage);
@@ -853,7 +887,6 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *accumulatorImage, ni
             {
             if(cudaCommon_allocateArrayToDevice<float>(&attenuationArray_d, attenuationImage->dim)) return 1;
             if(cudaCommon_allocateArrayToDevice<float>(&rotatedAttenuationArray_d, attenuationImage->dim)) return 1;	
-//            if(cudaCommon_allocateArrayToDevice<float>(&attenuationPlaneArray_d, attenuationImage->dim)) return 1;	//FIXME size
             if(cudaCommon_transferNiftiToArrayOnDevice<float>(&attenuationArray_d,attenuationImage)) return 1;
             }
 
@@ -881,20 +914,35 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *accumulatorImage, ni
 	/* Clear accumulator */
 	et_clear_accumulator_gpu(		&accumulatorArray_d,
 						accumulatorImage );
-
         /* Allocate and initialize kernel for DDPSF */
         if (psfImage != NULL)
             {
             if(cudaCommon_allocateArrayToDevice<float>(&psfArray_d, psfImage->dim)) return 1;
             if(cudaCommon_transferNiftiToArrayOnDevice<float>(&psfArray_d, psfImage)) return 1;
-            image_size[0] = accumulatorImage->dim[1];
-            image_size[1] = accumulatorImage->dim[2];
-            image_size[2] = accumulatorImage->dim[3];
             psf_size[0] = psfImage->dim[1];
             psf_size[1] = psfImage->dim[2];
             psf_size[2] = psfImage->dim[3];
+            image_size[0] = accumulatorImage->dim[1];
+            image_size[1] = accumulatorImage->dim[2];
+            image_size[2] = accumulatorImage->dim[3];
+
+            if (psf_size[0]<= (MAX_SEPARABLE_KERNEL_RADIUS*2)+1)
+                separable_psf=1;
             }
 
+        if (separable_psf)
+            {
+            CUDA_SAFE_CALL(cudaMalloc((void **)&psfSeparatedArray_d, psf_size[0]*psf_size[2]*2*sizeof(float)));
+            float *psfSeparatedArray_h = (float*) malloc(psf_size[0]*psf_size[2]*2*sizeof(float));
+            for (int n=0; n<psf_size[2];n++) {
+                for (int i=0;i<psf_size[0];i++) {
+                    psfSeparatedArray_h[2*psf_size[0]*n + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 * psf_size[0] + i];
+                    psfSeparatedArray_h[2*psf_size[0]*n + psf_size[0] + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 + i * psf_size[0]];
+                    }
+                }
+            CUDA_SAFE_CALL(cudaMemcpy(psfSeparatedArray_d, psfSeparatedArray_h, psf_size[0]*psf_size[2]*2*sizeof(float), cudaMemcpyHostToDevice));
+            free(psfSeparatedArray_h);
+            }
 
 	for(int cam=0; cam<n_cameras; cam++){
                 // Rotate attenuation //
@@ -974,7 +1022,14 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *accumulatorImage, ni
                 // Apply Depth Dependent Point Spread Function //
                 if (psfImage != NULL)
                     {
-                    et_convolveFFT2D_gpu(       &rotatedArray_d,
+                    if (separable_psf)
+                        et_convolveSeparable2D_gpu( &rotatedArray_d,
+                                                image_size,
+                                                &psfSeparatedArray_d,
+                                                psf_size,
+                                                &rotatedArray_d);
+                    else
+                        et_convolveFFT2D_gpu(   &rotatedArray_d,
                                                 image_size,
                                                 &psfArray_d,
                                                 psf_size,
@@ -997,12 +1052,11 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *accumulatorImage, ni
                 accumulator_data[i] = 0;
 
 	/*Free*/
+        cudaCommon_free(&backprojectionArray_d);
         if (attenuationImage != NULL)
             {
-            cudaCommon_free(&backprojectionArray_d);
             cudaCommon_free(&attenuationArray_d);
             cudaCommon_free((void **)&rotatedAttenuationArray_d);
-//         cudaCommon_free((void **)&attenuationPlaneArray_d);
             }
 	cudaCommon_free((void **)&rotatedArray_d);
 	cudaCommon_free((void **)&sinoArray_d);
@@ -1011,7 +1065,11 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *accumulatorImage, ni
 	cudaCommon_free((void **)&positionFieldImageArray_d);
 	cudaCommon_free((void **)&temp_backprojection_d);
         if (psfImage != NULL)
+            {
             cudaCommon_free((void **)&psfArray_d);
+            if (separable_psf)
+                cudaCommon_free((void **)&psfSeparatedArray_d);
+            }
 	nifti_image_free(positionFieldImage);
 	free(affineTransformation);
 
