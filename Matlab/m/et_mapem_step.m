@@ -117,3 +117,4 @@ normalization(normalization<epsilon) = epsilon;
 activity_new = activity_new ./ (normalization);
 
 return 
+

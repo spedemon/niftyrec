@@ -68,6 +68,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    if (!(nlhs == 1 || nlhs == 2)){
       mexErrMsgTxt("One or two outputs: [Fisher Information Matrix, Quadratic Prior Fisher Information Matrix]");
    }     
+
    /* Check is psf is a scalar, in that case do not apply any psf */
    if (nrhs<5)  //no psf parameter
        no_psf = 1;
@@ -82,12 +83,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
        if (temp)
            no_psf = 1;  //psf parameter is a scalar
        }
-   if (no_psf == 1)
-       {
-       psf_size[0] = 0;
-       psf_size[1] = 0;
-       psf_size[2] = 0;
-       }
+
+   /* Require PSF */
+   if (no_psf)
+       mexErrMsgTxt("PSF must be specified in order to compute the Fisher Information Matrix.");
+
    /* Check is attenuation is a scalar, in that case do not apply any attenuation */
    if (nrhs<4)  //no attenuation parameter
        no_attenuation = 1;
@@ -204,6 +204,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
            projection_ptr[i] = projection_ptr_d[i];
    }
 
+   float *attenuation_ptr=NULL;
    if(no_attenuation)
        {
        attenuation_size[0]=0; attenuation_size[1]=0; attenuation_size[2]=0;
@@ -211,18 +212,17 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    else
        {
        attenuation_size[0]=bkpr_size[0]; attenuation_size[1]=bkpr_size[1]; attenuation_size[2]=bkpr_size[2];
-       }
 
-   float *attenuation_ptr;
-   if (mxGetClassID(prhs[3]) == mxSINGLE_CLASS)
-       attenuation_ptr = (float *) (mxGetData(prhs[3]));
-   else
-   {
-       double *attenuation_ptr_d = (double *) (mxGetData(prhs[3]));
-       attenuation_ptr = (float*) malloc(attenuation_size[0]*attenuation_size[1]*attenuation_size[2]*sizeof(float));
-       for (int i=0; i<attenuation_size[0]*attenuation_size[1]*attenuation_size[2];i++)
-           attenuation_ptr[i] = attenuation_ptr_d[i];
-   }
+       if (mxGetClassID(prhs[3]) == mxSINGLE_CLASS)
+           attenuation_ptr = (float *) (mxGetData(prhs[3]));
+       else
+           {
+           double *attenuation_ptr_d = (double *) (mxGetData(prhs[3]));
+           attenuation_ptr = (float*) malloc(attenuation_size[0]*attenuation_size[1]*attenuation_size[2]*sizeof(float));
+           for (int i=0; i<attenuation_size[0]*attenuation_size[1]*attenuation_size[2];i++)
+               attenuation_ptr[i] = attenuation_ptr_d[i];
+           }
+       }
 
    float *cameras_ptr;
    if (mxGetClassID(prhs[1]) == mxSINGLE_CLASS)
@@ -236,15 +236,22 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    }
 
    float *psf_ptr;
-   if (mxGetClassID(prhs[4]) == mxSINGLE_CLASS)
-       psf_ptr = (float *) (mxGetData(prhs[4]));
+   if (no_psf) 
+       {
+       psf_size[0]=0; psf_size[1]=0; psf_size[2]=0;  
+       }
    else
-   {
-       double *psf_ptr_d = (double *) (mxGetData(prhs[4]));
-       psf_ptr = (float *) malloc(psf_size[0]*psf_size[1]*psf_size[2]*sizeof(float));
-       for (int i=0; i<psf_size[0]*psf_size[1]*psf_size[2];i++)
-           psf_ptr[i] = psf_ptr_d[i];  
-   }
+       {
+       if (mxGetClassID(prhs[4]) == mxSINGLE_CLASS)
+           psf_ptr = (float *) (mxGetData(prhs[4]));
+       else
+           {
+           double *psf_ptr_d = (double *) (mxGetData(prhs[4]));
+           psf_ptr = (float *) malloc(psf_size[0]*psf_size[1]*psf_size[2]*sizeof(float));
+           for (int i=0; i<psf_size[0]*psf_size[1]*psf_size[2];i++)
+               psf_ptr[i] = psf_ptr_d[i];  
+           }
+       }
 
    float *grid_ptr;
    if (mxGetClassID(prhs[2]) == mxSINGLE_CLASS)
@@ -282,14 +289,16 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
        }
 
    /* Calculate Fisher Information matrix */
+   if (no_psf)
+       mexErrMsgTxt("PSF must be specified in order to compute the Fisher Information Matrix.");
    status = et_array_fisher_grid_projection(projection_ptr, projection_size, bkpr_size, cameras_ptr, cameras_size, psf_ptr, psf_size, grid_ptr, fisher_ptr, fisher_prior_ptr, fisher_size, attenuation_ptr, attenuation_size, epsilon, background, background_attenuation, enable_gpu);
 
    /* Shutdown */
    if (mxGetClassID(prhs[0]) != mxSINGLE_CLASS) free(projection_ptr);
    if (mxGetClassID(prhs[1]) != mxSINGLE_CLASS) free(cameras_ptr);
    if (mxGetClassID(prhs[2]) != mxSINGLE_CLASS) free(grid_ptr);
-   if (mxGetClassID(prhs[3]) != mxSINGLE_CLASS) free(attenuation_ptr);
-   if (mxGetClassID(prhs[4]) != mxSINGLE_CLASS) free(psf_ptr);
+   if(!no_attenuation) if (mxGetClassID(prhs[3]) != mxSINGLE_CLASS) free(attenuation_ptr);
+   if (!no_psf) if (mxGetClassID(prhs[4]) != mxSINGLE_CLASS) free(psf_ptr);
 
    /* Return */
    if (status == ET_ERROR_BADGRID)
