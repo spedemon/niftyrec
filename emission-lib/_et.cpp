@@ -118,7 +118,7 @@ int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *
 	
 	for(int cam=0; cam<n_cameras; cam++){
 		// Apply affine //
-                fprintf(stderr, "et_project: Rotation: %f  %f  %f  \n",cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam]);
+                fprintf_verbose( "et_project: Rotation: %f  %f  %f  \n",cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam]);
 		et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], center_x, center_y, center_z);
 		reg_affine_positionField(	affineTransformation,
 						activityImage,
@@ -724,8 +724,7 @@ int et_project_gpu(nifti_image *activity, nifti_image *sinoImage, nifti_image *p
 
 	for(unsigned int cam=0; cam<n_cameras; cam++){
 
-//                fprintf_verbose( "et_project: Rotation: %f  %f  %f  \n",cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam]);
-                fprintf(stderr, "et_project: Rotation: %f  %f  %f  \n",cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam]);
+                fprintf_verbose( "et_project: Rotation: %f  %f  %f  \n",cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam]);
 		// Apply affine //
 		et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], center_x, center_y, center_z);
 		reg_affine_positionField_gpu(	affineTransformation,
@@ -1060,7 +1059,7 @@ int et_fisher_grid_gpu(int from_projection, nifti_image *inputImage, nifti_image
         status = et_project_gpu(inputImage, invsinogramImage, psfImage, attenuationImage, cameras, n_cameras, background, background_attenuation);
         if (status)
             {
-            fprintf(stderr,"'et_fisher_grid': error while calculating projection\n");
+            fprintf_verbose("'et_fisher_grid': error while calculating projection\n");
             return status;
             } 
         }

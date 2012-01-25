@@ -259,10 +259,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    /* Shutdown */
    if (mxGetClassID(prhs[0]) != mxSINGLE_CLASS) free(sinogram_ptr);
    if (mxGetClassID(prhs[1]) != mxSINGLE_CLASS) free(cameras_ptr);
-   if((!no_attenuation) && (mxGetClassID(prhs[2]) != mxSINGLE_CLASS))
-       free(attenuation_ptr);
-   if ((!no_psf) && (mxGetClassID(prhs[3]) != mxSINGLE_CLASS)) 
-       free(psf_ptr);
+   if((!no_attenuation) && (mxGetClassID(prhs[2]) != mxSINGLE_CLASS)) free(attenuation_ptr);
+   if ((!no_psf) && (mxGetClassID(prhs[3]) != mxSINGLE_CLASS)) free(psf_ptr);
    
    /* Return */
    if (status != 0)

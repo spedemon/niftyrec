@@ -791,7 +791,7 @@ extern "C" int et_array_fisher_grid_projection(float *sinogram_ptr, int *sinogra
             status = et_fisher_grid(from_projection, projectionImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
         #else
             if (GPU)
-                fprintf_verbose( "et_array_project: No GPU support. In order to activate GPU acceleration please configure with GPU flag and compile.");
+                fprintf(stderr,"et_array_project: No GPU support. In order to activate GPU acceleration please configure with GPU flag and compile.");
             status = et_fisher_grid(from_projection, projectionImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
         #endif
 

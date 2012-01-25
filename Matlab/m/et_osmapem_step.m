@@ -101,7 +101,7 @@ if not(exist('background_attenuation','var'))
     background_attenuation = 0;
 end
 if not(exist('espilon','var'))
-    epsilon = 0.0001;
+    epsilon = 1e-6;
 end
 if not(exist('psf','var'))
     psf = 0;
@@ -143,14 +143,15 @@ cameras_sub = cameras(cameras_indexes,:);
 
 %compute sensitivity for the subset
 normalization = et_backproject(ones(N1,N3,N_cameras_sub), cameras_sub, attenuation, psf, GPU, background, background_attenuation);
-normalization = (normalization - beta * gradient_prior);
-normalization(normalization<epsilon) = epsilon;
 
 %project and backproject
 proj = et_project(activity_old, cameras_sub, attenuation, psf, GPU, background, background_attenuation);
 proj(proj<epsilon) = epsilon ;
 update = et_backproject(sinogram(:,:,cameras_indexes) ./ proj, cameras_sub, attenuation, psf, GPU, background, background_attenuation);
 activity_new = activity_old .* update;
+normalization = (normalization - beta * gradient_prior);
+normalization(normalization<epsilon) = epsilon;
 activity_new = activity_new ./ (normalization);
 
 return
+
