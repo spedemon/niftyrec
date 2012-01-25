@@ -302,6 +302,7 @@ extern "C" int et_array_backproject(float *sino, int *sino_size, float *bkpr, in
         int n_cameras;
         int n_cameras_axis;
         int no_psf = 0;
+        int no_attenuation = 0;
         float *cameras_array;
 
         n_cameras = cameras_size[0];
@@ -315,6 +316,10 @@ extern "C" int et_array_backproject(float *sino, int *sino_size, float *bkpr, in
         //PSF or not?
         if (psf_size[0] == 0 && psf_size[1] == 0 && psf_size[2] == 0)
             no_psf = 1;
+
+        //attenuation or not?
+        if (attenuation_size[0] == 0 && attenuation_size[1] == 0 && attenuation_size[2] == 0)
+            no_attenuation = 1;
 
         /* Check consistency of input */
         // Cameras must specify all 3 axis of rotation (3D array) or can be a 1D array if rotation is only along z axis.
@@ -386,8 +391,12 @@ extern "C" int et_array_backproject(float *sino, int *sino_size, float *bkpr, in
         bkprImage->data = (float*) bkpr;
 	
         // Allocate attenuation image 
-	nifti_image *attenuationImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
-        attenuationImage->data = (float*) attenuation;
+        nifti_image *attenuationImage = NULL;
+        if(!no_attenuation)
+            {
+            attenuationImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+            attenuationImage->data = (float*) attenuation;
+            }
 
 	// Allocate the sinogram (input) image
 	dim[3]    = n_cameras;
@@ -425,10 +434,13 @@ extern "C" int et_array_backproject(float *sino, int *sino_size, float *bkpr, in
 	(void)nifti_free_extensions( bkprImage ) ;
 	free(bkprImage) ;
 
-	if( attenuationImage->fname != NULL ) free(attenuationImage->fname) ;
-	if( attenuationImage->iname != NULL ) free(attenuationImage->iname) ;
-	(void)nifti_free_extensions( attenuationImage ) ;
-	free(attenuationImage) ;
+        if(!no_attenuation)
+            {
+            if( attenuationImage->fname != NULL ) free(attenuationImage->fname) ;
+            if( attenuationImage->iname != NULL ) free(attenuationImage->iname) ;
+            (void)nifti_free_extensions( attenuationImage ) ;
+            free(attenuationImage) ;
+            }
 
         if (!no_psf)
             {
@@ -449,7 +461,7 @@ extern "C" int et_mlem_spect(float *sinogram_data, int size_x, int size_y, int n
     return 0;
 }
 
-extern "C" int et_array_fisher_grid(float *activity_ptr, int *activity_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *grid_ptr, float *fisher_ptr, int *fisher_size, float *attenuation, int *attenuation_size, float epsilon, float background, float background_attenuation, int GPU)
+extern "C" int et_array_fisher_grid(float *activity_ptr, int *activity_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *grid_ptr, float *fisher_ptr, float *fisher_prior_ptr, int *fisher_size, float *attenuation, int *attenuation_size, float epsilon, float background, float background_attenuation, int GPU)
 {
         int from_projection = 0;
 	int status = 1;
@@ -565,6 +577,13 @@ extern "C" int et_array_fisher_grid(float *activity_ptr, int *activity_size, flo
         nifti_image *fisherImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
         fisherImage->data = (float *)(fisher_ptr);
 
+        nifti_image *fisherpriorImage;
+        if (fisher_prior_ptr!=NULL)
+            {
+            fisherpriorImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+            fisherpriorImage->data = (float *)(fisher_prior_ptr);
+            }
+
 	//Allocate Point Spread Function nifti image
         nifti_image *psfImage = NULL;
         if (!no_psf)
@@ -579,13 +598,13 @@ extern "C" int et_array_fisher_grid(float *activity_ptr, int *activity_size, flo
         //Compute Fisher Information Matrix
         #ifdef _USE_CUDA
         if (GPU)
-            status = et_fisher_grid_gpu(from_projection, activityImage, gridImage, fisherImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
+            status = et_fisher_grid_gpu(from_projection, activityImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
         else
-            status = et_fisher_grid(from_projection, activityImage, gridImage, fisherImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
+            status = et_fisher_grid(from_projection, activityImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
         #else
             if (GPU)
                 fprintf_verbose( "et_array_project: No GPU support. In order to activate GPU acceleration please configure with GPU flag and compile.");
-            status = et_fisher_grid(from_projection, activityImage, gridImage, fisherImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
+            status = et_fisher_grid(from_projection, activityImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
         #endif
 
 	//Free
@@ -599,6 +618,12 @@ extern "C" int et_array_fisher_grid(float *activity_ptr, int *activity_size, flo
 
 	(void)nifti_free_extensions( fisherImage ) ;
 	free(fisherImage) ;
+
+        if (fisher_prior_ptr!=NULL)
+            {         
+            (void)nifti_free_extensions( fisherpriorImage ) ;
+            free(fisherpriorImage) ;
+            }
 
         if(!no_attenuation)
             {
@@ -622,7 +647,7 @@ extern "C" int et_array_fisher_grid(float *activity_ptr, int *activity_size, flo
 }
 
 
-extern "C" int et_array_fisher_grid_projection(float *sinogram_ptr, int *sinogram_size, int *bkpr_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *grid_ptr, float *fisher_ptr, int *fisher_size, float *attenuation, int *attenuation_size, float epsilon, float background, float background_attenuation, int GPU)
+extern "C" int et_array_fisher_grid_projection(float *sinogram_ptr, int *sinogram_size, int *bkpr_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *grid_ptr, float *fisher_ptr, float *fisher_prior_ptr, int *fisher_size, float *attenuation, int *attenuation_size, float epsilon, float background, float background_attenuation, int GPU)
 {
         int from_projection = 1;
 	int status = 1;
@@ -740,6 +765,13 @@ extern "C" int et_array_fisher_grid_projection(float *sinogram_ptr, int *sinogra
         nifti_image *fisherImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
         fisherImage->data = (float *)(fisher_ptr);
 
+        nifti_image *fisherpriorImage;
+        if (fisher_prior_ptr!=NULL)
+            {
+            fisherpriorImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+            fisherpriorImage->data = (float *)(fisher_prior_ptr);
+            }
+
 	//Allocate Point Spread Function nifti image
         nifti_image *psfImage = NULL;
         if (!no_psf)
@@ -754,13 +786,13 @@ extern "C" int et_array_fisher_grid_projection(float *sinogram_ptr, int *sinogra
         //Compute Fisher Information Matrix
         #ifdef _USE_CUDA
         if (GPU)
-            status = et_fisher_grid_gpu(from_projection, projectionImage, gridImage, fisherImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
+            status = et_fisher_grid_gpu(from_projection, projectionImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
         else
-            status = et_fisher_grid(from_projection, projectionImage, gridImage, fisherImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
+            status = et_fisher_grid(from_projection, projectionImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
         #else
             if (GPU)
                 fprintf_verbose( "et_array_project: No GPU support. In order to activate GPU acceleration please configure with GPU flag and compile.");
-            status = et_fisher_grid(from_projection, projectionImage, gridImage, fisherImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
+            status = et_fisher_grid(from_projection, projectionImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
         #endif
 
 	//Free
@@ -774,6 +806,12 @@ extern "C" int et_array_fisher_grid_projection(float *sinogram_ptr, int *sinogra
 
 	(void)nifti_free_extensions( fisherImage ) ;
 	free(fisherImage) ;
+
+        if (fisher_prior_ptr!=NULL)
+            {         
+            (void)nifti_free_extensions( fisherpriorImage ) ;
+            free(fisherpriorImage) ;
+            }
 
         if(!no_attenuation)
             {

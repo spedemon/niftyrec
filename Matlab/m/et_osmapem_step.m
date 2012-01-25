@@ -7,7 +7,7 @@ function [activity_new, update] = et_osmapem_step(subset_order, activity_old, si
 %    This function computes an estimate of the activity, given the previous estimate and the gradient 
 %    of the prior distribution.
 %
-%    [NEW_ACTIVITY, UPDATE] = ET_OSMAPEM_STEP(SUBSET_ORDER, ACTIVITY, NORM, SINO, CAMERAS, PSF, BETA, GRAD_PRIOR, USE_GPU, BACKGROUND, EPSILON)
+%    [NEW_ACTIVITY, UPDATE] = ET_OSMAPEM_STEP(SUBSET_ORDER, ACTIVITY, SINO, CAMERAS, ATTENUATION, PSF, BETA, GRAD_PRIOR, USE_GPU, BACKGROUND, BACKGOUND_ATTENUATION, EPSILON)
 %
 %    SUBSET_ORDER is the subset of cameras to be used for each iteration.
 %    SUBSET_ORDER=8 means that 1/8 of the cameras are used, SUBSET_ORDER=16
@@ -62,23 +62,27 @@ function [activity_new, update] = et_osmapem_step(subset_order, activity_old, si
 %Example
 %   N = 128;
 %   n_cameras = 120;
-%   mlem_steps = 100;
+%   mapem_steps = 20;
+%   subset_order = 16;
 %   USE_GPU = 1;
 %   phantom = et_spherical_phantom(N,N,N,N/8,100,0);
-%   cameras = [0:2*pi/n_cameras:2*pi-2*pi/n_cameras];
-%   sinogram = poissrnd(et_project(phantom,cameras,psf,USE_GPU));
-%   norm = et_backproject(ones(N,N,n_cameras));
+%   attenuation = 0;
+%   psf = ones(5,5,N);
+%   cameras = [0:2*pi/n_cameras:2*pi-2*pi/n_cameras]';
+%   sinogram = poissrnd(et_project(phantom,cameras,attenuation,psf,USE_GPU));
 %   activity = ones(N,N,N);  %initial activity
-%   for i=1:mlem_steps
-%       activity = et_mapem_step(activity, norm, sinogram, cameras, 0, 0, 0, 0, 0, USE_GPU);
+%   for i=1:mapem_steps
+%       fprintf('OSMAPEM Step: %d\n',i);
+%       activity = et_osmapem_step(subset_order, activity, sinogram, cameras, attenuation, psf, 0, 0, USE_GPU);
+%       imagesc(activity(:,:,N/2)); pause(0.1);
 %   end
 %
 %See also
-%   ET_PROJECT, ET_BACKPROJECT
+%   ET_MAPEM_STEP, ET_MLEM_DEMO
 %
 % 
 %Stefano Pedemonte
-%Copyright 2009-2010 CMIC-UCL
+%Copyright 2009-2012 CMIC-UCL
 %Gower Street, London, UK
 
 if not(exist('beta','var'))
@@ -135,19 +139,17 @@ cameras_indexes(cameras_indexes<=0)=N_cameras;
 %Random without replacement
  %N_cameras_sub = round(N_cameras/subset_order);
  %cameras_indexes = round(0.5 + (N_cameras-0.5) * rand(1,N_cameras_sub)); 
-fprintf(' %d', cameras_indexes);
 cameras_sub = cameras(cameras_indexes,:);
 
 %compute sensitivity for the subset
 normalization = et_backproject(ones(N1,N3,N_cameras_sub), cameras_sub, attenuation, psf, GPU, background, background_attenuation);
 normalization = (normalization - beta * gradient_prior);
-normalization = normalization.*(normalization>0) + epsilon;
+normalization(normalization<epsilon) = epsilon;
 
 %project and backproject
 proj = et_project(activity_old, cameras_sub, attenuation, psf, GPU, background, background_attenuation);
-proj = proj.*(proj>0) + epsilon ;
+proj(proj<epsilon) = epsilon ;
 update = et_backproject(sinogram(:,:,cameras_indexes) ./ proj, cameras_sub, attenuation, psf, GPU, background, background_attenuation);
-update = update.*(update>0);
 activity_new = activity_old .* update;
 activity_new = activity_new ./ (normalization);
 

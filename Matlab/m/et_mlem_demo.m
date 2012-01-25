@@ -1,41 +1,49 @@
 
-%ET_MLEM
-%Demo MLEM SPECT reconstruction 
+% ET_MLEM
+%     NiftyRec Demo: MLEM SPECT reconstruction 
+%
+%See also
+%   ET_MAPEM_MRF_DEMO, ET_MAPEM_STEP
+%
+% 
+%Stefano Pedemonte
+%Copyright 2009-2012 CMIC-UCL
+%Gower Street, London, UK
 
 
 %% Parameters
-cameras    = [0:360/120:360-360/120]'*pi/180;
-psf        = ones(15,15,N);
 N          = 128;
+N_cameras  = 120;
+cameras    = linspace(0,2*pi,N_cameras)';
+psf        = ones(11,11,N);
+N_counts   = 50e6;
 
-iter_mlem = 30;
+iter_mlem  = 30;
 GPU        = 1;
 
-disp('Loading sinogram..');
-%sinogram   = load_nii('TOMO_I123_EM001_DS.img');
-%sinogram   = double(sinogram.img);
-%for i=1:120
-%    sinogram(:,:,i) = sinogram(:,:,i)';
-%end
+%% Simulate SPECT scan 
+disp('Creating synthetic sinogram..');
+mask = et_spherical_phantom(N,N,N,N/2,1,0,(N+1)/2,(N+1)/2,(N+1)/2);
+phantom = et_spherical_phantom(N,N,N,N/8,100,10,N/4,N/3,N/2) .* mask;
+attenuation = et_spherical_phantom(N,N,N,N/8,0.00002,0.00001,N/4,N/3,N/2) .* mask;
+ideal_sinogram = et_project(phantom, cameras, attenuation, psf, GPU);
+ideal_sinogram = ideal_sinogram/sum(ideal_sinogram(:))*N_counts;
+sinogram = poissrnd(ideal_sinogram);
 
-sinogram = poissrnd( abs(et_project(et_spherical_phantom(N,N,N,N/8,100,0,N/4,N/3,N/2), cameras, psf, GPU)));
 
 %% Reconstruction:
 
-%Create normalization volume
-disp('Creating normalization..');
-norm = et_backproject(ones(N,N,length(cameras)), cameras, psf, GPU) ;
-activity = et_reorder_activity_in(ones(N,N,N));
+%Compute normalization volume
+disp('Computing normalization..');
+norm = et_backproject(ones(N,N,length(cameras)), cameras, attenuation, psf, GPU) ;
 
 %Reconstruction
 disp('Reconstructing..');
+activity = ones(N,N,N);
 for i=1:iter_mlem
     fprintf('\nMLEM step: %d',i);
-    activity = et_mapem_step(activity, norm, sinogram, cameras, psf, 0, 0, GPU, 0, 0.0001);
-    a = et_reorder_activity_out(activity);
-    imagesc(a(:,:,floor(N/4))); colormap gray; axis square; pause(0.2)
+    activity = et_mapem_step(activity, norm, sinogram, cameras, attenuation, psf, 0, 0, GPU, 0, 0.0001);
+    imagesc(activity(:,:,floor(N/2))); colormap gray; axis square; pause(0.2)
 end
-activity = et_reorder_activity_out(activity);
-
 disp('Done');
 

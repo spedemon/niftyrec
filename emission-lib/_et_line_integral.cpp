@@ -11,7 +11,8 @@ void et_line_integral(nifti_image *inputImage, nifti_image *sinoImage, int cam)
     for(int z=0; z<inputImage->nz; z++) {
         for(int y=0; y<inputImage->ny; y++) {
             for(int x=0; x<inputImage->nx; x++) {
-                sino_data[x + z*inputImage->ny] = sino_data[x + z*inputImage->ny] + input_data[x + y*inputImage->nx + z*inputImage->nx*inputImage->ny];
+//                sino_data[x + z*inputImage->ny] = sino_data[x + z*inputImage->ny] + input_data[x + y*inputImage->nx + z*inputImage->nx*inputImage->ny];
+                sino_data[x + z*inputImage->ny] = sino_data[x + z*inputImage->ny] + input_data[x + z*inputImage->nx + y*inputImage->nx*inputImage->ny];
             }
         }
     }

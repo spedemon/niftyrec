@@ -5,7 +5,7 @@ function sinogram = et_project(activity, cameras, attenuation, psf, use_gpu, bac
 %Description
 %    Function for projection of activity into detector space.
 %
-%    SINOGRAM = ET_PROJECT(ACTIVITY, CAMERAS, PSF, USE_GPU, BACKGROUND)
+%    SINOGRAM = ET_PROJECT(ACTIVITY, CAMERAS, ATTENUATION, PSF, USE_GPU, BACKGROUND, BACKGROUND_ATTENUATION)
 %
 %    ATIVITY is a 2D or 3D matrix of activity.
 %
@@ -15,15 +15,15 @@ function sinogram = et_project(activity, cameras, attenuation, psf, use_gpu, bac
 %    camera, only rotation along z axis is specified. This is the most common 
 %    situation in PET and SPECT where the gantry rotates along a single axis.
 %
-%    ATTENUATION specifies attenuation coefficients.
+%    ATTENUATION specifies attenuation coefficients. It must be the same size as ACTIVITY.
 %
-%    PSF is a Depth-Dependent Point Spread Function.
+%    PSF is a Depth-Dependent Point Spread Function. 
 %
 %    USE_GPU is optional and it enables GPU acceleration if a compatible GPU 
 %    device is installed in the system. By default use_gpu is set to 0 (disabled).
 %
-%    BACKGROUND is the value the background is set to when performing rotation.
-%    It defaults to 0.
+%    BACKGROUND is the value the background is set to when performing rotation. 
+%    It defaults to 0. 
 %
 %    BACKGROUND_ATTENUATION is the value the attenuation background is set 
 %    to when performing rotation. It defaults to 0.
@@ -36,7 +36,7 @@ function sinogram = et_project(activity, cameras, attenuation, psf, use_gpu, bac
 %
 %Algorithm notes
 %    Rotation based projection algorithm with trilinear interpolation.
-%    Depth-Dependent Point Spread Function is applyed in the frequency domain.
+%    FFT-based Depth-Dependent Point Spread Function. 
 %
 %Reference
 %    Pedemonte, Bousse, Erlandsson, Modat, Arridge, Hutton, Ourselin, 
@@ -46,18 +46,18 @@ function sinogram = et_project(activity, cameras, attenuation, psf, use_gpu, bac
 %   N = 128;
 %   use_gpu = 1;
 %   activity = ones(N,N,N);
-%   attenuationi = zeros(N,N,N);
-%   PSF = ones(3,3,N);
-%   cameras = [0:pi/100:pi];
+%   attenuation = zeros(N,N,N);
+%   PSF = ones(7,7,N);
+%   cameras = [0:pi/100:pi]';
 %   sinogram = et_project(activity,cameras,attenuation,PSF,use_gpu);
 %
 %See also
-%   ET_BACKPROJECT, ET_MLEM_RECONSTRUCT,
+%   ET_BACKPROJECT, ET_MAPEM_STEP, ET_MLEM_DEMO
 %   ET_LIST_GPUS, ET_SET_GPU
 %
 % 
 %Stefano Pedemonte
-%Copyright 2009-2010 CMIC-UCL
+%Copyright 2009-2012 CMIC-UCL
 %Gower Street, London, UK
 
 

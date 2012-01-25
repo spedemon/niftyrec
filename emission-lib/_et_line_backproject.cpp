@@ -9,7 +9,7 @@ void et_line_backproject(nifti_image *sinogramImage, nifti_image *bkprImage, int
     for(int z=0; z<bkprImage->nz; z++) {
         for(int y=0; y<bkprImage->ny; y++) {
             for(int x=0; x<bkprImage->nx; x++) {
-                bkpr_data[x + y*bkprImage->nx + z*bkprImage->nx*bkprImage->ny] = sino_data[x + z*bkprImage->ny];
+                bkpr_data[x + z*bkprImage->nx + y*bkprImage->nx*bkprImage->ny] = sino_data[x + z*bkprImage->ny];
             }
         }
     }
