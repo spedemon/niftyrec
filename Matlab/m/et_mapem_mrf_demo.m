@@ -1,9 +1,11 @@
 
-% ET_MLEM
-%     NiftyRec Demo: MLEM SPECT reconstruction 
+
+% ET_MAPEM_MRF_DEMO
+%     NiftyRec SPECT demo: Maximum a posteriori Expectation Maximisation reconstruction 
+%     with regularisation based on quadratic Markov Random Field. 
 %
 %See also
-%   ET_MAPEM_MRF_DEMO, ET_MAPEM_STEP
+%   ET_MLEM_DEMO, ET_MAPEM_STEP
 %
 % 
 %Stefano Pedemonte
@@ -18,7 +20,9 @@ cameras    = linspace(0,2*pi,N_cameras)';
 psf        = ones(11,11,N);
 N_counts   = 50e6;
 
-iter_mlem  = 30;
+beta_mrf   = 10;
+
+iter_mapem = 30;
 GPU        = 1;
 
 %% Simulate SPECT scan 
@@ -33,17 +37,26 @@ sinogram = poissrnd(ideal_sinogram);
 
 %% Reconstruction:
 
-%Compute normalization volume
-disp('Computing normalization..');
-norm = et_backproject(ones(N,N,length(cameras)), cameras, attenuation, psf, GPU) ;
+%Create normalization volume
+disp('Creating normalization..');
+norm = et_backproject(ones(N,N,length(cameras)), cameras, attenuation, psf, GPU);
+
+%Create kernel for Total Variation gradient
+k1 = [-1,-1,-1;-1,-1,-1;-1,-1,-1];
+k2 = [-1,-1,-1;-1,26,-1;-1,-1,-1];
+k3 = [-1,-1,-1;-1,-1,-1;-1,-1,-1];
+kernel = zeros(3,3,3);
+kernel(:,:,1) = k1; kernel(:,:,2) = k2; kernel(:,:,3) = k3;
 
 %Reconstruction
 disp('Reconstructing..');
 activity = ones(N,N,N);
-for i=1:iter_mlem
-    fprintf('\nMLEM step: %d',i);
-    activity = et_mapem_step(activity, norm, sinogram, cameras, attenuation, psf, 0, 0, GPU, 0, 0.0001);
+for i=1:iter_mapem
+    fprintf('\nMAPEM step: %d / %d',i,iter_mapem);
+    prior_gradient = - convn(activity,kernel,'same');
+    activity = et_mapem_step(activity, norm, sinogram, cameras, attenuation, psf, beta_mrf, prior_gradient, GPU, 0, 0.0001);
     imagesc(activity(:,:,floor(N/2))); colormap gray; axis square; pause(0.2)
 end
+
 disp('Done');
 

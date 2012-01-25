@@ -16,11 +16,11 @@ function gpus = et_list_gpus()
 %
 %
 %See also
-%   ET_SET_GPU, ET_PROJECT, ET_BACKPROJECT, ET_ROTATE, ET_AFFINE, ET_CONVOLVE
+%   ET_SET_GPU
 %
 % 
 %Stefano Pedemonte
-%Copyright 2009-2010 CMIC-UCL.
+%Copyright 2009-2012 CMIC-UCL.
 %Gower Street, London, UK
 
 gpus = et_list_gpus_mex();

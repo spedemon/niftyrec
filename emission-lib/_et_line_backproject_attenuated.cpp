@@ -1,7 +1,7 @@
 
-#include "_et_line_backproject.h"
+#include "_et_line_backproject_attenuated.h"
 
-void et_line_backproject(nifti_image *sinogramImage, nifti_image *bkprImage, int cam)
+void et_line_backproject_attenuated(nifti_image *sinogramImage, nifti_image *bkprImage, nifti_image *attenuationImage, int cam) //FIXME implement attenuation
 {
     float *sino_data  = (float *) (sinogramImage->data) + cam*bkprImage->nx*bkprImage->nz ;
     float *bkpr_data = (float *)  (bkprImage->data);

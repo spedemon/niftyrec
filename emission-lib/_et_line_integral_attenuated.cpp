@@ -1,7 +1,7 @@
 
-#include "_et_line_integral.h"
+#include "_et_line_integral_attenuated.h"
 
-void et_line_integral(nifti_image *inputImage, nifti_image *sinoImage, int cam)
+void et_line_integral_attenuated(nifti_image *inputImage, nifti_image *attenuationImage, nifti_image *sinoImage, int cam) //FIXME implement attenuation
 {
     float *sino_data = (float *) (sinoImage->data) + cam*inputImage->nx*inputImage->nz ;
     float *input_data = (float *) (inputImage->data);

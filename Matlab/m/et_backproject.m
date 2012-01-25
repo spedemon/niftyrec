@@ -6,7 +6,7 @@ function image = et_backproject(sinogram, cameras, attenuation, psf, use_gpu, ba
 %Description
 %    Function for backprojection of activity from detector space.
 %
-%    IMAGE = ET_BACKPROJECT(SINOGRAM, CAMERAS, PSF, USE_GPU)
+%    IMAGE = ET_BACKPROJECT(SINOGRAM, CAMERAS, ATTENUATION, PSF, USE_GPU, BACKGROUND, BACKGROUND_ATTENUATION)
 %
 %    SINOGRAM is a 2D or 3D sinogram.
 %
@@ -16,7 +16,7 @@ function image = et_backproject(sinogram, cameras, attenuation, psf, use_gpu, ba
 %    camera, only rotation along z axis is specified. This is the most common 
 %    situation in PET and SPECT where the gantry rotates along a single axis.
 %
-%    ATTENUATION specifies attenuation coefficients.
+%    ATTENUATION specifies attenuation coefficients. 
 %
 %    PSF is a Depth-Dependent Point Spread Function.
 %
@@ -37,7 +37,7 @@ function image = et_backproject(sinogram, cameras, attenuation, psf, use_gpu, ba
 %
 %Algorithm notes
 %    Rotation based projection algorithm with trilinear interpolation.
-%    Depth-Dependent Point Spread Function is applyed in the frequency domain.
+%    FFT-based Depth-Dependent Point Spread Function.
 %
 %Reference
 %    Pedemonte, Bousse, Erlandsson, Modat, Arridge, Hutton, Ourselin, 
@@ -51,17 +51,17 @@ function image = et_backproject(sinogram, cameras, attenuation, psf, use_gpu, ba
 %    background_attenuation=0;
 %    sinogram = ones(N,N,n_cameras);
 %    attenuation = zeros(N,N,N);
-%    PSF = ones(3,3,n_cameras);
-%    cameras = [0:pi/n_cameras:pi-pi/n_cameras];
+%    PSF = ones(11,11,N);
+%    cameras = [0:pi/n_cameras:pi-pi/n_cameras]';
 %    image = et_backproject(sinogram,cameras,attenuation,PSF,use_gpu,background,background_attenuation);
 %
 %See also
-%    ET_PROJECT, ET_MLEM_RECONSTRUCT, ET_MAPEM_STEP, 
+%    ET_PROJECT, ET_MAPEM_STEP, ET_MLEM_DEMO
 %    ET_LIST_GPUS, ET_SET_GPU
 %
 % 
 %Stefano Pedemonte
-%Copyright 2009-2010 CMIC-UCL.
+%Copyright 2009-2012 CMIC-UCL.
 %Gower Street, London, UK
 
 

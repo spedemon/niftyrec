@@ -48,8 +48,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    int m;                 // Size of activity: [N,N,m].
    int status = 1;        // Return 0 if everython ok, 1 if errors.
 
-   int temp;
-
    /* The inputs must be noncomplex single floating point matrices */
    if ( (mxGetClassID(prhs[0]) != mxSINGLE_CLASS) && (mxGetClassID(prhs[0]) != mxDOUBLE_CLASS) ) mexErrMsgTxt("'Activity' must be noncomplex single or double.");
    if ( (mxGetClassID(prhs[1]) != mxSINGLE_CLASS) && (mxGetClassID(prhs[1]) != mxDOUBLE_CLASS) ) mexErrMsgTxt("'Cameras' must be noncomplex single or double.");
@@ -72,11 +70,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
        {
        cid_psf = mxGetClassID(prhs[3]);
        dim_psf = mxGetNumberOfDimensions(prhs[3]);  
-       temp=1;
+       int all_one=1;
        for (int i=0; i<dim_psf; i++)
            if (mxGetDimensions(prhs[3])[i]!=1)
-              temp = 0;
-       if (temp)
+              all_one = 0;
+       if (all_one)
            no_psf = 1;  //psf parameter is a scalar
        }
    if (no_psf == 1)
@@ -92,13 +90,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
        {
        cid_attenuation = mxGetClassID(prhs[2]);
        dim_attenuation = mxGetNumberOfDimensions(prhs[2]);  
-       temp=1;
+       int all_one=1;
        for (int i=0; i<dim_attenuation; i++)
            {
            if (mxGetDimensions(prhs[2])[i]!=1)
-              temp = 0;
+              all_one = 0;
            }
-       if (temp)
+       if (all_one)
            no_attenuation = 1;  //attenuation parameter is a scalar
        }
 
@@ -168,17 +166,17 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
    /* Check if EnableGPU is specified */
    enable_gpu = 0;
-   if (nrhs>=4)
+   if (nrhs>=5)
        enable_gpu = (int) (mxGetScalar(prhs[4]));
   
    /* Check if Background is specified */
    background = 0.0f;
-   if (nrhs>=5)
+   if (nrhs>=6)
        background = (mxGetScalar(prhs[5])); 
 
    /* Check if attenuation background is specified */
    background_attenuation = 0.0f;
-   if (nrhs>=6)
+   if (nrhs>=7)
        background_attenuation = (mxGetScalar(prhs[6])); 
 
    /* Extract pointers to input matrices (and eventually convert double to float)*/
@@ -193,6 +191,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
            activity_ptr[i] = activity_ptr_d[i];
    }
 
+   float *attenuation_ptr=NULL;
    if(no_attenuation)
        {
        attenuation_size[0]=0; attenuation_size[1]=0; attenuation_size[2]=0;
@@ -200,18 +199,19 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    else
        {
        attenuation_size[0]=activity_size[0]; attenuation_size[1]=activity_size[1]; attenuation_size[2]=activity_size[2];
+       if(!no_attenuation)
+           {
+           if (mxGetClassID(prhs[2]) == mxSINGLE_CLASS)
+               attenuation_ptr = (float *) (mxGetData(prhs[2]));
+           else
+               {
+               double *attenuation_ptr_d = (double *) (mxGetData(prhs[2]));
+               attenuation_ptr = (float*) malloc(attenuation_size[0]*attenuation_size[1]*attenuation_size[2]*sizeof(float));
+               for (int i=0; i<attenuation_size[0]*attenuation_size[1]*attenuation_size[2];i++)
+                   attenuation_ptr[i] = attenuation_ptr_d[i];
+               }
+           }
        }
-
-   float *attenuation_ptr;
-   if (mxGetClassID(prhs[2]) == mxSINGLE_CLASS)
-       attenuation_ptr = (float *) (mxGetData(prhs[2]));
-   else
-   {
-       double *attenuation_ptr_d = (double *) (mxGetData(prhs[2]));
-       attenuation_ptr = (float*) malloc(attenuation_size[0]*attenuation_size[1]*attenuation_size[2]*sizeof(float));
-       for (int i=0; i<attenuation_size[0]*attenuation_size[1]*attenuation_size[2];i++)
-           attenuation_ptr[i] = attenuation_ptr_d[i];
-   }
 
    float *cameras_ptr;
    if (mxGetClassID(prhs[1]) == mxSINGLE_CLASS)
@@ -224,16 +224,19 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
            cameras_ptr[i] = cameras_ptr_d[i];  
    }
 
-   float *psf_ptr;
-   if (mxGetClassID(prhs[3]) == mxSINGLE_CLASS)
-       psf_ptr = (float *) (mxGetData(prhs[3]));
-   else
-   {
-       double *psf_ptr_d = (double *) (mxGetData(prhs[3]));
-       psf_ptr = (float *) malloc(psf_size[0]*psf_size[1]*psf_size[2]*sizeof(float));
-       for (int i=0; i<psf_size[0]*psf_size[1]*psf_size[2];i++)
-           psf_ptr[i] = psf_ptr_d[i];  
-   }
+   float *psf_ptr=NULL;
+   if(!no_psf)
+       {
+       if (mxGetClassID(prhs[3]) == mxSINGLE_CLASS)
+           psf_ptr = (float *) (mxGetData(prhs[3]));
+       else
+           {
+           double *psf_ptr_d = (double *) (mxGetData(prhs[3]));
+           psf_ptr = (float *) malloc(psf_size[0]*psf_size[1]*psf_size[2]*sizeof(float));
+           for (int i=0; i<psf_size[0]*psf_size[1]*psf_size[2];i++)
+               psf_ptr[i] = psf_ptr_d[i];  
+           }
+       }
 
    /* Check if rotations are not only along Z axis: in this case activity must be a cube */
 //   if (dim_activity != 3 || activity_size[2] != activity_size[0])
@@ -260,8 +263,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    /* Shutdown */
    if (mxGetClassID(prhs[0]) != mxSINGLE_CLASS) free(activity_ptr);
    if (mxGetClassID(prhs[1]) != mxSINGLE_CLASS) free(cameras_ptr);
-   if (mxGetClassID(prhs[2]) != mxSINGLE_CLASS) free(attenuation_ptr);
-   if (mxGetClassID(prhs[3]) != mxSINGLE_CLASS) free(psf_ptr);
+   if((!no_attenuation) && (mxGetClassID(prhs[2]) != mxSINGLE_CLASS))
+       free(attenuation_ptr);
+   if ((!no_psf) && (mxGetClassID(prhs[3]) != mxSINGLE_CLASS)) 
+       free(psf_ptr);
 
    /* Return */
    if (status != 0)

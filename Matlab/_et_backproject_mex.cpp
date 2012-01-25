@@ -40,6 +40,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    float background = 0; // Background (for rotation in the backprojection)
    float background_attenuation=0; // Attenuation background (when rotating attenuation)
    int no_psf = 0;       // Flag for psf: if 1 it means that no PSF was specified
+   int no_attenuation = 0;// This flag goes high if an attenuation image is given and it is not a scalar. 
 
    int status = 1;       // Return status: 0 if succesful
 
@@ -57,9 +58,27 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    /* Check if number of output arguments is correct */
    if (nlhs != 1){
       mexErrMsgTxt("One output: Backprojection");
-   }      
+   } 
+
+   /* Check is attenuation is a scalar, in that case do not apply any attenuation */
+   if (nrhs<3)  //no attenuation parameter
+       no_attenuation = 1;
+   else
+       {
+       cid_attenuation = mxGetClassID(prhs[2]);
+       dim_attenuation = mxGetNumberOfDimensions(prhs[2]);  
+       int all_one=1;
+       for (int i=0; i<dim_attenuation; i++)
+           {
+           if (mxGetDimensions(prhs[2])[i]!=1)
+              all_one = 0;
+           }
+       if (all_one)
+           no_attenuation = 1;  //attenuation parameter is a scalar
+       }
+
    /* Check is psf is a scalar, in that case do not apply any psf */
-   if (nrhs<3)  //no psf parameter
+   if (nrhs<4)  //no psf parameter
        no_psf = 1;
    else
        {
@@ -78,6 +97,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
        psf_size[1] = 0;
        psf_size[2] = 0;
        }    
+
    /* Check consistency of input (and create size of sinogram for return */
    switch(dim_sino)
       {
@@ -104,6 +124,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
            bkpr_size[0] = sino_size[0];
            bkpr_size[1] = sino_size[0];
            bkpr_size[2] = 1;
+           if(!no_attenuation)
+               if(mxGetDimensions(prhs[0])[0] != mxGetDimensions(prhs[2])[0] || mxGetDimensions(prhs[0])[1] != mxGetDimensions(prhs[2])[1])
+                   mexErrMsgTxt("Attenuation must be of the same size of Activity");
            break;
       /* Check consistency of input if 3D (and create size of sinogram for return */
       case 3:
@@ -128,6 +151,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
            bkpr_size[0] = sino_size[0];
            bkpr_size[1] = sino_size[0];
            bkpr_size[2] = sino_size[1];
+           if(!no_attenuation)
+               if(bkpr_size[0] != mxGetDimensions(prhs[2])[0] || bkpr_size[1] != mxGetDimensions(prhs[2])[1] || bkpr_size[2] != mxGetDimensions(prhs[2])[2])
+                   mexErrMsgTxt("Attenuation must be of the same size of Activity");
            break;        
       default:
            mexErrMsgTxt("Activity must be either 2D or 3D.");
@@ -136,17 +162,17 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
    /* Check if EnableGPU is specified */
    enable_gpu = 0;
-   if (nrhs>=4)
+   if (nrhs>=5)
        enable_gpu = (int) (mxGetScalar(prhs[4]));
-  
+
    /* Check if Background is specified */
    background = 0.0f;
-   if (nrhs>=5)
+   if (nrhs>=6)
        background = (mxGetScalar(prhs[5]));
 
    /* Check if BackgroundAttenuation is specified */
    background_attenuation = 0.0f;
-   if (nrhs>=6)
+   if (nrhs>=7)
        background_attenuation = (mxGetScalar(prhs[6]));
 
    /* Extract pointers to input matrices */
@@ -173,30 +199,40 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    }
 
    int attenuation_size[3];
-   attenuation_size[0] = bkpr_size[0];
-   attenuation_size[1] = bkpr_size[1];
-   attenuation_size[2] = bkpr_size[2];
-   float *attenuation_ptr;
-   if (mxGetClassID(prhs[2]) == mxSINGLE_CLASS)
-       attenuation_ptr = (float *) (mxGetData(prhs[2]));
+   float *attenuation_ptr=NULL;
+   if(no_attenuation)
+       {
+       attenuation_size[0]=0; attenuation_size[1]=0; attenuation_size[2]=0;
+       }
    else
-   {
-       double *attenuation_ptr_d = (double *) (mxGetData(prhs[2]));
-       attenuation_ptr = (float *) malloc(attenuation_size[0]*attenuation_size[1]*attenuation_size[2]*sizeof(float));
-       for (int i=0; i<attenuation_size[0]*attenuation_size[1]*attenuation_size[2];i++)
-           attenuation_ptr[i] = attenuation_ptr_d[i];  
-   }
+       {
+       attenuation_size[0] = bkpr_size[0];
+       attenuation_size[1] = bkpr_size[1];
+       attenuation_size[2] = bkpr_size[2];
+       if (mxGetClassID(prhs[2]) == mxSINGLE_CLASS)
+           attenuation_ptr = (float *) (mxGetData(prhs[2]));
+       else
+           {
+           double *attenuation_ptr_d = (double *) (mxGetData(prhs[2]));
+           attenuation_ptr = (float *) malloc(attenuation_size[0]*attenuation_size[1]*attenuation_size[2]*sizeof(float));
+           for (int i=0; i<attenuation_size[0]*attenuation_size[1]*attenuation_size[2];i++)
+               attenuation_ptr[i] = attenuation_ptr_d[i];  
+           }
+       }
 
-   float *psf_ptr;
-   if (mxGetClassID(prhs[3]) == mxSINGLE_CLASS)
-       psf_ptr = (float *) (mxGetData(prhs[3]));
-   else
-   {
-       double *psf_ptr_d = (double *) (mxGetData(prhs[3]));
-       psf_ptr = (float *) malloc(psf_size[0]*psf_size[1]*psf_size[2]*sizeof(float));
-       for (int i=0; i<psf_size[0]*psf_size[1]*psf_size[2];i++)
-           psf_ptr[i] = psf_ptr_d[i];  
-   }
+   float *psf_ptr=NULL;
+   if (!no_psf)
+       {
+       if (mxGetClassID(prhs[3]) == mxSINGLE_CLASS)
+           psf_ptr = (float *) (mxGetData(prhs[3]));
+       else
+           {
+           double *psf_ptr_d = (double *) (mxGetData(prhs[3]));
+           psf_ptr = (float *) malloc(psf_size[0]*psf_size[1]*psf_size[2]*sizeof(float));
+           for (int i=0; i<psf_size[0]*psf_size[1]*psf_size[2];i++)
+               psf_ptr[i] = psf_ptr_d[i];  
+           }
+       }
 
    /* Check if rotations are not only along Z axis: in this case activity must be a cube */
 //   if (dim_sino==3)
@@ -223,9 +259,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    /* Shutdown */
    if (mxGetClassID(prhs[0]) != mxSINGLE_CLASS) free(sinogram_ptr);
    if (mxGetClassID(prhs[1]) != mxSINGLE_CLASS) free(cameras_ptr);
-   if (mxGetClassID(prhs[2]) != mxSINGLE_CLASS) free(attenuation_ptr);
-   if (mxGetClassID(prhs[3]) != mxSINGLE_CLASS) free(psf_ptr);
-
+   if((!no_attenuation) && (mxGetClassID(prhs[2]) != mxSINGLE_CLASS))
+       free(attenuation_ptr);
+   if ((!no_psf) && (mxGetClassID(prhs[3]) != mxSINGLE_CLASS)) 
+       free(psf_ptr);
+   
    /* Return */
    if (status != 0)
    	mexErrMsgTxt("Error while performing projection.");

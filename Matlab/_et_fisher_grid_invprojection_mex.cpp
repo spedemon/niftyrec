@@ -65,8 +65,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    if (!(cameras_size[1] == 3 || cameras_size[1] == 1))
       mexErrMsgTxt("Cameras must be of size [n_cameras x 1] or [n_cameras x 3]");        
    /* Check if number of output arguments is correct */
-   if (nlhs != 1){
-      mexErrMsgTxt("One output: Sinogram");
+   if (!(nlhs == 1 || nlhs == 2)){
+      mexErrMsgTxt("One or two outputs: [Fisher Information Matrix, Quadratic Prior Fisher Information Matrix]");
    }     
    /* Check is psf is a scalar, in that case do not apply any psf */
    if (nrhs<5)  //no psf parameter
@@ -273,8 +273,16 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    plhs[0] =  mxCreateNumericArray(2, mw_fisher_size, mxSINGLE_CLASS, mxREAL);
    float *fisher_ptr = (float *)(mxGetData(plhs[0]));
 
+   /* Allocate Fisher Information Matrix of the prior */
+   float *fisher_prior_ptr = NULL;
+   if (nlhs>=2)
+       {
+       plhs[1] =  mxCreateNumericArray(2, mw_fisher_size, mxSINGLE_CLASS, mxREAL);
+       fisher_prior_ptr = (float *)(mxGetData(plhs[1]));
+       }
+
    /* Calculate Fisher Information matrix */
-   status = et_array_fisher_grid_projection(projection_ptr, projection_size, bkpr_size, cameras_ptr, cameras_size, psf_ptr, psf_size, grid_ptr, fisher_ptr, fisher_size, attenuation_ptr, attenuation_size, epsilon, background, background_attenuation, enable_gpu);
+   status = et_array_fisher_grid_projection(projection_ptr, projection_size, bkpr_size, cameras_ptr, cameras_size, psf_ptr, psf_size, grid_ptr, fisher_ptr, fisher_prior_ptr, fisher_size, attenuation_ptr, attenuation_size, epsilon, background, background_attenuation, enable_gpu);
 
    /* Shutdown */
    if (mxGetClassID(prhs[0]) != mxSINGLE_CLASS) free(projection_ptr);

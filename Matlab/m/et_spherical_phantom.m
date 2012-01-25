@@ -1,9 +1,11 @@
 function RES = et_spherical_phantom(x_size, y_size, z_size, radius, in_value, out_value, x_center, y_center, z_center)
-%ET_MAKEBALL
-%    Creates a sphere of uniform activity
+
+%ET_SPHERICAL_PHANTOM
+%    Creates a sphere of uniform activity in a uniform background
 %
 %Description
-%    Function that creates a 3D activity image with constant activity in a spherical region
+%    Function that creates a 3D activity image with uniform activity in a spherical region
+%    and uniform background. 
 %
 %    IMAGE = ET_SPHERICAL_PHANTOM(X_S, Y_S, Z_S, RADIUS, IN_VALUE, OUT_VALUE, X_C, Y_X, Z_C)
 %
@@ -20,15 +22,15 @@ function RES = et_spherical_phantom(x_size, y_size, z_size, radius, in_value, ou
 %Example
 %    N = 128;
 %    activity = 100;
-%    background = 0;
+%    background = 10;
 %    phantom = et_spherical_phantom(N,N,N,N/8,activity,background,N/2,N/2,N/2);
 %
 %See also
 %   ET_BACKPROJECT, ET_BACKPROJECT, ET_MAPEM_STEP
 %
 % 
-%Alexandre Bousse
-%Copyright 2009-2010 CMIC-UCL
+%Stefano Pedemonte
+%Copyright 2009-2012 CMIC-UCL
 %Gower Street, London, UK
 
 

@@ -43,7 +43,7 @@ function out_image = et_rotate(in_image, rotation, center, use_gpu, background)
 %
 % 
 %Stefano Pedemonte
-%Copyright 2009-2010 CMIC-UCL.
+%Copyright 2009-2012 CMIC-UCL.
 %Gower Street, London, UK
 
 

@@ -3,7 +3,6 @@
 #include "_et_common.h"
 #include<stdio.h>
 
-#define eps 0.000000000001f
 #define max(a,b)	(((a) > (b)) ? (a) : (b))
 #define min(a,b)	(((a) < (b)) ? (a) : (b))
 
@@ -72,7 +71,7 @@ int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *
 {
         /* Check consistency of input */
         //...
-        //fprintf_verbose("\n ET_PROJECT: %d %d %d, %d %d %d, %d %d %d",activityImage->nx,activityImage->ny,activityImage->nz,sinoImage->nx,sinoImage->ny,sinoImage->nz,psfImage->nx,psfImage->ny,psfImage->nz);
+
 	/* Allocate the deformation Field image */
 	nifti_image *positionFieldImage = nifti_copy_nim_info(activityImage);
 	positionFieldImage->dim[0]=positionFieldImage->ndim=5;
@@ -100,7 +99,14 @@ int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *
 	dim[7]    = 1;
 	nifti_image *rotatedImage;
         rotatedImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
-        rotatedImage->data = (int *)malloc(activityImage->nvox*sizeof(int));	
+        rotatedImage->data = (float *)malloc(activityImage->nvox*sizeof(float));	
+
+	nifti_image *rotatedAttenuationImage;
+        if (attenuationImage != NULL)
+            {
+            rotatedAttenuationImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+            rotatedAttenuationImage->data = (float *)malloc(activityImage->nvox*sizeof(float));	
+            }
 
 	/* Define centers of rotation */
 	float center_x = ((float)(activityImage->nx - 1)) / 2.0;
@@ -112,7 +118,7 @@ int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *
 	
 	for(int cam=0; cam<n_cameras; cam++){
 		// Apply affine //
-                fprintf_verbose( "et_project: Rotation: %f  %f  %f  \n",cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam]);
+                fprintf(stderr, "et_project: Rotation: %f  %f  %f  \n",cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam]);
 		et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], center_x, center_y, center_z);
 		reg_affine_positionField(	affineTransformation,
 						activityImage,
@@ -126,24 +132,52 @@ int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *
 						1,
 						background );	
 
+                // Resample the attenuation map //
+                if (attenuationImage != NULL)
+                    {
+                    reg_resampleSourceImage<float>(    attenuationImage,
+						attenuationImage,
+						rotatedAttenuationImage,
+						positionFieldImage,
+						NULL,
+						1,
+						background_attenuation );	                    
+                    }
                 // Apply Depth Dependent Point Spread Function //
                 if (psfImage != NULL)
                     {
-                    //et_convolveFFT2D(         rotatedImage,
-                    //                          image_size;
-                    //                          psfImage,
-                    //                          psf_size,
-                    //                          rotatedImage);
+                    et_convolve2D(              rotatedImage,
+                                                psfImage,
+                                                rotatedImage, 
+                                                background );
                     }
 	
 		// Integrate along lines //
-		et_line_integral(		rotatedImage,
-						sinoImage,
-						cam );
+                if (attenuationImage != NULL)
+                    {
+                    et_line_integral_attenuated(rotatedImage, 
+                                                rotatedAttenuationImage, 
+                                                sinoImage, 
+                                                cam );
+                    }
+                else
+                    {
+                    et_line_integral(           rotatedImage,
+                                                sinoImage,
+                                                cam );
+                    }
 	}
+
+        /* Truncate negative values: small negative values may be found due to FFT and IFFT */
+        float* sino_data = (float*) sinoImage->data;
+        for (int i=0; i<sinoImage->nvox; i++)
+            if (sino_data[i] < 0)
+                sino_data[i] = 0;
 
 	/*Free*/
 	nifti_image_free(rotatedImage);
+        if (attenuationImage != NULL)
+            nifti_image_free(rotatedAttenuationImage);
 	nifti_image_free(positionFieldImage);
 	free(affineTransformation);
 
@@ -190,6 +224,13 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *accumulatorImage, ni
         temp_backprojectionImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
         temp_backprojectionImage->data = (int *)malloc(accumulatorImage->nvox*sizeof(int));	        
 
+	nifti_image *rotatedAttenuationImage;
+        if (attenuationImage != NULL)
+            {
+            rotatedAttenuationImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+            rotatedAttenuationImage->data = (int *)malloc(attenuationImage->nvox*sizeof(int));	
+            }
+
 	/* Define centers of rotation */
 	float center_x = ((float)(accumulatorImage->nx - 1)) / 2.0;
 	float center_y = ((float)(accumulatorImage->ny - 1)) / 2.0;
@@ -202,13 +243,43 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *accumulatorImage, ni
 	mat44 *affineTransformation = (mat44 *)calloc(1,sizeof(mat44));
 	
 	for(int cam=0; cam<n_cameras; cam++){
-
+                /* Rotate attenuation */
+                if (attenuationImage != NULL)                
+                    {
+                    et_create_rotation_matrix(	affineTransformation,
+						cameras[0*n_cameras+cam],
+						cameras[1*n_cameras+cam],
+						cameras[2*n_cameras+cam],
+						center_x,
+						center_y, 
+						center_z);
+                    reg_affine_positionField(	affineTransformation,
+						attenuationImage,
+						positionFieldImage);
+                    reg_resampleSourceImage(	attenuationImage,
+						attenuationImage,
+						rotatedAttenuationImage,
+						positionFieldImage,
+						NULL,
+						1,
+						background_attenuation );
+                    }
 		/* Line Backproject */
-		et_line_backproject(		sinogramImage,
-						temp_backprojectionImage,
-						cam );
-		
-		/* Rotate */
+                if (attenuationImage != NULL)
+                    {
+                    et_line_backproject_attenuated(    sinogramImage,
+                                                temp_backprojectionImage, 
+                                                rotatedAttenuationImage, 
+                                                cam );
+                    }
+                else
+                    {
+                    et_line_backproject(        sinogramImage,
+                                                temp_backprojectionImage,
+                                                cam );
+                    }
+
+		/* Rotate backprojection */
 		et_create_rotation_matrix(	affineTransformation,
 						-cameras[0*n_cameras+cam],
 						-cameras[1*n_cameras+cam],
@@ -227,8 +298,14 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *accumulatorImage, ni
 						positionFieldImage,
 						NULL,
 						1,
-						background);
-		
+						background  );
+                if (psfImage != NULL)
+                    {
+                    et_convolve2D(              rotatedImage,
+                                                psfImage,
+                                                rotatedImage, 
+                                                0.0f  );
+                    }
 		//fprintf_verbose("\n>> %d %d %d %d ",accumulatorImage->nx, accumulatorImage->ny, accumulatorImage->nz, accumulatorImage->nvox);
 		
 		/* Accumulate */
@@ -236,10 +313,16 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *accumulatorImage, ni
 						accumulatorImage );
 	}
 
-        //for (int i=1; i<accumulatorImage->nvox; i++)
-        //    ((float*)accumulatorImage->data)[i] = ((float*)rotatedImage->data)[i];
+        /* Truncate negative values: small negative values may be found due to FFT and IFFT */
+        float* accumulator_data = (float*) accumulatorImage->data;
+        for (int i=0; i<accumulatorImage->nvox; i++)
+            if (accumulator_data[i] < 0)
+                accumulator_data[i] = 0;
+
 	/*Free*/
 	nifti_image_free(rotatedImage);
+        if (attenuationImage != NULL)        
+            nifti_image_free(rotatedAttenuationImage);
 	nifti_image_free(temp_backprojectionImage);
 	nifti_image_free(positionFieldImage);
 	free(affineTransformation);
@@ -249,14 +332,17 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *accumulatorImage, ni
 
 
 
-int et_fisher_grid(int from_projection, nifti_image *inputImage, nifti_image *gridImage, nifti_image *fisherImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float epsilon, float background, float background_attenuation)
+int et_fisher_grid(int from_projection, nifti_image *inputImage, nifti_image *gridImage, nifti_image *fisherImage, nifti_image *fisherpriorImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float epsilon, float background, float background_attenuation)
 {
     int status = 0;
-    float *fisher_matrix = (float *) fisherImage->data;
     int psf_size_x = psfImage->nx;
     int psf_size_y = psfImage->ny;
     int psf_size_semi_x = (psf_size_x-1)/2;
     int psf_size_semi_y = (psf_size_y-1)/2;
+    float *fisher_matrix = (float *) fisherImage->data;
+    float *fisher_matrix_prior=NULL;
+    if (fisherpriorImage!=NULL)
+        fisher_matrix_prior = (float *) fisherpriorImage->data;
 
     if (epsilon<=eps) epsilon=eps;
     // 1) Project object and invert the sinogram elements
@@ -318,6 +404,11 @@ int et_fisher_grid(int from_projection, nifti_image *inputImage, nifti_image *gr
     // 3) For each camera position, update the FIM
     for (int i=0; i<n_grid_elements*n_grid_elements; i++)
         fisher_matrix[i]=0;
+    if (fisher_matrix_prior!=NULL)
+        {
+        for (int i=0; i<n_grid_elements*n_grid_elements; i++)
+            fisher_matrix_prior[i]=0;
+        }
 
     float center_x = ((float)(gridImage->nx - 1)) / 2.0;
     float center_y = ((float)(gridImage->ny - 1)) / 2.0;
@@ -416,10 +507,38 @@ int et_fisher_grid(int from_projection, nifti_image *inputImage, nifti_image *gr
             }
         }
 
+    // 3c) Fisher Information of the prior
+    if (fisher_matrix_prior!=NULL)
+        {
+        for (int i=0; i<n_grid_elements; i++)
+            {
+            int i_x = grid_coords[3*i];
+            int i_y = grid_coords[3*i+1];
+            int i_z = grid_coords[3*i+2];
+            for (int j=i; j<n_grid_elements; j++)
+                {
+                int j_x = grid_coords[3*j];
+                int j_y = grid_coords[3*j+1];
+                int j_z = grid_coords[3*j+2];
+                if (abs(i_x-j_x)<=1 && abs(i_y-j_y)<=1 && abs(i_z-j_z)<=1)
+                    fisher_matrix_prior[i*n_grid_elements+j] = 1;
+//                float dist = sqrt((i_x-j_x)^2 + (i_y-j_y)^2 + (i_z-j_z)^2);
+//                fisher_matrix_prior[i*n_grid_elements+j] = dist;
+                }
+            }
+        }
+
     // 4) Fill matrix (the other half)
     for (int i=0; i<n_grid_elements; i++)
         for (int j=i+1; j<n_grid_elements; j++)
             fisher_matrix[j*n_grid_elements+i] = fisher_matrix[i*n_grid_elements+j];
+
+    if (fisher_matrix_prior!=NULL)
+        for (int i=0; i<n_grid_elements; i++)
+            for (int j=i+1; j<n_grid_elements; j++)
+                fisher_matrix_prior[j*n_grid_elements+i] = fisher_matrix_prior[i*n_grid_elements+j];
+
+
     // Free
     free(grid_coords);
     free(affineTransformation);
@@ -605,7 +724,8 @@ int et_project_gpu(nifti_image *activity, nifti_image *sinoImage, nifti_image *p
 
 	for(unsigned int cam=0; cam<n_cameras; cam++){
 
-                fprintf_verbose( "et_project: Rotation: %f  %f  %f  \n",cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam]);
+//                fprintf_verbose( "et_project: Rotation: %f  %f  %f  \n",cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam]);
+                fprintf(stderr, "et_project: Rotation: %f  %f  %f  \n",cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam]);
 		// Apply affine //
 		et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], center_x, center_y, center_z);
 		reg_affine_positionField_gpu(	affineTransformation,
@@ -643,14 +763,16 @@ int et_project_gpu(nifti_image *activity, nifti_image *sinoImage, nifti_image *p
 
 		// Integrate along lines //
                 if (attenuationImage != NULL)
+                    {
                     et_line_integral_attenuated_gpu(	&rotatedArray_d,
 						&rotatedAttenuationArray_d, 
 						&sinoArray_d,
 						cam,
 						activity);
+                    }
                 else
                     {
-		    et_line_integral_gpu(	&rotatedAttenuationArray_d,
+		    et_line_integral_gpu(	&rotatedArray_d,
 						&sinoArray_d,
 						cam,
 						activity);
@@ -660,6 +782,12 @@ int et_project_gpu(nifti_image *activity, nifti_image *sinoImage, nifti_image *p
 
 	/* Transfer result back to host */
 	if(cudaCommon_transferFromDeviceToNifti(sinoImage, &sinoArray_d)) return 1;
+
+        /* Truncate negative values: small negative values may be found due to FFT and IFFT */
+        float* sino_data = (float*) sinoImage->data;
+        for (int i=0; i<sinoImage->nvox; i++)
+            if (sino_data[i] < 0)
+                sino_data[i] = 0;
 
 	/*Free*/
 	cudaCommon_free(&activityArray_d);
@@ -769,13 +897,10 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *accumulatorImage, ni
             }
 
 
-		
 	for(int cam=0; cam<n_cameras; cam++){
-
-                fprintf_verbose( "et_project: Rotation: %f  %f  %f  \n",cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam]);
-
                 // Rotate attenuation //
                 if (attenuationImage != NULL)
+                    {
                     et_create_rotation_matrix(	affineTransformation,
 						cameras[0*n_cameras+cam],
 						cameras[1*n_cameras+cam],
@@ -794,7 +919,7 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *accumulatorImage, ni
 						&mask_d,
 						attenuationImage->nvox,
 						background_attenuation);
-
+                    }
 		// Line Backproject //
                 if (attenuationImage != NULL)
                     {
@@ -805,10 +930,12 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *accumulatorImage, ni
 						accumulatorImage);
                     }
                 else
+                    {
                     et_line_backproject_gpu(	&sinoArray_d,
 						&temp_backprojection_d,
 						cam,
 						accumulatorImage);
+                    }
 
                 // Copy to texture bound memory (for rotation) //
                 cudaError_t cuda_status;
@@ -864,6 +991,12 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *accumulatorImage, ni
 	/* Transfer result back to host */
 	if(cudaCommon_transferFromDeviceToNifti(accumulatorImage, &accumulatorArray_d)) return 1; 
 
+        /* Truncate negative values: small negative values may be found due to FFT and IFFT */
+        float* accumulator_data = (float*) accumulatorImage->data;
+        for (int i=0; i<accumulatorImage->nvox; i++)
+            if (accumulator_data[i] < 0)
+                accumulator_data[i] = 0;
+
 	/*Free*/
         if (attenuationImage != NULL)
             {
@@ -895,14 +1028,17 @@ int et_project_backproject_gpu(nifti_image *activity, nifti_image *sino, nifti_i
 }
 
 
-int et_fisher_grid_gpu(int from_projection, nifti_image *inputImage, nifti_image *gridImage, nifti_image *fisherImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float epsilon, float background, float background_attenuation)
+int et_fisher_grid_gpu(int from_projection, nifti_image *inputImage, nifti_image *gridImage, nifti_image *fisherImage, nifti_image *fisherpriorImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float epsilon, float background, float background_attenuation)
 {
     int status = 0;
-    float *fisher_matrix = (float *) fisherImage->data;
     int psf_size_x = psfImage->nx;
     int psf_size_y = psfImage->ny;
     int psf_size_semi_x = (psf_size_x-1)/2;
     int psf_size_semi_y = (psf_size_y-1)/2;
+    float *fisher_matrix = (float *) fisherImage->data;
+    float *fisher_matrix_prior = NULL;
+    if (fisherpriorImage!=NULL)
+        fisher_matrix_prior = (float *) fisherpriorImage->data;
 
     if (epsilon<=eps) epsilon=eps;
     // 1) Project object and invert the sinogram elements
@@ -964,6 +1100,10 @@ int et_fisher_grid_gpu(int from_projection, nifti_image *inputImage, nifti_image
     // 3) For each camera position, update the FIM
     for (int i=0; i<n_grid_elements*n_grid_elements; i++)
         fisher_matrix[i]=0;
+    if (fisher_matrix_prior!=NULL)
+        for (int i=0; i<n_grid_elements*n_grid_elements; i++)
+            fisher_matrix_prior[i]=0; 
+   
 
     float center_x = ((float)(gridImage->nx - 1)) / 2.0;
     float center_y = ((float)(gridImage->ny - 1)) / 2.0;
@@ -1062,10 +1202,40 @@ int et_fisher_grid_gpu(int from_projection, nifti_image *inputImage, nifti_image
             }
         }
 
+    // 3c) Fisher Information of the prior
+    if (fisher_matrix_prior!=NULL)
+        {
+        for (int i=0; i<n_grid_elements; i++)
+            {
+            int i_x = grid_coords[3*i];
+            int i_y = grid_coords[3*i+1];
+            int i_z = grid_coords[3*i+2];
+            for (int j=i; j<n_grid_elements; j++)
+                {
+                if (i!=j)
+                    {
+                    int j_x = grid_coords[3*j];
+                    int j_y = grid_coords[3*j+1];
+                    int j_z = grid_coords[3*j+2];
+                    if (abs(i_x-j_x)<=3 && abs(i_y-j_y)<=3 && abs(i_z-j_z)<=3)
+                        fisher_matrix_prior[i*n_grid_elements+j] = 1;
+                    }
+//                float dist = sqrt((i_x-j_x)^2 + (i_y-j_y)^2 + (i_z-j_z)^2);
+//                fisher_matrix_prior[i*n_grid_elements+j] = dist;
+                }
+            }
+        }
+
     // 4) Fill matrix (the other half)
     for (int i=0; i<n_grid_elements; i++)
         for (int j=i+1; j<n_grid_elements; j++)
             fisher_matrix[j*n_grid_elements+i] = fisher_matrix[i*n_grid_elements+j];
+
+    if (fisher_matrix_prior!=NULL)
+        for (int i=0; i<n_grid_elements; i++)
+            for (int j=i+1; j<n_grid_elements; j++)
+                fisher_matrix_prior[j*n_grid_elements+i] = fisher_matrix_prior[i*n_grid_elements+j];
+
     // Free
     free(grid_coords);
     free(affineTransformation);

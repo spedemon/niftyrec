@@ -21,7 +21,7 @@ function info = et_set_gpu(device_id)
 %
 % 
 %Stefano Pedemonte
-%Copyright 2009-2010 CMIC-UCL.
+%Copyright 2009-2012 CMIC-UCL.
 %Gower Street, London, UK
 
 info = et_set_gpu_mex(device_id);

@@ -87,10 +87,10 @@ FOREACH(MEX_NAME ${NIFTY_REC_TT_MEX})
         BUILD_INSTALL_TT_MEX(${MEX_NAME} ${NiftyRec_USE_CUDA})
 ENDFOREACH(MEX_NAME)
 
-BUILD_INSTALL_REG_MEX(reg_control_points_from_affine_mex)
-BUILD_INSTALL_REG_MEX(reg_gradient_NMI_nodes_mex)
-BUILD_INSTALL_REG_MEX(reg_gradient_voxel_to_nodes_mex)
-BUILD_INSTALL_REG_MEX(reg_resample_spline_mex)
+#BUILD_INSTALL_REG_MEX(reg_control_points_from_affine_mex)
+#BUILD_INSTALL_REG_MEX(reg_gradient_NMI_nodes_mex)
+#BUILD_INSTALL_REG_MEX(reg_gradient_voxel_to_nodes_mex)
+#BUILD_INSTALL_REG_MEX(reg_resample_spline_mex)
 
 #-----------------------------------------------------------------------------
 

@@ -6,7 +6,7 @@ function [activity_new, update] = et_mapem_step(activity_old, normalization, sin
 %    This function computes an estimate of the activity, given the previous estimate and the gradient 
 %    of the prior distribution.
 %
-%    [NEW_ACTIVITY, UPDATE] = ET_MAPEM_STEP(ACTIVITY, NORM, SINO, CAMERAS, PSF, BETA, GRAD_PRIOR, USE_GPU, BACKGROUND, EPSILON)
+%    [NEW_ACTIVITY, UPDATE] = ET_MAPEM_STEP(ACTIVITY, NORM, SINO, CAMERAS, ATTENUATION, PSF, BETA, GRAD_PRIOR, USE_GPU, BACKGROUND, EPSILON)
 %
 %    ATIVITY is a 2D or 3D matrix of activity, typically estimated in the previous MAPEM step
 %
@@ -23,7 +23,8 @@ function [activity_new, update] = et_mapem_step(activity_old, normalization, sin
 %    ATTENUATION is the attenuation map (adimensional). Refer to the programming manual. 
 %    If it's set to a scalar then attenuation is not applied (faster).
 %
-%    PSF is a Depth-Dependent Point Spread Function.
+%    PSF is a Depth-Dependent Point Spread Function. If it's set to a
+%    scalar then the PSF i considered ideal (ray-casting). 
 %
 %    BETA parameter for sensitivity of the prior term
 %
@@ -35,10 +36,12 @@ function [activity_new, update] = et_mapem_step(activity_old, normalization, sin
 %    BACKGROUND is the value the background is set to when performing rotation.
 %    It defaults to 0.
 %
-%    BACKGROUND_ATTENUATION is the value the attenuation background is set to when performing rotation.
+%    BACKGROUND_ATTENUATION is the value the attenuation background is set
+%    to when performing rotation. 
 %    It defaults to 0.
 %
-%    EPSILON is a small value that is added to the projection in order to avoid division by zero.
+%    EPSILON is a small value that is added to the projection in order to
+%    avoid division by zero. It defaults to 1e-6.
 %
 %GPU acceleration
 %    If a CUDA compatible Grahpics Processing Unit (GPU) is installed, 
@@ -56,24 +59,28 @@ function [activity_new, update] = et_mapem_step(activity_old, normalization, sin
 %
 %Example
 %   N = 128;
-%   n_cameras = 120;
-%   mlem_steps = 100;
+%   N_cameras = 120;
+%   mlem_steps = 30;
 %   USE_GPU = 1;
-%   phantom = et_spherical_phantom(N,N,N,N/8,100,0);
-%   cameras = [0:2*pi/n_cameras:2*pi-2*pi/n_cameras];
-%   sinogram = poissrnd(et_project(phantom,cameras,psf,USE_GPU));
-%   norm = et_backproject(ones(N,N,n_cameras));
-%   activity = ones(N,N,N);  %initial activity
+%   psf = ones(11,11,N);
+%   cameras = linspace(0,pi,N_cameras)';
+%   mask = et_spherical_phantom(N,N,N,N/2,1,0,(N+1)/2,(N+1)/2,(N+1)/2);
+%   phantom = et_spherical_phantom(N,N,N,N/8,100,10,N/4,N/3,N/2) .* mask;
+%   attenuation = et_spherical_phantom(N,N,N,N/8,0.002,0.001,N/4,N/3,N/2) .* mask;
+%   sinogram = poissrnd(et_project(phantom,cameras,attenuation,psf,USE_GPU));
+%   norm = et_backproject(ones(N,N,N_cameras),cameras,attenuation,psf,USE_GPU);
+%   activity = ones(N,N,N);  %initial activity estimate
 %   for i=1:mlem_steps
-%       activity = et_mapem_step(activity, norm, sinogram, cameras, 0, 0, 0, 0, 0, USE_GPU);
+%       activity = et_mapem_step(activity, norm, sinogram, cameras, attenuation, psf, 0, 0, USE_GPU);
+%       imagesc(activity(:,:,N/2)); pause(0.1)
 %   end
 %
 %See also
-%   ET_PROJECT, ET_BACKPROJECT
+%   ET_PROJECT, ET_BACKPROJECT, ET_MLEM_DEMO, ET_MAPEM_MRF_DEMO
 %
 % 
 %Stefano Pedemonte
-%Copyright 2009-2010 CMIC-UCL
+%Copyright 2009-2012 CMIC-UCL
 %Gower Street, London, UK
 
 if not(exist('beta','var'))
@@ -92,7 +99,7 @@ if not(exist('background_attenuation','var'))
     background_attenuation = 0;
 end
 if not(exist('espilon','var'))
-    epsilon = 0.000001;
+    epsilon = 1e-6;
 end
 if not(exist('psf','var'))
     psf = 0;
@@ -102,12 +109,11 @@ if not(exist('attenuation','var'))
 end
 
 proj = et_project(activity_old, cameras, attenuation, psf, GPU, background, background_attenuation);
-proj = proj.*(proj>0) + epsilon ;
+proj(proj<epsilon) = epsilon ;
 update = et_backproject(sinogram ./ proj, cameras, attenuation, psf, GPU, background, background_attenuation);
-update = update.*(update>0);
 activity_new = activity_old .* update;
 normalization = normalization - beta * gradient_prior;
-normalization = normalization.*(normalization>0) + epsilon;
+normalization(normalization<epsilon) = epsilon;
 activity_new = activity_new ./ (normalization);
 
 return 
