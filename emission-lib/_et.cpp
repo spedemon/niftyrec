@@ -69,6 +69,9 @@ int et_rotate(nifti_image *sourceImage, nifti_image *resultImage, float theta_x,
 
 int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation)
 {
+        int separable_psf = 0;
+        int psf_size[3];
+
         /* Check consistency of input */
         //...
 
@@ -115,7 +118,30 @@ int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *
 		
 	/* Alloc transformation matrix */
 	mat44 *affineTransformation = (mat44 *)calloc(1,sizeof(mat44));
-	
+
+        /* Decide whether to use FFT or separate the convolution */
+        float *psfSeparated=NULL;
+	if(psfImage!=NULL)
+            {
+            if(1) //if (psfImage->nx <= (MAX_SEPARABLE_KERNEL_RADIUS*2)+1) 
+                {
+                separable_psf=1;
+                psf_size[0] = psfImage->dim[1];
+                psf_size[1] = psfImage->dim[2];
+                psf_size[2] = psfImage->dim[3];
+                psfSeparated = (float*) malloc((psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float));
+                for (int n=0; n<psf_size[2];n++) 
+                    {
+                    for (int i=0;i<psf_size[0];i++) 
+                        {
+                        psfSeparated[(psf_size[0]+psf_size[1])*n + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 * psf_size[0] + i];
+                        psfSeparated[(psf_size[0]+psf_size[1])*n + psf_size[0] + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 + i * psf_size[0]];
+                        }
+                    }
+                }
+            }
+
+        /* Project */
 	for(int cam=0; cam<n_cameras; cam++){
 		// Apply affine //
                 fprintf_verbose( "et_project: Rotation: %f  %f  %f  \n",cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam]);
@@ -146,7 +172,15 @@ int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *
                 // Apply Depth Dependent Point Spread Function //
                 if (psfImage != NULL)
                     {
-                    et_convolve2D(              rotatedImage,
+                    if (separable_psf)
+                        et_convolveSeparable2D( rotatedImage,
+                                                psfSeparated,
+                                                psf_size[0],
+                                                psf_size[1],
+                                                rotatedImage, 
+                                                background );
+                    else
+                        et_convolve2D(          rotatedImage,
                                                 psfImage,
                                                 rotatedImage, 
                                                 background );
@@ -174,10 +208,13 @@ int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *
             if (sino_data[i] < 0)
                 sino_data[i] = 0;
 
-	/*Free*/
+	/* Deallocate memory */
 	nifti_image_free(rotatedImage);
         if (attenuationImage != NULL)
             nifti_image_free(rotatedAttenuationImage);
+        if (psfImage != NULL)
+            if (separable_psf)
+                free(psfSeparated);
 	nifti_image_free(positionFieldImage);
 	free(affineTransformation);
 
@@ -188,6 +225,9 @@ int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *
 
 int et_backproject(nifti_image *sinogramImage, nifti_image *accumulatorImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation)
 {
+        int separable_psf = 0;
+        int psf_size[3];
+
         /* Check consistency of input */
         //...
 
@@ -241,7 +281,30 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *accumulatorImage, ni
 	
 	/* Alloc transformation matrix */
 	mat44 *affineTransformation = (mat44 *)calloc(1,sizeof(mat44));
-	
+
+        /* Decide whether to use FFT or separate the convolution */
+        float *psfSeparated=NULL;
+	if(psfImage!=NULL)
+            {
+            if(1) //if (psfImage->nx <= (MAX_SEPARABLE_KERNEL_RADIUS*2)+1) 
+                {
+                separable_psf=1;
+                psf_size[0] = psfImage->dim[1];
+                psf_size[1] = psfImage->dim[2];
+                psf_size[2] = psfImage->dim[3];
+                psfSeparated = (float*) malloc((psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float));
+                for (int n=0; n<psf_size[2];n++) 
+                    {
+                    for (int i=0;i<psf_size[0];i++) 
+                        {
+                        psfSeparated[(psf_size[0]+psf_size[1])*n + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 * psf_size[0] + i];
+                        psfSeparated[(psf_size[0]+psf_size[1])*n + psf_size[0] + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 + i * psf_size[0]];
+                        }
+                    }
+                }
+            }       
+
+        /* Backproject */
 	for(int cam=0; cam<n_cameras; cam++){
                 /* Rotate attenuation */
                 if (attenuationImage != NULL)                
@@ -299,15 +362,24 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *accumulatorImage, ni
 						NULL,
 						1,
 						background  );
+
+                // Apply Depth Dependent Point Spread Function //
                 if (psfImage != NULL)
                     {
-                    et_convolve2D(              rotatedImage,
+                    if (separable_psf)
+                        et_convolveSeparable2D( rotatedImage,
+                                                psfSeparated,
+                                                psf_size[0],
+                                                psf_size[1],
+                                                rotatedImage, 
+                                                0.0f );
+                    else
+                        et_convolve2D(          rotatedImage,
                                                 psfImage,
                                                 rotatedImage, 
-                                                0.0f  );
+                                                0.0f );
                     }
-		//fprintf_verbose("\n>> %d %d %d %d ",accumulatorImage->nx, accumulatorImage->ny, accumulatorImage->nz, accumulatorImage->nvox);
-		
+	
 		/* Accumulate */
 		et_accumulate(			rotatedImage,
 						accumulatorImage );
@@ -323,6 +395,9 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *accumulatorImage, ni
 	nifti_image_free(rotatedImage);
         if (attenuationImage != NULL)        
             nifti_image_free(rotatedAttenuationImage);
+        if (psfImage != NULL)
+            if (separable_psf)
+                free(psfSeparated);
 	nifti_image_free(temp_backprojectionImage);
 	nifti_image_free(positionFieldImage);
 	free(affineTransformation);
@@ -723,15 +798,15 @@ int et_project_gpu(nifti_image *activity, nifti_image *sinoImage, nifti_image *p
 
         if (separable_psf)
             {
-            CUDA_SAFE_CALL(cudaMalloc((void **)&psfSeparatedArray_d, psf_size[0]*psf_size[2]*2*sizeof(float)));
-            float *psfSeparatedArray_h = (float*) malloc(psf_size[0]*psf_size[2]*2*sizeof(float));
+            CUDA_SAFE_CALL(cudaMalloc((void **)&psfSeparatedArray_d, (psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float)));
+            float *psfSeparatedArray_h = (float*) malloc((psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float));
             for (int n=0; n<psf_size[2];n++) {
                 for (int i=0;i<psf_size[0];i++) {
-                    psfSeparatedArray_h[2*psf_size[0]*n + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 * psf_size[0] + i];
-                    psfSeparatedArray_h[2*psf_size[0]*n + psf_size[0] + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 + i * psf_size[0]];
+                    psfSeparatedArray_h[(psf_size[0]+psf_size[1])*n + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 * psf_size[0] + i];
+                    psfSeparatedArray_h[(psf_size[0]+psf_size[1])*n + psf_size[0] + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 + i * psf_size[0]];
                     }
                 }
-            CUDA_SAFE_CALL(cudaMemcpy(psfSeparatedArray_d, psfSeparatedArray_h, psf_size[0]*psf_size[2]*2*sizeof(float), cudaMemcpyHostToDevice));
+            CUDA_SAFE_CALL(cudaMemcpy(psfSeparatedArray_d, psfSeparatedArray_h, (psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float), cudaMemcpyHostToDevice));
             free(psfSeparatedArray_h);
             }
 
@@ -932,15 +1007,15 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *accumulatorImage, ni
 
         if (separable_psf)
             {
-            CUDA_SAFE_CALL(cudaMalloc((void **)&psfSeparatedArray_d, psf_size[0]*psf_size[2]*2*sizeof(float)));
-            float *psfSeparatedArray_h = (float*) malloc(psf_size[0]*psf_size[2]*2*sizeof(float));
+            CUDA_SAFE_CALL(cudaMalloc((void **)&psfSeparatedArray_d, (psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float)));
+            float *psfSeparatedArray_h = (float*) malloc((psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float));
             for (int n=0; n<psf_size[2];n++) {
                 for (int i=0;i<psf_size[0];i++) {
-                    psfSeparatedArray_h[2*psf_size[0]*n + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 * psf_size[0] + i];
-                    psfSeparatedArray_h[2*psf_size[0]*n + psf_size[0] + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 + i * psf_size[0]];
+                    psfSeparatedArray_h[(psf_size[0]+psf_size[1])*n + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 * psf_size[0] + i];
+                    psfSeparatedArray_h[(psf_size[0]+psf_size[1])*n + psf_size[0] + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 + i * psf_size[0]];
                     }
                 }
-            CUDA_SAFE_CALL(cudaMemcpy(psfSeparatedArray_d, psfSeparatedArray_h, psf_size[0]*psf_size[2]*2*sizeof(float), cudaMemcpyHostToDevice));
+            CUDA_SAFE_CALL(cudaMemcpy(psfSeparatedArray_d, psfSeparatedArray_h, (psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float), cudaMemcpyHostToDevice));
             free(psfSeparatedArray_h);
             }
 
