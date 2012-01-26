@@ -31,8 +31,8 @@ extern "C" void setConvolutionKernel(float *d_Kernel,int kernelRadius){
 ////////////////////////////////////////////////////////////////////////////////
 // Row convolution filter
 ////////////////////////////////////////////////////////////////////////////////
-#define   ROWS_BLOCKDIM_X 16
-#define   ROWS_BLOCKDIM_Y 4
+#define   ROWS_BLOCKDIM_X 8
+#define   ROWS_BLOCKDIM_Y 8
 #define   ROWS_RESULT_STEPS 8
 #define   ROWS_HALO_STEPS 1
 
@@ -92,7 +92,7 @@ extern "C" void convolutionRowsGPU(float *d_Dst,float *d_Src,int imageW,int imag
 ////////////////////////////////////////////////////////////////////////////////
 // Column convolution filter
 ////////////////////////////////////////////////////////////////////////////////
-#define   COLUMNS_BLOCKDIM_X 16
+#define   COLUMNS_BLOCKDIM_X 8
 #define   COLUMNS_BLOCKDIM_Y 8
 #define   COLUMNS_RESULT_STEPS 8
 #define   COLUMNS_HALO_STEPS 1

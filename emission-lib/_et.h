@@ -15,6 +15,8 @@
 #include "_et_line_backproject_attenuated.h"
 #include "_et_clear_accumulator.h"
 #include "_et_convolve2D.h"
+#include "_et_convolveSeparable2D.h"
+#include "_et_convolveFFT2D.h"
 //#include "_et_joint_histogram.h"
 
 #define ET_ERROR_BADGRID 2

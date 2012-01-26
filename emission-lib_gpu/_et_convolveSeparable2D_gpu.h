@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <cufft.h>
 #include <cutil_inline.h>
 #include "nifti1_io.h"
 
