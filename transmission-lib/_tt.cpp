@@ -156,9 +156,9 @@ int tt_backproject_ray(float h_projections[], u_int_2 detector_pixels, u_int n_p
       CUDA_SAFE_CALL(cudaMemset((void *)d_output,0, volume_voxels.x*volume_voxels.y*volume_voxels.z*sizeof(float) ));
     }
 
-    struct timeval start_time; gettimeofday( &start_time, 0);
-    struct timeval t_time;
-    float elapsed_time;
+//    struct timeval start_time; gettimeofday( &start_time, 0);
+//    struct timeval t_time;
+//    float elapsed_time;
 
     volumeSize.x = volume_size.x;
     volumeSize.y = volume_size.y;
@@ -197,9 +197,9 @@ int tt_backproject_ray(float h_projections[], u_int_2 detector_pixels, u_int n_p
         }
 
     }
-    gettimeofday( &t_time, 0);
-    elapsed_time = (float) (1000.0 * ( t_time.tv_sec - start_time.tv_sec) + (0.001 * (t_time.tv_usec - start_time.tv_usec)) );
-    fprintf(stderr,"\nTime per back-projection %d x [%d %d] -> [%d %d %d]: %f ms",n_projections,detector_pixels.w,detector_pixels.h,volume_voxels.x,volume_voxels.y,volume_voxels.z,elapsed_time/n_projections);
+//    gettimeofday( &t_time, 0);
+//    elapsed_time = (float) (1000.0 * ( t_time.tv_sec - start_time.tv_sec) + (0.001 * (t_time.tv_usec - start_time.tv_usec)) );
+//    fprintf(stderr,"\nTime per back-projection %d x [%d %d] -> [%d %d %d]: %f ms",n_projections,detector_pixels.w,detector_pixels.h,volume_voxels.x,volume_voxels.y,volume_voxels.z,elapsed_time/n_projections);
 
 //cudaMemset(d_output, 100, volume_voxels.x*volume_voxels.y*volume_voxels.z*sizeof(float) );
 
@@ -252,9 +252,9 @@ fprintf(stderr, "\n %d, %d, %d",volume_voxels.x,volume_voxels.y,volume_voxels.z)
     CUDA_SAFE_CALL(cudaMalloc((void **)&d_output, n_projections*detector_pixels.w*detector_pixels.h*sizeof(float) ));
     CUDA_SAFE_CALL(cudaMemset((void *)d_output,0, n_projections*detector_pixels.w*detector_pixels.h*sizeof(float) ));
 
-    struct timeval start_time; gettimeofday( &start_time, 0);
-    struct timeval t_time;
-    float elapsed_time;
+ //   struct timeval start_time; gettimeofday( &start_time, 0);
+ //   struct timeval t_time;
+ //   float elapsed_time;
 
     volumeSize.x = volume_size.x;
     volumeSize.y = volume_size.y;
@@ -275,9 +275,9 @@ fprintf(stderr, "\n %d, %d, %d",volume_voxels.x,volume_voxels.y,volume_voxels.z)
         tt_project_ray_kernel(gridSize, blockSize, d_output_proj, sourcePosition, volumeSize, detector_pixels.w, detector_pixels.h, t_step);
     }
 
-    gettimeofday( &t_time, 0);
-    elapsed_time = (float) (1000.0 * ( t_time.tv_sec - start_time.tv_sec) + (0.001 * (t_time.tv_usec - start_time.tv_usec)) );
-    fprintf(stderr,"\nTime per projection %d %d %d -> %d %d: %f ms",volume_voxels.x,volume_voxels.y,volume_voxels.z,detector_pixels.w,detector_pixels.h,elapsed_time/n_projections);
+ //   gettimeofday( &t_time, 0);
+ //   elapsed_time = (float) (1000.0 * ( t_time.tv_sec - start_time.tv_sec) + (0.001 * (t_time.tv_usec - start_time.tv_usec)) );
+ //   fprintf(stderr,"\nTime per projection %d %d %d -> %d %d: %f ms",volume_voxels.x,volume_voxels.y,volume_voxels.z,detector_pixels.w,detector_pixels.h,elapsed_time/n_projections);
 
     //Copy result back to host
     CUDA_SAFE_CALL(cudaMemcpy(out_projections, d_output, n_projections*detector_pixels.w*detector_pixels.h*sizeof(float), cudaMemcpyDeviceToHost));

@@ -11,6 +11,14 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
+int et_is_block_multiple(int size)
+{
+    if (size % (ET_BLOCK_SIZE*ET_BLOCK_SIZE) == 0)
+        return 1;
+    return 0;
+}
+
+
 int et_affine(nifti_image *sourceImage, nifti_image *transformedImage, mat44 *affineTransformation, float background)
 {
     int status = 1;

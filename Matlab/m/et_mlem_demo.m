@@ -1,9 +1,9 @@
 
-% ET_MLEM
+% ET_MLEM_DEMO
 %     NiftyRec Demo: MLEM SPECT reconstruction 
 %
 %See also
-%   ET_MAPEM_MRF_DEMO, ET_MAPEM_STEP
+%   ET_OSEM_DEMO, ET_MAPEM_MRF_DEMO, ET_MAPEM_STEP
 %
 % 
 %Stefano Pedemonte
@@ -15,7 +15,7 @@
 N          = 128;
 N_cameras  = 120;
 cameras    = linspace(0,2*pi,N_cameras)';
-psf        = ones(11,11,N);
+psf        = ones(5,5,N);
 N_counts   = 50e6;
 
 iter_mlem  = 30;
@@ -23,7 +23,7 @@ GPU        = 1;
 
 %% Simulate SPECT scan 
 disp('Creating synthetic sinogram..');
-mask = et_spherical_phantom(N,N,N,N/2,1,0,(N+1)/2,(N+1)/2,(N+1)/2);
+mask = et_spherical_phantom(N,N,N,N*0.45,1,0,(N+1)/2,(N+1)/2,(N+1)/2);
 phantom = et_spherical_phantom(N,N,N,N/8,100,10,N/4,N/3,N/2) .* mask;
 attenuation = et_spherical_phantom(N,N,N,N/8,0.00002,0.00001,N/4,N/3,N/2) .* mask;
 ideal_sinogram = et_project(phantom, cameras, attenuation, psf, GPU);

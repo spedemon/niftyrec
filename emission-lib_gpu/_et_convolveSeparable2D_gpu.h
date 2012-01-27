@@ -6,6 +6,7 @@
 #include "nifti1_io.h"
 
 #define MAX_SEPARABLE_KERNEL_RADIUS 32
+#define ET_BLOCK_SIZE 8
 
 extern "C" void convolutionRowsGPU(float *d_Dst,float *d_Src,int imageW,int imageH,int kernelRadius);
 extern "C" void convolutionColumnsGPU(float *d_Dst,float *d_Src,int imageW,int imageH,int kernelRadius);
