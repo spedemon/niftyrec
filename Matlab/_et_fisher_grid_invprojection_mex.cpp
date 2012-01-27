@@ -172,6 +172,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
            break;
       }
 
+   /* Check if activity is multiple of ET_BLOCK_SIZE */
+   if (!et_is_block_multiple(bkpr_size[0]) || !et_is_block_multiple(bkpr_size[1]))
+       mexErrMsgTxt("Size of activity must be a multiple of 64");
+
    /* Check if EnableGPU is specified */
    enable_gpu = 0;
    if (nrhs>5)

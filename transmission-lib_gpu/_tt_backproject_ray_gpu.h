@@ -11,7 +11,7 @@
 #include <vector_types.h>
 #include <vector_functions.h>
 #include <driver_functions.h>
-#include <sys/time.h>
+//#include <sys/time.h>
 #include <cutil_math.h>
 
 extern "C" int set_inViewMatrix(float *invViewMatrix, float_2 detector_scale, float_3 detector_transl, float_3 detector_rotat);

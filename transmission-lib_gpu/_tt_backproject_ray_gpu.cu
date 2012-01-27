@@ -152,7 +152,7 @@ extern "C" int tt_backproject_cpu(float *out_backprojection, float *current_proj
 //########################################
 
 
-int iDivUp(int a, int b){
+inline int iDivUp(int a, int b){
     return (a % b != 0) ? (a / b + 1) : (a / b);
 }
 

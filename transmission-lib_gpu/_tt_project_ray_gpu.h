@@ -6,7 +6,7 @@
 #include <vector_types.h>
 #include <vector_functions.h>
 #include <driver_functions.h>
-#include <sys/time.h>
+//#include <sys/time.h>
 #include <_tt_common.h>
 
 extern "C" void setTextureFilterMode(bool bLinearFilter);

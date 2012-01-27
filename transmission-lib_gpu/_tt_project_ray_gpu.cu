@@ -16,11 +16,11 @@
 #include <vector_types.h>
 #include <vector_functions.h>
 #include <driver_functions.h>
-#include <sys/time.h>
+//#include <sys/time.h>
 #include <_tt_common.h>
 
 
-int iDivUp(int a, int b){
+inline int iDivUp(int a, int b){
     return (a % b != 0) ? (a / b + 1) : (a / b);
 }
 
