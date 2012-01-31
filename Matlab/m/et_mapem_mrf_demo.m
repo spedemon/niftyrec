@@ -5,7 +5,7 @@
 %     with regularisation based on quadratic Markov Random Field. 
 %
 %See also
-%   ET_MLEM_DEMO, ET_MAPEM_STEP
+%   ET_MLEM_DEMO, ET_MAPEM_STEP, ET_OSEM_DEMO
 %
 % 
 %Stefano Pedemonte

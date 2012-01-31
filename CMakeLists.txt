@@ -161,7 +161,7 @@ SET(NIFTY_REG_LIBRARIES_GPU _reg_cudaCommon _reg_resampling_gpu _reg_affineTrans
 
 
 SUBDIRS(emission-lib)
-SUBDIRS(transmission-lib)
+#SUBDIRS(transmission-lib)
 IF(NiftyRec_BUILD_MEX)
         SUBDIRS(Matlab)
 ENDIF(NiftyRec_BUILD_MEX)
@@ -170,7 +170,7 @@ IF(NiftyRec_BUILD_PY)
 ENDIF(NiftyRec_BUILD_PY)
 IF(NiftyRec_USE_CUDA)
 	SUBDIRS(emission-lib_gpu)
-	SUBDIRS(transmission-lib_gpu)
+#	SUBDIRS(transmission-lib_gpu)
 ENDIF(NiftyRec_USE_CUDA)
 IF(NiftyRec_COMPILE_DOC)
         SUBDIRS(doc)
