@@ -577,7 +577,7 @@ extern "C" int et_array_fisher_grid(float *activity_ptr, int *activity_size, flo
         nifti_image *fisherImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
         fisherImage->data = (float *)(fisher_ptr);
 
-        nifti_image *fisherpriorImage;
+        nifti_image *fisherpriorImage = NULL;
         if (fisher_prior_ptr!=NULL)
             {
             fisherpriorImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
@@ -765,7 +765,7 @@ extern "C" int et_array_fisher_grid_projection(float *sinogram_ptr, int *sinogra
         nifti_image *fisherImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
         fisherImage->data = (float *)(fisher_ptr);
 
-        nifti_image *fisherpriorImage;
+        nifti_image *fisherpriorImage = NULL;
         if (fisher_prior_ptr!=NULL)
             {
             fisherpriorImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
@@ -773,7 +773,7 @@ extern "C" int et_array_fisher_grid_projection(float *sinogram_ptr, int *sinogra
             }
 
 	//Allocate Point Spread Function nifti image
-        nifti_image *psfImage = NULL;
+        nifti_image *psfIfmage = NULL;
         if (!no_psf)
             {
             dim[1] = psf_size[0];
