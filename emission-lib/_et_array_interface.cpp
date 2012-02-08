@@ -773,7 +773,7 @@ extern "C" int et_array_fisher_grid_projection(float *sinogram_ptr, int *sinogra
             }
 
 	//Allocate Point Spread Function nifti image
-        nifti_image *psfIfmage = NULL;
+        nifti_image *psfImage = NULL;
         if (!no_psf)
             {
             dim[1] = psf_size[0];
