@@ -129,6 +129,7 @@ int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *
 
         /* Decide whether to use FFT or separate the convolution */
         float *psfSeparated=NULL;
+        float psf_norm;
 	if(psfImage!=NULL)
             {
             if(1) //if (psfImage->nx <= (MAX_SEPARABLE_KERNEL_RADIUS*2)+1) 
@@ -140,10 +141,11 @@ int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *
                 psfSeparated = (float*) malloc((psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float));
                 for (int n=0; n<psf_size[2];n++) 
                     {
+                    psf_norm = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 * psf_size[0] + (psf_size[0]-1)/2];
                     for (int i=0;i<psf_size[0];i++) 
                         {
                         psfSeparated[(psf_size[0]+psf_size[1])*n + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 * psf_size[0] + i];
-                        psfSeparated[(psf_size[0]+psf_size[1])*n + psf_size[0] + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 + i * psf_size[0]];
+                        psfSeparated[(psf_size[0]+psf_size[1])*n + psf_size[0] + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 + i * psf_size[0]] / psf_norm;
                         }
                     }
                 }
@@ -292,6 +294,7 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *accumulatorImage, ni
 
         /* Decide whether to use FFT or separate the convolution */
         float *psfSeparated=NULL;
+        float psf_norm;
 	if(psfImage!=NULL)
             {
             if(1) //if (psfImage->nx <= (MAX_SEPARABLE_KERNEL_RADIUS*2)+1) 
@@ -303,10 +306,11 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *accumulatorImage, ni
                 psfSeparated = (float*) malloc((psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float));
                 for (int n=0; n<psf_size[2];n++) 
                     {
+                    psf_norm = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 * psf_size[0] + (psf_size[0]-1)/2];
                     for (int i=0;i<psf_size[0];i++) 
                         {
                         psfSeparated[(psf_size[0]+psf_size[1])*n + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 * psf_size[0] + i];
-                        psfSeparated[(psf_size[0]+psf_size[1])*n + psf_size[0] + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 + i * psf_size[0]];
+                        psfSeparated[(psf_size[0]+psf_size[1])*n + psf_size[0] + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 + i * psf_size[0]] / psf_norm;
                         }
                     }
                 }
@@ -808,10 +812,12 @@ int et_project_gpu(nifti_image *activity, nifti_image *sinoImage, nifti_image *p
             {
             CUDA_SAFE_CALL(cudaMalloc((void **)&psfSeparatedArray_d, (psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float)));
             float *psfSeparatedArray_h = (float*) malloc((psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float));
+            float psf_norm;
             for (int n=0; n<psf_size[2];n++) {
+                psf_norm = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 * psf_size[0] + (psf_size[0]-1)/2];
                 for (int i=0;i<psf_size[0];i++) {
                     psfSeparatedArray_h[(psf_size[0]+psf_size[1])*n + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 * psf_size[0] + i];
-                    psfSeparatedArray_h[(psf_size[0]+psf_size[1])*n + psf_size[0] + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 + i * psf_size[0]];
+                    psfSeparatedArray_h[(psf_size[0]+psf_size[1])*n + psf_size[0] + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 + i * psf_size[0]] / psf_norm;
                     }
                 }
             CUDA_SAFE_CALL(cudaMemcpy(psfSeparatedArray_d, psfSeparatedArray_h, (psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float), cudaMemcpyHostToDevice));
@@ -1017,10 +1023,12 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *accumulatorImage, ni
             {
             CUDA_SAFE_CALL(cudaMalloc((void **)&psfSeparatedArray_d, (psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float)));
             float *psfSeparatedArray_h = (float*) malloc((psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float));
+            float psf_norm;
             for (int n=0; n<psf_size[2];n++) {
+                psf_norm = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 * psf_size[0] + (psf_size[0]-1)/2];
                 for (int i=0;i<psf_size[0];i++) {
                     psfSeparatedArray_h[(psf_size[0]+psf_size[1])*n + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 * psf_size[0] + i];
-                    psfSeparatedArray_h[(psf_size[0]+psf_size[1])*n + psf_size[0] + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 + i * psf_size[0]];
+                    psfSeparatedArray_h[(psf_size[0]+psf_size[1])*n + psf_size[0] + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 + i * psf_size[0]] / psf_norm;
                     }
                 }
             CUDA_SAFE_CALL(cudaMemcpy(psfSeparatedArray_d, psfSeparatedArray_h, (psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float), cudaMemcpyHostToDevice));
