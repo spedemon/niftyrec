@@ -4045,7 +4045,6 @@ void reg_bspline_initialiseControlPointGridWithAffine3D(	mat44 *affineTransforma
             index[1]=(float)y;
             for(int x=0; x<controlPointImage->nx; x++){
                 index[0]=(float)x;
-
                 reg_mat44_mul(&voxelToRealDeformed, index, position);
 
                 *CPPX++ = position[0];

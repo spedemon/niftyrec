@@ -128,7 +128,9 @@ ENDIF(NiftyRec_SUPPORT_NRRD)
 
 #Build the following libraries. Names are set here (not in the subfolders) so targets 
 #in the subfolders know what to link against. In order to add a new library, list it here. 
-SET(NIFTY_REC_INTERF_LIBRARIES _et_array_interface _tt_array_interface)
+SET(NIFTY_REC_ET_INTERF_LIBRARY _et_array_interface)
+SET(NIFTY_REC_TT_INTERF_LIBRARY _tt_array_interface)
+SET(NIFTY_REC_REG_INTERF_LIBRARY _reg_array_interface)
 SET(NIFTY_REC_ET_LIBRARIES _et_common _et_line_integral _et_line_integral_attenuated _et_line_backproject_attenuated _et_line_backproject _et_accumulate _et_clear_accumulator _et_convolve2D _et_convolveSeparable2D _et_convolveFFT2D)
 SET(NIFTY_REC_ET_LIBRARIES_GPU _et_line_integral_gpu _et_line_integral_attenuated_gpu _et_line_backproject_gpu _et_line_backproject_attenuated_gpu _et_clear_accumulator_gpu _et_accumulate_gpu _et_convolveSeparable2D_gpu _et_convolveFFT2D_gpu)
 SET(NIFTY_REC_ET_MEX et_project_mex et_backproject_mex et_project_backproject_mex et_convolve_mex et_rotate_mex et_list_gpus_mex et_set_gpu_mex et_affine_mex et_reorder_activity_in et_reorder_activity_out et_variance_centre_approx_mex et_fisher_grid_mex et_fisher_grid_invprojection_mex)
