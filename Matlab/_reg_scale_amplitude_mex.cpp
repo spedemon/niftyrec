@@ -18,41 +18,26 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
    /* Check for proper number of arguments. */
    if (!(nrhs==3 || nrhs==4)){
-      mexErrMsgTxt("3 or 4 inputs required: Image [N,M,K], Spline Nodes [Y,W,Z,4], Nodes Spacing [y,w,z], [use_gpu]");
+      mexErrMsgTxt("3 or 4 inputs required: Image [N,M,K], Min Value, Max Value, [use_gpu]");
    }
 
    int   image_size[3];     //
-   float spacing[3];        //
-   int   nodes_size[3];
-   int   enable_gpu = 1;    // Flag for GPU Acceleration: 1 to enable, 0 to disable.
+   float min_value, max_value;
+   int   enable_gpu = 0;    // Flag for GPU Acceleration: 1 to enable, 0 to disable.
    int   status = 1;        // Return 0 if everython ok, 1 if errors.
 
    image_size[0] = mxGetDimensions(prhs[0])[0];
    image_size[1] = mxGetDimensions(prhs[0])[1];
    image_size[2] = mxGetDimensions(prhs[0])[2];
 
-   nodes_size[0] = mxGetDimensions(prhs[1])[0];
-   nodes_size[1] = mxGetDimensions(prhs[1])[1];
-   nodes_size[2] = mxGetDimensions(prhs[1])[2];
-
-   if (mxGetClassID(prhs[2]) == mxSINGLE_CLASS)
-       {
-       spacing[0] = ((float*) mxGetData(prhs[2]))[0];
-       spacing[1] = ((float*) mxGetData(prhs[2]))[1];
-       spacing[2] = ((float*) mxGetData(prhs[2]))[2];
-       }
-   else if (mxGetClassID(prhs[2]) == mxDOUBLE_CLASS)
-       {
-       spacing[0] = ((double*) mxGetData(prhs[2]))[0];
-       spacing[1] = ((double*) mxGetData(prhs[2]))[1];
-       spacing[2] = ((double*) mxGetData(prhs[2]))[2];
-       }
-
    /* The inputs must be noncomplex floating point matrices */
    if (!(mxGetClassID(prhs[0]) == mxSINGLE_CLASS || mxGetClassID(prhs[0]) == mxDOUBLE_CLASS))
        mexErrMsgTxt("Input image must be noncomplex single or double floating point.");
    if (!(mxGetClassID(prhs[1]) == mxSINGLE_CLASS || mxGetClassID(prhs[1]) == mxDOUBLE_CLASS))
        mexErrMsgTxt("Spline nodes must be noncomplex single or double floating point.");
+   if (!(mxGetClassID(prhs[2]) == mxSINGLE_CLASS || mxGetClassID(prhs[2]) == mxDOUBLE_CLASS))
+       mexErrMsgTxt("Spline nodes must be noncomplex single or double floating point.");
+
 
    /* Check if EnableGPU is specified */
    if (nrhs>=4)
@@ -70,16 +55,16 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
        for (int i=0; i<image_size[0]*image_size[1]*image_size[2]; i++)
            image_ptr[i] = image_ptr_d[i];
        }
-   float *nodes_ptr;    
+
    if (mxGetClassID(prhs[1]) == mxSINGLE_CLASS)
-       nodes_ptr = (float *) (mxGetData(prhs[1]));
+       min_value = ((float*)mxGetData(prhs[1]))[0];
    else
-       {
-       double *nodes_ptr_d = (double *) (mxGetData(prhs[1]));
-       nodes_ptr = (float*) malloc(nodes_size[0]*nodes_size[1]*nodes_size[2]*3*sizeof(float));
-       for (int i=0; i<nodes_size[0]*nodes_size[1]*nodes_size[2]*3; i++)
-           nodes_ptr[i] = nodes_ptr_d[i];
-       }
+       min_value = ((double*)mxGetData(prhs[1]))[0];
+
+   if (mxGetClassID(prhs[2]) == mxSINGLE_CLASS)
+       max_value = ((float*)mxGetData(prhs[2]))[0];
+   else
+       max_value = ((double*)mxGetData(prhs[2]))[0];
 
    /* Allocate out matrix */   
    mwSize mw_outimage_size[3];
@@ -92,14 +77,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
    /* Compute NMI gradient with respect of position of nodes of the splines */
 
-   status = reg_array_resample_spline(outimage_ptr, image_ptr, nodes_ptr, image_size, nodes_size, spacing, enable_gpu);
+   memcpy((void*)outimage_ptr, (void*)image_ptr, image_size[0]*image_size[1]*image_size[2]*sizeof(float));
+   status = reg_array_scale_amplitude(outimage_ptr, image_size, min_value, max_value, enable_gpu);
 
-   if (mxGetClassID(prhs[0]) == mxDOUBLE_CLASS) free(image_ptr);
-   if (mxGetClassID(prhs[1]) == mxDOUBLE_CLASS) free(nodes_ptr);
+   if (mxGetClassID(prhs[0]) != mxSINGLE_CLASS) free(image_ptr);
 
    /* Return */
    if (status != 0)
-   	mexErrMsgTxt("Error while resampling the image.");
+   	mexErrMsgTxt("Error while scaling the image.");
    return;
 }
 

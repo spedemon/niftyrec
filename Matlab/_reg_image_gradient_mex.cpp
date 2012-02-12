@@ -82,24 +82,25 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
        }
 
    /* Allocate out matrix */   
-   mwSize mw_outimage_size[3];
+   mwSize mw_outimage_size[4];
    mw_outimage_size[0] = (mwSize)image_size[0];
    mw_outimage_size[1] = (mwSize)image_size[1];
    mw_outimage_size[2] = (mwSize)image_size[2];
+   mw_outimage_size[3] = 3;
 
-   plhs[0] =  mxCreateNumericArray(3, mw_outimage_size, mxSINGLE_CLASS, mxREAL);
+   plhs[0] =  mxCreateNumericArray(4, mw_outimage_size, mxSINGLE_CLASS, mxREAL);
    float *outimage_ptr = (float *)(mxGetData(plhs[0]));
 
    /* Compute NMI gradient with respect of position of nodes of the splines */
 
-   status = reg_array_resample_spline(outimage_ptr, image_ptr, nodes_ptr, image_size, nodes_size, spacing, enable_gpu);
+   status = reg_array_image_gradient(outimage_ptr, image_ptr, nodes_ptr, image_size, nodes_size, spacing, enable_gpu);
 
    if (mxGetClassID(prhs[0]) == mxDOUBLE_CLASS) free(image_ptr);
    if (mxGetClassID(prhs[1]) == mxDOUBLE_CLASS) free(nodes_ptr);
 
    /* Return */
    if (status != 0)
-   	mexErrMsgTxt("Error while resampling the image.");
+   	mexErrMsgTxt("Error while computing the gradient of the image.");
    return;
 }
 
