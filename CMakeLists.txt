@@ -13,7 +13,7 @@ endif(COMMAND cmake_policy)
 
 #-----------------------------------------------------------------------------
 SET(Nifty_Rec_VERSION_MAJOR 1)
-SET(Nifty_Rec_VERSION_MINOR 4)
+SET(Nifty_Rec_VERSION_MINOR 5)
 
 #-----------------------------------------------------------------------------
 

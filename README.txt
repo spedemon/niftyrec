@@ -46,7 +46,9 @@ of the GPU accelerated algorithms, while maintaining the full speed.
     * Documentation update
 
 -- NiftyRec 1.5 (Rel. Jan 2012) --
+    * Faster projection and back-projection (separable convolution) 
     * Fast Fisher Information Estimation
+    * Several bug fixes and improved Matlab demos and inline documentation
 
 ##############################################################################
 
