@@ -2,6 +2,9 @@
 #include "_et.h"
 #include "_et_common.h"
 #include<stdio.h>
+#ifdef _OPENMP
+#include "omp.h"
+#endif
 
 #define max(a,b)	(((a) > (b)) ? (a) : (b))
 #define min(a,b)	(((a) < (b)) ? (a) : (b))
@@ -16,6 +19,10 @@ int et_is_block_multiple(int size)
     if (size % (ET_BLOCK_SIZE*ET_BLOCK_SIZE) == 0)
         return 1;
     return 0;
+}
+int et_get_block_size(void)
+{
+    return ET_BLOCK_SIZE*ET_BLOCK_SIZE;
 }
 
 
@@ -77,6 +84,11 @@ int et_rotate(nifti_image *sourceImage, nifti_image *resultImage, float theta_x,
 
 int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation)
 {
+#ifdef _OPENMP
+    omp_set_dynamic( 0 );
+    omp_set_num_threads( 8 );
+#endif
+
         int separable_psf = 0;
         int psf_size[3];
 
@@ -179,6 +191,7 @@ int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *
 						1,
 						background_attenuation );	                    
                     }
+
                 // Apply Depth Dependent Point Spread Function //
                 if (psfImage != NULL)
                     {
@@ -210,13 +223,17 @@ int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *
                                                 sinoImage,
                                                 cam );
                     }
+
 	}
 
         /* Truncate negative values: small negative values may be found due to FFT and IFFT */
         float* sino_data = (float*) sinoImage->data;
+//#pragma omp parallel for 
         for (int i=0; i<sinoImage->nvox; i++)
+            {
             if (sino_data[i] < 0)
                 sino_data[i] = 0;
+            }
 
 	/* Deallocate memory */
 	nifti_image_free(rotatedImage);
@@ -235,6 +252,9 @@ int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *
 
 int et_backproject(nifti_image *sinogramImage, nifti_image *accumulatorImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation)
 {
+#ifdef _OPENMP
+    omp_set_num_threads( 8 );
+#endif
         int separable_psf = 0;
         int psf_size[3];
 
@@ -319,6 +339,7 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *accumulatorImage, ni
         /* Backproject */
 	for(int cam=0; cam<n_cameras; cam++){
                 /* Rotate attenuation */
+
                 if (attenuationImage != NULL)                
                     {
                     et_create_rotation_matrix(	affineTransformation,
@@ -339,6 +360,7 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *accumulatorImage, ni
 						1,
 						background_attenuation );
                     }
+
 		/* Line Backproject */
                 if (attenuationImage != NULL)
                     {
@@ -399,10 +421,12 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *accumulatorImage, ni
 
         /* Truncate negative values: small negative values may be found due to FFT and IFFT */
         float* accumulator_data = (float*) accumulatorImage->data;
+//#pragma omp parallel for 
         for (int i=0; i<accumulatorImage->nvox; i++)
+            {
             if (accumulator_data[i] < 0)
                 accumulator_data[i] = 0;
-
+            }
 	/*Free*/
 	nifti_image_free(rotatedImage);
         if (attenuationImage != NULL)        
@@ -832,7 +856,7 @@ int et_project_gpu(nifti_image *activity, nifti_image *sinoImage, nifti_image *p
             }
 
 	for(unsigned int cam=0; cam<n_cameras; cam++){
-
+fprintf(stderr,"et_project: Rotation: %f  %f  %f  \n",cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam]);
                 fprintf_verbose( "et_project: Rotation: %f  %f  %f  \n",cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam]);
 		// Apply affine //
 		et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], center_x, center_y, center_z);
@@ -877,6 +901,7 @@ int et_project_gpu(nifti_image *activity, nifti_image *sinoImage, nifti_image *p
                                                 psf_size,
                                                 &rotatedArray_d);
                     }
+
 		// Integrate along lines //
                 if (attenuationImage != NULL)
                     {

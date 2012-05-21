@@ -1,35 +1,37 @@
 PROJECT(nifty_rec)
 
 cmake_minimum_required(VERSION 2.8)
-IF("${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}" MATCHES "^2\\.8$")
- MARK_AS_ADVANCED(FORCE CMAKE_BACKWARDS_COMPATIBILITY)
-ELSE("${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}" MATCHES "^2\\.8$")
- MARK_AS_ADVANCED(CLEAR CMAKE_BACKWARDS_COMPATIBILITY)
-ENDIF("${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}" MATCHES "^2\\.8$")
-
-if(COMMAND cmake_policy)
-      cmake_policy(SET CMP0003 NEW)
-endif(COMMAND cmake_policy)
+cmake_policy(VERSION 2.8)
+include(CPack)
+include(ExternalProject)
+ENABLE_TESTING()
 
 #-----------------------------------------------------------------------------
 SET(Nifty_Rec_VERSION_MAJOR 1)
-SET(Nifty_Rec_VERSION_MINOR 5)
+SET(Nifty_Rec_VERSION_MINOR 6)
 
 #-----------------------------------------------------------------------------
-
-OPTION(NiftyRec_BUILD_MEX           "Build Matlab extension modules" OFF)
-OPTION(NiftyRec_BUILD_PY            "Build Python extension modules" OFF)
-OPTION(NiftyRec_BUILD_APPS          "Build command line applications" OFF)
+OPTION(NiftyRec_BUILD_MEX           "Build Matlab extension modules" ON)
+OPTION(NiftyRec_BUILD_PY            "Build Python extension modules" ON)
+OPTION(NiftyRec_BUILD_APPS          "Build command line applications (including 2D Slicer plugins)" OFF)
+OPTION(NiftyRec_BUILD_RENDERER      "Build multi-modal volume renderer" OFF)
+#OPTION(NiftyRec_INSTALL_NIFTYSEG    "Download and install NiftySeg" OFF)
 OPTION(NiftyRec_USE_CUDA            "Compile GPU implementation of the code" OFF)
+IF(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    IF(NOT CMAKE_SYSTEM_VERSION VERSION_GREATER 11.0 OR CMAKE_SYSTEM_VERSION VERSION_EQUAL 11.0.0)
+        OPTION(NiftyRec_USE_OPENMP "To use openMP for multi-CPU processing" OFF)
+    ENDIF()
+ENDIF()
 IF(NOT(${CMAKE_SYSTEM_NAME} MATCHES "Windows"))
     OPTION(NiftyRec_BUILD_SHARED    "Build as shared libraries" ON)
 ELSE()
     SET(NiftyRec_BUILD_SHARED OFF)
 ENDIF()
-OPTION(NiftyRec_SUPPORT_NRRD        "Support NRRD image file format OFF")
+OPTION(NiftyRec_SUPPORT_NRRD        "Support NRRD image file format. Enable to generate 3D Slicer plugins." OFF)
 OPTION(NiftyRec_DO_PACKAGE          "Generate platform specific self-installing packages" OFF)
 OPTION(NiftyRec_COMPILE_DOC         "Compile pdf documentation from the Latex source" OFF)
 OPTION(NiftyRec_VERBOSE             "Print out extra information when compiling" OFF)
+OPTION(NiftyRec_INCLUDE_DATA        "Include example data sets" OFF)
 
 IF(CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "limited configs" FORCE)
@@ -52,7 +54,9 @@ SET(LIB_INSTALL_DIR "lib")
 SET(BIN_INSTALL_DIR "niftyrec/bin")
 SET(INC_INSTALL_DIR "include")
 SET(DOC_INSTALL_DIR "niftyrec/doc")
-SET(MEX_INSTALL_DIR "niftyrec/matlab")
+SET(MEX_INSTALL_DIR_NIFTYREC "niftyrec/matlab")
+SET(MEX_INSTALL_DIR_NIFTYREG "niftyreg/matlab")
+SET(MEX_INSTALL_DIR_NIFTYSEG "niftyseg/matlab")
 SET(PYTHON_INSTALL_DIR "niftyrec/python")
 
 #-----------------------------------------------------------------------------
@@ -61,6 +65,28 @@ SET(PYTHON_INSTALL_DIR "niftyrec/python")
 #This avoids setting LD_LIBRARY_PATH 
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR})
+
+#-----------------------------------------------------------------------------
+IF(NiftyRec_USE_OPENMP)
+    IF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+        IF(CMAKE_SYSTEM_VERSION VERSION_GREATER 11.0 OR CMAKE_SYSTEM_VERSION VERSION_EQUAL 11.0.0)
+            MESSAGE("OpenMP appears to be broken using Mac OS Lion")
+            MESSAGE(FATAL_ERROR "Please turn NiftyRec_USE_OPENMP OFF")
+        ENDIF()
+    ENDIF()
+	
+    EXECUTE_PROCESS(COMMAND ${CMAKE_C_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
+
+    IF(GCC_VERSION VERSION_GREATER 4.2 OR GCC_VERSION VERSION_EQUAL 4.2)
+        SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp")
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+    ENDIF()
+	
+    IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+        SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /openmp")
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /openmp")
+    ENDIF()
+ENDIF(NiftyRec_USE_OPENMP)
 
 #-----------------------------------------------------------------------------
 
@@ -140,6 +166,8 @@ SET(NIFTY_REC_TT_MEX tt_project_ray_mex tt_backproject_ray_mex)
 
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/emission-lib)
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/transmission-lib)
+
+
 IF(NiftyRec_USE_CUDA)
     INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/emission-lib_gpu)
     INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/transmission-lib_gpu)
@@ -163,16 +191,19 @@ SET(NIFTY_REG_LIBRARIES_GPU _reg_cudaCommon _reg_resampling_gpu _reg_affineTrans
 
 
 SUBDIRS(emission-lib)
-#SUBDIRS(transmission-lib)
+SUBDIRS(transmission-lib)
 IF(NiftyRec_BUILD_MEX)
         SUBDIRS(Matlab)
 ENDIF(NiftyRec_BUILD_MEX)
 IF(NiftyRec_BUILD_PY)
-        SUBDIRS(NiftyRec)
+        SUBDIRS(Python)
 ENDIF(NiftyRec_BUILD_PY)
+IF(NiftyRec_BUILD_RENDERER)
+        SUBDIRS(volume_render)
+ENDIF(NiftyRec_BUILD_RENDERER)
 IF(NiftyRec_USE_CUDA)
 	SUBDIRS(emission-lib_gpu)
-#	SUBDIRS(transmission-lib_gpu)
+	SUBDIRS(transmission-lib_gpu)
 ENDIF(NiftyRec_USE_CUDA)
 IF(NiftyRec_COMPILE_DOC)
         SUBDIRS(doc)
@@ -181,17 +212,37 @@ IF(NiftyRec_BUILD_APPS)
         SUBDIRS(apps)
 ENDIF(NiftyRec_BUILD_APPS)
 SUBDIRS(misc)
+IF(NiftyRec_INCLUDE_DATA)
+    SUBDIRS(data)
+ENDIF(NiftyRec_INCLUDE_DATA)
 
-
+#-----------------------------------------------------------------------------
+#IF(NiftyRec_INSTALL_NIFTYSEG)
+#ExternalProject_Add(niftyseg
+#            SOURCE_DIR ${PROJECT_BINARY_DIR}/niftyseg
+#            PREFIX ${PROJECT_BINARY_DIR}/niftyseg
+#            STAMP_DIR ${PROJECT_BINARY_DIR}/niftyseg/stamps
+#            TMP_DIR ${PROJECT_BINARY_DIR}/niftyseg/stamps
+#            DOWNLOAD_DIR ${PROJECT_BINARY_DIR}/niftyseg
+#            BINARY_DIR ${PROJECT_BINARY_DIR}/niftyseg/build
+#            SVN_REPOSITORY https://niftyseg.svn.sourceforge.net/svnroot/niftyseg/
+#            UPDATE_COMMAND ""
+#            CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_INSTALL_PREFIX}/niftyseg
+#            BUILD_COMMAND ${CMAKE_BUILD_TOOL}
+#            INSTALL_COMMAND ${CMAKE_BUILD_TOOL} install
+#            )
+#SUBDIRS(nifty_seg_bindings)
+#ENDIF(NiftyRec_INSTALL_NIFTYSEG)
+SUBDIRS(seg-lib)
 
 #-----------------------------------------------------------------------------
 
 IF(NiftyRec_DO_PACKAGE)
         IF(UNIX)
             IF(APPLE)
-                SET(CPACK_GENERATOR "TZ;TGZ;PackageMaker")
+                SET(CPACK_GENERATOR "TGZ;PackageMaker")
             ELSE(APPLE)
-                SET(CPACK_GENERATOR "TZ;TGZ;DEB")
+                SET(CPACK_GENERATOR "TGZ;DEB")
             ENDIF(APPLE)
         ENDIF(UNIX)
 

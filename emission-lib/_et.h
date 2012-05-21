@@ -2,6 +2,8 @@
 #define SIZE_OF_INFO 5
 #define MAX_DEVICES 16
 
+#define ET_BLOCK_SIZE 8
+
 #define eps 0.000000000001f
 
 #include "_reg_tools.h"
@@ -48,6 +50,7 @@ int et_set_gpu(int id);
 #endif
 
 int et_is_block_multiple(int size);
+int et_get_block_size(void);
 int et_rotate(nifti_image *sourceImage, nifti_image *resultImage, float alpha, float beta, float gamma, float center_x, float center_y, float center_z, float background);
 int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation);
 int et_backproject(nifti_image *sinogram, nifti_image *accumulator, nifti_image *psf, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation);
