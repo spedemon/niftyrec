@@ -12,4 +12,4 @@ int reg_array_ssd_gradient(float *ssd_gradient_ptr, float *target_ptr, float *so
 int reg_array_gaussian_smooth(float *image_ptr, int image_size[], float smoothing_sigma, int enable_gpu); 
 int reg_array_scale_amplitude(float *image_ptr, int image_size[], float min_value, float max_value, int enable_gpu); 
 int reg_array_gradient_jacobian_determinant(float *nodes_gradient_ptr, float *control_points_ptr, int image_size[], int cp_size[], float cp_spacing[], float weight, int GPU);
-int reg_array_gradient_bending_energy_gpu(float *nodes_gradient_ptr, float *control_points_ptr, int image_size[], int cp_size[], float cp_spacing[], float weight, int GPU);
+int reg_array_gradient_bending_energy(float *nodes_gradient_ptr, float *control_points_ptr, int image_size[], int cp_size[], float cp_spacing[], float weight, int GPU);

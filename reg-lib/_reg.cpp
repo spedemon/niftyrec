@@ -334,7 +334,6 @@ int reg_resample_spline_gpu(nifti_image *resultImage, nifti_image *sourceImage, 
 		}
 	CUDA_SAFE_CALL(cudaMalloc((void **)&targetMask_d, activeVoxelNumber*sizeof(int)));
 	CUDA_SAFE_CALL(cudaMemcpy(targetMask_d, targetMask_h, activeVoxelNumber*sizeof(int), cudaMemcpyHostToDevice));
-	CUDA_SAFE_CALL(cudaFreeHost(targetMask_h));
 
 	CUDA_SAFE_CALL(cudaMalloc((void **)&positionFieldImageArray_d, activeVoxelNumber*sizeof(float4)));
 
@@ -359,11 +358,13 @@ int reg_resample_spline_gpu(nifti_image *resultImage, nifti_image *sourceImage, 
 
 	if(cudaCommon_transferFromDeviceToNifti(resultImage, &resultImageArray_d)) return 1;
 
+        free(targetMask);
+	CUDA_SAFE_CALL(cudaFreeHost(targetMask_h));
 	cudaCommon_free( &sourceImageArray_d );
-	cudaCommon_free( (void **)&controlPointImageArray_d );
 	cudaCommon_free( (void **)&resultImageArray_d );
+	cudaCommon_free( (void **)&controlPointImageArray_d );
 	cudaCommon_free( (void **)&positionFieldImageArray_d );
-	CUDA_SAFE_CALL(cudaFree(targetMask_d));
+	cudaCommon_free( (void **)&targetMask_d );
 
 	status = 0;
 	return status;
@@ -417,8 +418,12 @@ int reg_image_gradient(nifti_image *resultGradientImage, nifti_image *sourceImag
 							1);
     nifti_image_free(positionFieldImage);
     nifti_image_free(resampledImage);
+    free(targetMask);
+
     return 0;
 }
+
+
 
 #ifdef _USE_CUDA
 int reg_image_gradient_gpu(nifti_image *resultGradientImage, nifti_image *sourceImage, nifti_image *controlPointImage)
@@ -454,7 +459,6 @@ int reg_image_gradient_gpu(nifti_image *resultGradientImage, nifti_image *source
 		}
 	CUDA_SAFE_CALL(cudaMalloc((void **)&targetMask_d, activeVoxelNumber*sizeof(int)));
 	CUDA_SAFE_CALL(cudaMemcpy(targetMask_d, targetMask_h, activeVoxelNumber*sizeof(int), cudaMemcpyHostToDevice));
-	CUDA_SAFE_CALL(cudaFreeHost(targetMask_h));
 
 	CUDA_SAFE_CALL(cudaMalloc((void **)&positionFieldImageArray_d, activeVoxelNumber*sizeof(float4)));
 	CUDA_SAFE_CALL(cudaMalloc((void **)&resultGradientArray_d, activeVoxelNumber*sizeof(float4)));
@@ -477,11 +481,13 @@ int reg_image_gradient_gpu(nifti_image *resultGradientImage, nifti_image *source
 
 	if(cudaCommon_transferFromDeviceToNifti(resultGradientImage, &resultGradientArray_d)) return 1;
 
+	free(targetMask);
+	CUDA_SAFE_CALL(cudaFreeHost(targetMask_h));
 	cudaCommon_free( &sourceImageArray_d );
 	cudaCommon_free( (void **)&controlPointImageArray_d );
 	cudaCommon_free( (void **)&resultGradientArray_d );
 	cudaCommon_free( (void **)&positionFieldImageArray_d );
-	CUDA_SAFE_CALL(cudaFree(targetMask_d));
+	cudaCommon_free( (void **)&targetMask_d );
 
 	status = 0;
 	return status;
@@ -564,12 +570,12 @@ int reg_scale_amplitude_gpu(nifti_image *niftiImage, float min_value, float max_
 
 
 
-int reg_gradient_jacobian_determinant(nifti_image *controlPointImage, nifti_image *nodeGradientImage, int image_size[], float image_spacing[], float weight)
+int reg_gradient_jacobian_determinant(nifti_image *nodesGradientImage, nifti_image *controlPointImage, int image_size[], float image_spacing[], float weight)
 {
 	nifti_image *targetImage = reg_initialize_image(image_size, image_spacing);
 	reg_bspline_jacobianDeterminantGradient<float>( controlPointImage,
 								targetImage,
-								nodeGradientImage,
+								nodesGradientImage,
 								weight,
 								1);
 	free_nifti_image_except_data(targetImage);
@@ -577,12 +583,12 @@ int reg_gradient_jacobian_determinant(nifti_image *controlPointImage, nifti_imag
 }
 
 #ifdef _USE_CUDA
-int reg_gradient_jacobian_determinant_gpu(nifti_image *controlPointImage, nifti_image *nodeGradientImage, int image_size[], float image_spacing[], float weight)
+int reg_gradient_jacobian_determinant_gpu(nifti_image *nodesGradientImage, nifti_image *controlPointImage, int image_size[], float image_spacing[], float weight)
 {
 //	nifti_image *targetImage = reg_initialize_image(image_size, image_spacing);
 //	reg_bspline_jacobianDeterminantGradient<float>( controlPointImage,
 //								targetImage,
-//								nodeGradientImage,
+//								nodesGradientImage,
 //								weight,
 //								1);
 //	free_nifti_image_except_data(targetImage);
@@ -591,25 +597,32 @@ int reg_gradient_jacobian_determinant_gpu(nifti_image *controlPointImage, nifti_
 #endif
 
 
-
-int reg_gradient_bending_energy(nifti_image *controlPointImage, nifti_image *nodeGradientImage, int image_size[], float image_spacing[], float weight)
+int reg_gradient_bending_energy(nifti_image *nodesGradientImage, nifti_image *controlPointImage, int image_size[], float image_spacing[], float weight)
 {
 	nifti_image *targetImage = reg_initialize_image(image_size, image_spacing);
-	reg_bspline_bendingEnergyGradient<float>(	controlPointImage,
+
+fprintf(stderr, "Target delta:       %f %f %f \n",targetImage->dx,targetImage->dy,targetImage->dz);
+fprintf(stderr, "Target size:        %d %d %d (nvox: %d) \n",targetImage->nx,targetImage->ny,targetImage->nz,targetImage->nvox);
+
+fprintf(stderr, "CP delta:           %f %f %f \n",controlPointImage->dx,controlPointImage->dy,controlPointImage->dz);
+fprintf(stderr, "CP size:            %d %d %d (nvox: %d) \n",controlPointImage->nx,controlPointImage->ny,controlPointImage->nz,controlPointImage->nvox);
+fprintf(stderr, "Weight:             %f \n",weight);
+
+	reg_bspline_bendingEnergyGradient<float>(		controlPointImage,
 								targetImage,
-								nodeGradientImage,
+								nodesGradientImage,
 								weight);
 	free_nifti_image_except_data(targetImage);
 	return 0;
 }
 
 #ifdef _USE_CUDA
-int reg_gradient_bending_energy_gpu(nifti_image *controlPointImage, nifti_image *nodeGradientImage, int image_size[], float image_spacing[], float weight)
+int reg_gradient_bending_energy_gpu(nifti_image *nodesGradientImage, nifti_image *controlPointImage, int image_size[], float image_spacing[], float weight)
 {
 //	nifti_image *targetImage = reg_initialize_image(image_size, image_spacing);
 //	reg_bspline_bendingEnergyGradient<float>(		controlPointImage,
 //								targetImage,
-//								nodeGradientImage,
+//								nodesGradientImage,
 //								weight);
 //	free_nifti_image_except_data(targetImage);
 	return 1;

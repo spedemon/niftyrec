@@ -14,8 +14,8 @@ int reg_image_gradient(nifti_image *resultImage, nifti_image *sourceImage, nifti
 int reg_ssd_gradient(nifti_image *ssdGradientImage, nifti_image *targetImage, nifti_image *sourceImage, nifti_image *gradientImage, int smoothingRadius[]);
 int reg_gaussian_smooth(nifti_image *niftiImage, float sigma);
 int reg_scale_amplitude(nifti_image *niftiImage, float min_value, float max_value);
-int reg_gradient_jacobian_determinant(nifti_image *controlPointImage, nifti_image *nodeGradientImage, int image_size[], float image_spacing[], float weight);
-int reg_gradient_bending_energy(nifti_image *controlPointImage, nifti_image *nodeGradientImage, int image_size[], float image_spacing[], float weight);
+int reg_gradient_jacobian_determinant(nifti_image *nodesGradientImage, nifti_image *controlPointImage, int image_size[], float image_spacing[], float weight);
+int reg_gradient_bending_energy(nifti_image *nodesGradientImage, nifti_image *controlPointImage, int image_size[], float image_spacing[], float weight);
 
 #ifdef _USE_CUDA
 int reg_image_gradient_gpu(nifti_image *resultImage, nifti_image *sourceImage, nifti_image *controlPointImage);
@@ -25,7 +25,7 @@ int reg_resample_spline_gpu(nifti_image *resultImage, nifti_image *sourceImage, 
 int reg_ssd_gradient_gpu(nifti_image *ssdGradientImage, nifti_image *targetImage, nifti_image *sourceImage, nifti_image *gradientImage, int smoothingRadius[]);
 int reg_gaussian_smooth_gpu(nifti_image *niftiImage, float sigma);
 int reg_scale_amplitude_gpu(nifti_image *niftiImage, float min_value, float max_value);
-int reg_gradient_jacobian_determinant_gpu(nifti_image *controlPointImage, nifti_image *nodeGradientImage, int image_size[], float image_spacing[], float weight);
-int reg_gradient_bending_energy_gpu(nifti_image *controlPointImage, nifti_image *nodeGradientImage, int image_size[], float image_spacing[], float weight);
+int reg_gradient_jacobian_determinant_gpu(nifti_image *nodesGradientImage, nifti_image *controlPointImage, int image_size[], float image_spacing[], float weight);
+int reg_gradient_bending_energy_gpu(nifti_image *nodesGradientImage, nifti_image *controlPointImage, int image_size[], float image_spacing[], float weight);
 #endif
 
