@@ -34,8 +34,8 @@ extern "C" void convolutionColumn(float *h_Dst,float *h_Src,float *h_Kernel,int 
 
 int et_convolveSeparable2D(nifti_image* inputImage, float *kernelSeparated, int kernelLengthH, int kernelLengthW, nifti_image *outputImage, float background)
 {
-    int imageH = inputImage->nx;
-    int imageW = inputImage->ny;
+    int imageH = inputImage->ny;
+    int imageW = inputImage->nx;
     int n_slices = inputImage->nz;
     int kernelRadiusH = (kernelLengthH-1)/2;
     int kernelRadiusW = (kernelLengthW-1)/2;

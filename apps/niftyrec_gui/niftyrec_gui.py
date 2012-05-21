@@ -61,6 +61,8 @@ class MainWindow:
         #Set the Glade file
         self.gladefile = "niftyrec.glade"
         path = os.path.split(sys.argv[0])[0]
+        if path=="":
+            path = "."
         self.wTree = gtk.glade.XML(path+"//"+self.gladefile) 
         #Get the Main Window, and connect the "destroy" event
         self.window = self.wTree.get_widget("MainWindow")

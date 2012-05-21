@@ -1,6 +1,5 @@
 
 #-----------------------------------------------------------------------------
-
 MACRO(BUILD_INSTALL_LIBRARY LIBRARY_NAME LIBRARY_TYPE LIBRARY_USE_GPU)
     ADD_LIBRARY(${LIBRARY_NAME} ${LIBRARY_TYPE} ${LIBRARY_NAME}.h ${LIBRARY_NAME}.cpp)
     IF(${LIBRARY_USE_GPU} MATCHES ON)
@@ -15,7 +14,17 @@ MACRO(BUILD_INSTALL_LIBRARY LIBRARY_NAME LIBRARY_TYPE LIBRARY_USE_GPU)
 ENDMACRO(BUILD_INSTALL_LIBRARY)
 
 #-----------------------------------------------------------------------------
+MACRO(BUILD_TEST TEST_NAME TEST_USE_GPU)
+    IF(${TEST_USE_GPU} MATCHES ON)
+        CUDA_ADD_EXECUTABLE(${TEST_NAME} ${TEST_NAME}.cpp)
+        TARGET_LINK_LIBRARIES(${TEST_NAME} ${NIFTY_REC_ET_LIBRARIES} ${NIFTY_REG_LIBRARIES_GPU} ${CUDA_LIBRARIES} ${CUDA_cufft_LIBRARY} _et _et_array_interface )
+    ELSE(${TEST_USE_GPU} MATCHES ON)
+        ADD_EXECUTABLE(${TEST_NAME} ${TEST_NAME}.cpp)
+        TARGET_LINK_LIBRARIES(${TEST_NAME} ${NIFTY_REC_ET_LIBRARIES} ${NIFTY_REG_LIBRARIES} _et _et_array_interface )
+    ENDIF(${TEST_USE_GPU} MATCHES ON)
+ENDMACRO(BUILD_TEST)
 
+#-----------------------------------------------------------------------------
 FOREACH(LIBRARY_NAME ${NIFTY_REC_ET_LIBRARIES})
     BUILD_INSTALL_LIBRARY(${LIBRARY_NAME} ${LIB_TYPE} ${NiftyRec_USE_CUDA})
 ENDFOREACH(LIBRARY_NAME)
@@ -35,8 +44,6 @@ SET(LIBRARY_NAME _et_array_interface)
 BUILD_INSTALL_LIBRARY(${LIBRARY_NAME} ${LIB_TYPE} ${NiftyRec_USE_CUDA})
 TARGET_LINK_LIBRARIES(${LIBRARY_NAME} _et)
 
-
-
 #SET(LIBRARY_NAME _reg)
 #BUILD_INSTALL_LIBRARY(${LIBRARY_NAME} ${LIB_TYPE} ${NiftyRec_USE_CUDA})
 
@@ -45,4 +52,19 @@ TARGET_LINK_LIBRARIES(${LIBRARY_NAME} _et)
 #TARGET_LINK_LIBRARIES(${LIBRARY_NAME} _reg)
 
 #-----------------------------------------------------------------------------
+SET(TEST_NAME test_et_project)
+BUILD_TEST(${TEST_NAME} ${NiftyRec_USE_CUDA})
+ADD_TEST(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
+
+SET(TEST_NAME test_et_backproject)
+BUILD_TEST(${TEST_NAME} ${NiftyRec_USE_CUDA})
+ADD_TEST(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
+
+SET(TEST_NAME test_et_line_integral)
+BUILD_TEST(${TEST_NAME} ${NiftyRec_USE_CUDA})
+ADD_TEST(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
+
+#-----------------------------------------------------------------------------
+
+
 

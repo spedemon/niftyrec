@@ -1,6 +1,7 @@
 
 #include <string>
 #include <iostream>
+#include <fstream>
 #include <algorithm>
 #include <tclap/CmdLine.h>
 #include "niftyrec_version.h"
@@ -13,23 +14,28 @@
 #define FILETYPE_NIFTI 0
 #define FILETYPE_NRRD  1
 
+#define BACKGROUND_ACTIVITY 0.0f
+#define BACKGROUND_ATTENUATION 0.0f
+#define EPSILON 0.0000001f
+
 #define XML_FILE "./rec_spect.xml"
 
 char xml_string[] = ""
 "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
 "<executable>\n"
 "  <category>Reconstruction</category>\n"
-"  <title>REC SPECT</title>\n"
+"  <title>NiftyRec SPECT</title>\n"
 "  <description>\n"
 "  Reconstruct SPECT images from sinogram data\n"
 "  </description>\n"
-"  <version>1.4</version>\n"
+"  <version>1.5</version>\n"
 "  <documentation-url>http://sourceforge.net/niftyrec</documentation-url>\n"
 "  <license>http://sourceforge.net/niftyrec</license>\n"
-"  <contributor>UCL</contributor>\n"
+"  <contributor>CMIC-UCL</contributor>\n"
 "  <parameters>\n"
 "    <label>Workspace IO</label>\n"
 "    <description>Input images</description>\n"
+
 "    <image>\n"
 "      <name>Sinogram</name>\n"
 "      <label>Sinogram</label>\n"
@@ -37,6 +43,15 @@ char xml_string[] = ""
 "      <longflag>sinogram</longflag>\n"
 "      <description>Sinogram data</description>\n"
 "    </image>\n"
+
+"    <image>\n"
+"      <name>Attenuation</name>\n"
+"      <label>Attenuation</label>\n"
+"      <channel>input</channel>\n"
+"      <longflag>attenuation</longflag>\n"
+"      <description>Attenuation map</description>\n"
+"    </image>\n"
+
 "    <image>\n"
 "      <name>OutputActivity</name>\n"
 "      <label>Output Activity</label>\n"
@@ -44,12 +59,12 @@ char xml_string[] = ""
 "      <longflag>output</longflag>\n"
 "      <description>Output activity</description>\n"
 "    </image>\n"
+
 "  </parameters>\n"
 "  <parameters>\n"
 "    <label>SPECT Acquisition Parameters</label>\n"
-"    <description>\n"
-"    Parameters of the SPECT acquisition\n"
-"    </description>\n"
+"    <description>Parameters of the SPECT acquisition</description>\n"
+
 "    <double>\n"
 "      <name>FirstCamera</name>\n"
 "      <longflag>firstcamera</longflag>\n"
@@ -59,6 +74,7 @@ char xml_string[] = ""
 "      <label>First Camera Position</label>\n"
 "      <default>0.0</default>\n"
 "    </double>\n"
+
 "    <double>\n"
 "      <name>LastCamera</name>\n"
 "      <longflag>lastcamera</longflag>\n"
@@ -68,21 +84,171 @@ char xml_string[] = ""
 "      <label>Last Camera Position</label>\n"
 "      <default>180.0</default>\n"
 "    </double>\n"
+
+"    <integer>\n"
+"      <name>RotationAxis</name>\n"
+"      <longflag>axis</longflag>\n"
+"      <description>Axis of rotation of the Gamma Camera</description>\n"
+"      <label>RotationAxis</label>\n"
+"      <default>0</default>\n"
+"      <constraints>\n"
+"        <minimum>0</minimum>\n"
+"        <maximum>2</maximum>\n"
+"        <step>1</step>\n"
+"      </constraints>\n"
+"    </integer>\n"
+
+"    <double>\n"
+"      <name>FWHM0</name>\n"
+"      <longflag>fwhm0</longflag>\n"
+"      <description>\n"
+"      PSF Full Width Half Maximum in pixels at distance dist0\n"
+"      </description>\n"
+"      <label>PSF Full Width Half Maximum 0</label>\n"
+"      <default>3.0</default>\n"
+"      <constraints>\n"
+"        <minimum>0.0</minimum>\n"
+"        <maximum>256.0</maximum>\n"
+"      </constraints>\n"
+"    </double>\n"
+
+"    <double>\n"
+"      <name>FWHM1</name>\n"
+"      <longflag>fwhm1</longflag>\n"
+"      <description>\n"
+"      PSF Full Width Half Maximum in pixels at distance dist1\n"
+"      </description>\n"
+"      <label>PSF Full Width Half Maximum 1</label>\n"
+"      <default>3.0</default>\n"
+"      <constraints>\n"
+"        <minimum>0.0</minimum>\n"
+"        <maximum>256.0</maximum>\n"
+"        <step>0.1</step>\n"
+"      </constraints>\n"
+"    </double>\n"
+
+"    <double>\n"
+"      <name>Efficiency0</name>\n"
+"      <longflag>efficiency0</longflag>\n"
+"      <description>\n"
+"      PSF efficiency at distance dist0\n"
+"      </description>\n"
+"      <label>PSF Efficiency 0</label>\n"
+"      <default>0.9</default>\n"
+"      <constraints>\n"
+"        <minimum>0.0</minimum>\n"
+"        <maximum>1.0</maximum>\n"
+"        <step>0.05</step>\n"
+"      </constraints>\n"
+"    </double>\n"
+
+"    <double>\n"
+"      <name>Efficiency1</name>\n"
+"      <longflag>efficiency1</longflag>\n"
+"      <description>\n"
+"      PSF efficiency at distance dist1\n"
+"      </description>\n"
+"      <label>PSF Efficiency 1</label>\n"
+"      <default>0.9</default>\n"
+"      <constraints>\n"
+"        <minimum>0.0</minimum>\n"
+"        <maximum>1.0</maximum>\n"
+"        <step>0.05</step>\n"
+"      </constraints>\n"
+"    </double>\n"
+
+"    <double>\n"
+"      <name>Distance0</name>\n"
+"      <longflag>dist0</longflag>\n"
+"      <description>\n"
+"      Distance from the camera in pixels of PSF0 (characterised by FWHM0 and Efficiency0)\n"
+"      </description>\n"
+"      <label>PSF distance 0</label>\n"
+"      <default>10.0</default>\n"
+"      <constraints>\n"
+"        <minimum>0.0</minimum>\n"
+"        <maximum>4096.0</maximum>\n"
+"        <step>0.1</step>\n"
+"      </constraints>\n"
+"    </double>\n"
+
+"    <double>\n"
+"      <name>Distance1</name>\n"
+"      <longflag>dist1</longflag>\n"
+"      <description>\n"
+"      Distance from the camera in pixels of PSF1 (characterised by FWHM1 and Efficiency1)\n"
+"      </description>\n"
+"      <label>PSF distance 1</label>\n"
+"      <default>10.0</default>\n"
+"      <constraints>\n"
+"        <minimum>0.0</minimum>\n"
+"        <maximum>4096.0</maximum>\n"
+"        <step>0.1</step>\n"
+"      </constraints>\n"
+"    </double>\n"
+
+"    <double>\n"
+"      <name>RotationRadius</name>\n"
+"      <longflag>radius</longflag>\n"
+"      <description>\n"
+"      Radius of rotation of the Gamma Camera in pixels\n"
+"      </description>\n"
+"      <label>Rotation Radius</label>\n"
+"      <default>20.0</default>\n"
+"      <constraints>\n"
+"        <minimum>0.0</minimum>\n"
+"        <maximum>4096.0</maximum>\n"
+"        <step>0.1</step>\n"
+"      </constraints>\n"
+"    </double>\n"
+
 "  </parameters>\n"
 "  <parameters>\n"
 "    <label>Reconstruction Parameters</label>\n"
 "    <description>\n"
 "    Parameters for the reconstruction\n"
 "    </description>\n"
+
 "    <integer>\n"
 "      <name>iterations</name>\n"
 "      <longflag>iterations</longflag>\n"
 "      <description>\n"
-"      An integer without constraints\n"
+"      Iterations of the reconstruction algorithm.\n"
 "      </description>\n"
 "      <label>Iterations</label>\n"
 "      <default>20</default>\n"
+"      <constraints>\n"
+"        <minimum>1</minimum>\n"
+"        <maximum>5000</maximum>\n"
+"        <step>1</step>\n"
+"      </constraints>\n"
 "    </integer>\n"
+
+"    <boolean>\n"
+"      <name>ForceGpuAccelerationOFF</name>\n"
+"      <longflag>gpu_off</longflag>\n"
+"      <description>\n"
+"      Force OFF GPU acceleration. Otherwise NiftyRec will attempt to use GPU hardware acceleration. \n"
+"      </description>\n"
+"      <label>Force disable GPU</label>\n"
+"      <default>false</default>\n"
+"    </boolean>\n" 
+
+"    <integer>\n"
+"      <name>SubsetsOSEM</name>\n"
+"      <longflag>subsets</longflag>\n"
+"      <description>\n"
+"      Number of subsets for OSEM reconstruction. The higher, the faster, the lower, the more accurate. \n"
+"      </description>\n"
+"      <label>Subsets OSEM</label>\n"
+"      <default>16</default>\n"
+"      <constraints>\n"
+"        <minimum>1</minimum>\n"
+"        <maximum>180</maximum>\n"
+"        <step>1</step>\n"
+"      </constraints>\n"
+"    </integer>\n"
+
 "  </parameters>\n"
 "</executable>\n";
 
@@ -115,7 +281,7 @@ nifti_image *nrrd_to_nifti(Nrrd *nrrdImage)
 {
     nifti_image *niftiImage = NULL;
     /* say something about the array */
-    std::cout << "== Nrrd -> Nifti conversion ==" << std::endl;
+    std::cout << "================ Nrrd -> Nifti conversion ===============" << std::endl;
     printf("-- Converting %d-dimensional NRRD of type %d (%s)\n", nrrdImage->dim, nrrdImage->type, airEnumStr(nrrdType, nrrdImage->type));
     for (int n_axis=0; n_axis<nrrdImage->dim; n_axis++)
         printf("-- Size axis %d: %d\n",n_axis,nrrdImage->axis[n_axis].size);
@@ -142,13 +308,14 @@ nifti_image *nrrd_to_nifti(Nrrd *nrrdImage)
     {
         std::cout << "-- Conversion from Nrrd to Nifti not supported for Nrrd format %s." << airEnumStr(nrrdType, nrrdImage->type) << std::endl;
     }
+    std::cout << "=========================================================" << std::endl;
     return niftiImage;
 }
 
 
 Nrrd *nifti_to_nrrd(nifti_image *niftiImage)
 {
-    std::cout << "== Nifti -> Nrrd conversion ==" << std::endl;
+    std::cout << "================ Nifti -> Nrrd conversion ===============" << std::endl;
     Nrrd *nrrdImage = nrrdNew(); 
     unsigned int dim = niftiImage->dim[0];
     size_t size[NRRD_DIM_MAX];
@@ -173,6 +340,7 @@ Nrrd *nifti_to_nrrd(nifti_image *niftiImage)
     for (int n_axis=0; n_axis<nrrdImage->dim; n_axis++)
         printf("-- Size axis %d: %d\n",n_axis,nrrdImage->axis[n_axis].size);
     std::cout << "-- Conversion done" << std::endl;
+    std::cout << "=========================================================" << std::endl;
     return nrrdImage;
 }
 #endif
@@ -182,6 +350,7 @@ Nrrd *nifti_to_nrrd(nifti_image *niftiImage)
 
 int main(int argc, char** argv)
 {
+    int status;
     if (argc==2)
     {
         if(strcmp(argv[1], "--xml") == 0)
@@ -194,42 +363,62 @@ int main(int argc, char** argv)
     try 
     {  
     //Parse command line arguments
-        TCLAP::CmdLine cmd("Maximum Likelihood Expectation Maximisation (MLEM) reconstruction. ", ' ', VERSION);
+        TCLAP::CmdLine cmd("NiftyRec SPECT - Maximum Likelihood Expectation Maximisation (MLEM) and Odered Subsets Expectation Maximisation (OSEM) reconstruction of SPECT sinogram data. ", ' ', VERSION);
 
         //Required input sinogram data file
-        TCLAP::ValueArg<std::string> sinogramArg("s","sinogram","Sinogram data file to reconstruct",true,"homer","string",cmd);
+        TCLAP::ValueArg<std::string> sinogramArg("s","sinogram","Sinogram data file to reconstruct. Volumetric data of size [NxNxn_cameras].",true,"none","string",cmd);
         //Required output file name
-        TCLAP::ValueArg<std::string> outputArg("o","output","File name for the output reconstructed image",true,"homer","string",cmd);
+        TCLAP::ValueArg<std::string> outputArg("o","output","File name for the output reconstructed image. Reconstructed image will be of size [NxMxN].",true,"none","string",cmd);
+        //Optional attenuation map
+        TCLAP::ValueArg<std::string> attenuationArg("a","attenuation","Filename of the attenuation map image. Image must be of size [NxMxN] for sinogram of size [NxN]. ",false,"none","string",cmd);
         //Optional first camera angle
-        TCLAP::ValueArg<float> firstcameraArg("f","firstcamera","Position of the first camera in degrees. Default is 0.0 deg",false,0.0f,"float",cmd);
+        TCLAP::ValueArg<float> firstcameraArg("c","firstcamera","Position of the first camera in degrees. Defaults to 0.0 deg",false,0.0f,"float",cmd);
         //Optional last camera angle
-        TCLAP::ValueArg<float> lastcameraArg("l","lastcamera","Position of the last camera in degrees. Default is 180.0 deg",false,180.0f,"float",cmd);
+        TCLAP::ValueArg<float> lastcameraArg("C","lastcamera","Position of the last camera in degrees. Defaults to 180.0 deg",false,180.0f,"float",cmd);
+        //Optional axis of rotation
+        TCLAP::ValueArg<int> axisArg("x","axis","Axis of rotation of the Gamma Camera [0,1,2]. Defaults to 0.",false,0,"int",cmd);
+        //Optional FWHM0 
+        TCLAP::ValueArg<float> fwhm0Arg("f","fwhm0","FWHM of the PSF at distance dist0 in pixels",false,3.0f,"float",cmd);
+        //Optional FWHM1 
+        TCLAP::ValueArg<float> fwhm1Arg("F","fwhm1","FWHM of the PSF at distance dist1 in pixels",false,3.0f,"float",cmd);
+        //Optional efficiency0
+        TCLAP::ValueArg<float> efficiency0Arg("e","efficiency0","Efficiency of the collimator/detector response (PSF) at distance dist0",false,0.9f,"float",cmd);
+        //Optional efficiency1
+        TCLAP::ValueArg<float> efficiency1Arg("E","efficiency1","Efficiency of the collimator/detector response (PSF) at distance dist1",false,0.9f,"float",cmd); 
+        //Optional dist0
+        TCLAP::ValueArg<float> dist0Arg("d","dist0","Distance of the PSF characterisation 0 in pixels (also specify fwhm0 and efficiency0)",false,10.0f,"float",cmd); 
+        //Optional dist1
+        TCLAP::ValueArg<float> dist1Arg("D","dist1","Distance of the PSF characterisation 1 in pixels (also specify fwhm1 and efficiency1)",false,10.0f,"float",cmd); 
+        //Optional rotation radius
+        TCLAP::ValueArg<float> radiusArg("r","radius","Radius of rotation of the Gamma camera in pixels. Defaults to 20.0",false,20.0f,"float",cmd); 
         //Optional number of iterations
-        TCLAP::ValueArg<int> iterationsArg("i","iterations","MLEM iterations",false,10,"int",cmd);
-        //Optional switch verbose
-        TCLAP::SwitchArg verboseSwitch("v","verbose","Print verbose", cmd, false);
+        TCLAP::ValueArg<int> iterationsArg("i","iterations","MLEM iterations. Defaults to 20",false,20,"int",cmd);
+        //Optional number of OSEM subsets
+        TCLAP::ValueArg<int> subsetsArg("u","subsets","Number of subsets for OSEM reconstruction. Defaults to 16. Set to 0 or 1 (indifferently) for MLEM. ",false,16,"int",cmd);
         //Optional switch use gpu
-        TCLAP::SwitchArg gpuSwitch("g","gpu","Use Graphics Processing Unit", cmd, false);
-
+        TCLAP::SwitchArg gpuSwitch("g","gpu_off","[1] - Graphics Processing Unit (GPU) hardware acceleration OFF. [0] - GPU ON. Defaults to 0.", cmd, false);
+        //Optional switch verbose
+        TCLAP::SwitchArg verboseSwitch("v","verbose","Print verbose information", cmd, false);
 
         cmd.parse( argc, argv );
 
         std::string sinogram_filename = sinogramArg.getValue().c_str();
         std::string output_filename = outputArg.getValue().c_str();
-        float firstcamera = firstcameraArg.getValue();
-        float lastcamera = lastcameraArg.getValue();
+        std::string attenuation_filename = attenuationArg.getValue().c_str();
+        float firstcamera = firstcameraArg.getValue(); 
+        float lastcamera = lastcameraArg.getValue(); 
+        unsigned int axis = axisArg.getValue(); 
+        float PSF_fwhm0 = fwhm0Arg.getValue(); 
+        float PSF_fwhm1 = fwhm1Arg.getValue(); 
+        float PSF_dist0 = dist0Arg.getValue(); 
+        float PSF_dist1 = dist1Arg.getValue(); 
+        float PSF_efficiency0 = efficiency0Arg.getValue(); 
+        float PSF_efficiency1 = efficiency1Arg.getValue(); 
+        float radius = radiusArg.getValue(); 
         int iterations = iterationsArg.getValue();
-        bool verbose = verboseSwitch.getValue();
-
-
-        if (verbose)
-        {
-            std::cout << "Sinogram file name: " << sinogram_filename << std::endl;
-            std::cout << "Output file name:   " << output_filename << std::endl;
-            std::cout << "First camera:       " << firstcamera << std::endl;
-            std::cout << "Last camera:        " << lastcamera << std::endl;
-            std::cout << "Iterations:         " << iterations << std::endl;
-        }
+        int gpu = 1; if (gpuSwitch.getValue()) gpu=0; 
+        int subsets = subsetsArg.getValue(); 
+        bool verbose = verboseSwitch.getValue(); 
 
         //Load input sinogram
         int filetype_sinogram;
@@ -237,12 +426,12 @@ int main(int argc, char** argv)
 
         if (sinogram_filename.substr(sinogram_filename.find_last_of(".") + 1) == "nii" || sinogram_filename.substr(sinogram_filename.find_last_of(".") + 1) == "nii.gz")
         {
-            std::cout << "Nifti sinogram file..." << std::endl;
+            std::cout << "Nifti sinogram file: " <<sinogram_filename<< std::endl;
             filetype_sinogram = FILETYPE_NIFTI;
         }
         else if (sinogram_filename.substr(sinogram_filename.find_last_of(".") + 1) == "nrrd")
         {
-            std::cout << "NRRD sinogram file..." << std::endl;
+            std::cout << "NRRD sinogram file: " <<sinogram_filename<< std::endl;
             filetype_sinogram = FILETYPE_NRRD;
         }
         else
@@ -276,7 +465,6 @@ int main(int argc, char** argv)
                 free(err);
                 return 1;
             }
-
             /* convert NRRD to Nifti */
 
             sinogramImage = nrrd_to_nifti(sinogram_nrrdImage);
@@ -302,40 +490,82 @@ int main(int argc, char** argv)
 
         //Reconstruct
         float *sinogram_data = (float*)sinogramImage->data;
-        int size_x = sinogramImage->nx;
-        int size_y = sinogramImage->ny;
+        unsigned int size_x = sinogramImage->nx;
+        unsigned int size_y = sinogramImage->ny;
         int n_cameras = sinogramImage->nz;
-        int use_psf = 0;
-        int use_ddpsf = 1;
-        int psf_size_x; 
-        int psf_size_y;
-        float *psf_data;
+        unsigned int psf_size_x; 
+        unsigned int psf_size_y;
+        const int use_psf = 1;
         int use_attenuation = 0; 
-        float *attenuation_data;
-        int use_gpu = (int)verboseSwitch.getValue();;
-
-        printf("== MLEM Reconstruction == \n");
-        printf("-- size_x: %d   \n-- size_y: %d   \n-- n_cameras: %d   \n-- use_psf: %d   \n", size_x, size_y, n_cameras, use_psf);
-        printf("-- use_ddpsf: %d   \n-- use_attenuation: %d   \n-- use_gpu: %d    \n", use_ddpsf, use_attenuation, use_gpu);
-
-        float *activity_data = (float*) calloc(size_x*size_x*size_y,sizeof(float));
-        if (et_mlem_spect(sinogram_data, size_x ,size_y ,n_cameras, firstcamera, lastcamera, iterations, use_psf, use_ddpsf, psf_size_x, psf_size_y, psf_data, use_attenuation, attenuation_data, activity_data, use_gpu))
+        float *activity_data = (float*) malloc(size_x*size_y*size_x*sizeof(float)); 
+        float *psf_data=NULL; 
+        float *attenuation_data=NULL; 
+        if (1)
         {
-            std::cout << "MLEM reconstruction failed. " << std::endl;
-            return 1;
+            std::cout << "=============== NiftyRec SPECT Parameters ===============" << std::endl;
+            std::cout << "Sinogram file name:       " << sinogram_filename << std::endl;
+            std::cout << "Output file name:         " << output_filename << std::endl;
+            std::cout << "Attenuation file name:    " << attenuation_filename << std::endl;
+            std::cout << "First camera:             " << firstcamera << std::endl;
+            std::cout << "Last camera:              " << lastcamera << std::endl;
+            std::cout << "Rotation axis:            " << axis << std::endl;
+            std::cout << "PSF distance 0 [pixels]:  " << PSF_dist0 << std::endl;
+            std::cout << "PSF FWHM 0 [pixels]:      " << PSF_fwhm0 << std::endl;
+            std::cout << "PSF efficiency 0:         " << PSF_efficiency0 << std::endl;
+            std::cout << "PSF distance 1 [pixels]:  " << PSF_dist1 << std::endl;
+            std::cout << "PSF FWHM 1 [pixels]:      " << PSF_fwhm1 << std::endl;
+            std::cout << "PSF efficiency 1:         " << PSF_efficiency1 << std::endl;
+            std::cout << "Rotation radius [pixels]: " << radius << std::endl;
+            std::cout << "Iterations:               " << iterations << std::endl;
+            std::cout << "OSEM subsets:             " << subsets << std::endl;
+            std::cout << "Use GPU:                  " << gpu << std::endl;
+            std::cout << "Sinogram size X [pixels]: " << size_x << std::endl; 
+            std::cout << "Sinogram size Y [pixels]: " << size_y << std::endl; 
+            std::cout << "Number of projections:    " << n_cameras << std::endl; 
+            std::cout << "Activity size X [pixels]: " << size_x << std::endl; 
+            std::cout << "Activity size Y [pixels]: " << size_y << std::endl; 
+            std::cout << "Activity size Z [pixels]: " << size_x << std::endl;
+            std::cout << "=========================================================" << std::endl;
         }
+
+        status = et_array_calculate_size_psf(&psf_size_x, &psf_size_y, PSF_fwhm0, PSF_efficiency0, PSF_dist0, PSF_fwhm1, PSF_efficiency1, PSF_dist1); 
+        if (status != 0) { fprintf(stderr,"rec_spect: Error creating PSF.\n"); return status; }
+        psf_data = (float*) malloc(psf_size_x*psf_size_y*size_x*sizeof(float)); 
+        status = et_array_make_psf(psf_data, psf_size_x, psf_size_y, PSF_fwhm0, PSF_efficiency0, PSF_dist0, PSF_fwhm1, PSF_efficiency1, PSF_dist1, size_x); 
+        if (status != 0) { fprintf(stderr,"rec_spect: Error creating PSF.\n"); free(psf_data); return status; }
+
+        if (use_attenuation) 
+            {
+            attenuation_data = (float*) malloc(size_x*size_y*size_x*sizeof(float)); 
+            } 
+
+        if (subsets<=1)
+            status = et_array_mlem_spect(activity_data, size_x, size_y, sinogram_data, n_cameras, firstcamera, lastcamera, axis, iterations, use_attenuation, attenuation_data, use_psf, psf_data, psf_size_x, psf_size_y, BACKGROUND_ACTIVITY, BACKGROUND_ATTENUATION, EPSILON, gpu);
+        else
+            status = et_array_osem_spect(activity_data, size_x, size_y, subsets, sinogram_data, n_cameras, firstcamera, lastcamera, axis, iterations, use_attenuation, attenuation_data, use_psf, psf_data, psf_size_x, psf_size_y, BACKGROUND_ACTIVITY, BACKGROUND_ATTENUATION, EPSILON, gpu);
+
+        if (status!=0) 
+            { 
+            fprintf(stderr,"rec_spect: reconstruction failed.\n "); 
+            free(activity_data); 
+            if (use_psf)
+                free(psf_data);
+            if (use_attenuation)
+                free(attenuation_data); 
+            return 1; 
+            } 
 
         //Save result
         int filetype_output;
 
         if (output_filename.substr(output_filename.find_last_of(".") + 1) == "nii" || output_filename.substr(output_filename.find_last_of(".") + 1) == "nii.gz")
         {
-            std::cout << "Nifti output file ..." << std::endl;
+            std::cout << "Nifti output file: " <<output_filename<< std::endl;
             filetype_output = FILETYPE_NIFTI;
         }
         else if (output_filename.substr(output_filename.find_last_of(".") + 1) == "nrrd")
         {
-            std::cout << "NRRD output file ..." << std::endl;
+            std::cout << "NRRD output file: " <<output_filename<< std::endl;
             filetype_output = FILETYPE_NRRD;
         }
         else
@@ -347,8 +577,8 @@ int main(int argc, char** argv)
         int dim[8];
         dim[0]=3;
         dim[1]=size_x;
-        dim[2]=size_x;
-        dim[3]=size_y;
+        dim[2]=size_y;
+        dim[3]=size_x;
         dim[4]=1; dim[5]=1; dim[6]=1; dim[7]=1;
         nifti_image *activityImage;
         activityImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
@@ -384,7 +614,9 @@ int main(int argc, char** argv)
 
     }
     catch (TCLAP::ArgException &e)  // catch any exceptions
-    {   std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl; } 
+    {
+    std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl; 
+    } 
     return 0;
 }
 

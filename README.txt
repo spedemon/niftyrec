@@ -1,6 +1,6 @@
-#####################
-# NIFTYREC PACKAGE #
-#####################
+###################################
+# NIFTYREC RECONSTRUCTION TOOLBOX #
+###################################
 
 
 ##############################################################################
@@ -50,6 +50,19 @@ of the GPU accelerated algorithms, while maintaining the full speed.
     * Fast Fisher Information Estimation
     * Several bug fixes and improved Matlab demos and inline documentation
 
+-- NiftyRec 1.6 (Rel. May 2012) --
+    * Command line reconstruction tool for SPECT 
+    * 3D Slicer4 plugin (based on Slicer execution model)
+    * Independent from Matlab Toolboxes (now only requires basic Matlab install) 
+    * Emission tomography handles non-cubic volumes 
+    * Emission tomography handles 2D 
+    * Simind interface: import and reconstruct Simind simulations 
+    * PET-Sorteo interface: import and reconstruct PET-Sorteo simulations 
+    * Matlab demos for Simind and PET-Sorteo reconstruction 
+    * Barebone CTest based unit testing
+    * NiftySeg bindings 
+    * Barebone NiftyReg bindings 
+
 ##############################################################################
 
 ------------------
@@ -67,9 +80,9 @@ of the GPU accelerated algorithms, while maintaining the full speed.
 
 ##############################################################################
 
--------
-4 BUILD
--------
+-------------------------------
+4 BUILD AND INSTALL FROM SOURCE
+-------------------------------
 
 NiftyRec is based on the CMake cross-platform build system. 
 As a design choice NiftyRec does not have any external dependencies when 
@@ -118,21 +131,20 @@ Further details are in the Programming Manual of NiftyRec.
 
 ##############################################################################
 
--------
-5 USAGE
--------
+-----
+5 USE
+-----
 
 --Matlab Toolbox
-   Launch Matlab. Add path to NiftyRec Toolbox. 
+   Launch Matlab. Add path to NiftyRec Toolbox, e.g.:
 
    >> addpath '/usr/local/niftyrec/matlab'
 
    Or add permanently by clicking on File->Add path. 
    The path NiftyRec Toolbox is set as an option in CMake. 
-   It defaults to '/usr/local/niftyrec/matlab' in Linux and MAC OS and in Windows 
-   it's in the NiftyRec install directory, which defaults to C:/ProgramFiles/NiftyRec
-   Open Matlab help and click on Emission Tomography Toolbox 
-   to visualize the documentation of NiftyRec Toolbox.
+   It defaults to '/usr/local/niftyrec/matlab' in Linux and MAC OS, in  Windows C:/ProgramFiles/NiftyRec
+   Open Matlab help and click on NiftyRec Toolbox 
+   to visualize the documentation of NiftyRec Toolbox. Execute and edit et_osem_demo.m to get started. 
 
 --Python Extension
 

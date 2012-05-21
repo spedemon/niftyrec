@@ -1,6 +1,7 @@
 
 #include "_et_array_interface.h"
 #include "_et_common.h"
+#define PI 3.141592653589793f
 
 extern "C" int et_array_affine(float *image_ptr, int *image_size, float *transformed_image_ptr, int *transformed_image_size, float *affine_ptr, int *affine_size, float background, int GPU)
 {
@@ -154,7 +155,7 @@ extern "C" int et_array_project(float *activity, int *activity_size, float *sino
             //Size of psf must be odd
             if (!no_psf)
                 {
-                if (psf_size[0]%2!=1 || psf_size[1]%2!=1)
+                if (psf_size[0]%2!=1 || psf_size[1]!=activity_size[0])
                     {
                     fprintf_verbose("et_array_project: 2D psf must be of size [h,k]; h,k odd.\n");
                     return status;
@@ -162,29 +163,30 @@ extern "C" int et_array_project(float *activity, int *activity_size, float *sino
                 }
             }
         if (dims==3)
-            //Activity must be of size [NxNxm]; m>=2
+            //Activity must be of size [NxmxN];
             {
-            if (activity_size[0] != activity_size[1] || activity_size[2]<2)
-                {
-                fprintf_verbose("et_array_project: 3D activity must be of size [N,N,m]; m>=2.\n");
-                return status;
-                }
+//            if (activity_size[0] != activity_size[1] || activity_size[2]<2)
+//                {
+//                fprintf_verbose("et_array_project: 3D activity must be of size [N,N,m]; m>=2.\n");
+//                return status;
+//                }
             //Size of sinogram must be consistent with activity size
-            if (sinogram_size[0] != activity_size[0] || sinogram_size[1] != activity_size[2] || sinogram_size[2] != n_cameras) 
-                {
-                fprintf_verbose("et_array_project: 3D sinogram must be of size [N,m,n_cameras] for activity of size [N,N,m] and 'n_cameras' cameras.\n");
-                return status;
-                }
+//            if (sinogram_size[0] != activity_size[0] || sinogram_size[1] != activity_size[2] || sinogram_size[2] != n_cameras) 
+//                {
+//                fprintf_verbose("et_array_project: 3D sinogram must be of size [N,m,n_cameras] for activity of size [N,N,m] and 'n_cameras' cameras.\n");
+//                return status;
+//                }
             //Size of psf must be odd and consistent with activity size
             if (!no_psf)
                 {
-                if (psf_size[0]%2!=1 || psf_size[1]%2!=1 || psf_size[2]!=activity_size[2])
+                if (psf_size[0]%2!=1 || psf_size[1]%2!=1 || psf_size[2]!=activity_size[0])
                     {
-                    fprintf_verbose("et_array_project: 3D psf must be of size [h,k,m] for activity of size [N,N,m]; h,k odd.\n");
+                    fprintf_verbose("et_array_project: 3D psf must be of size [h,k,N] for activity of size [N,m,N]; h,k odd.\n");
                     return status;
                     }
                 }
             }
+
 
         // Allocate array for cameras
         cameras_array = (float *)malloc(n_cameras*3*sizeof(float));
@@ -230,7 +232,7 @@ extern "C" int et_array_project(float *activity, int *activity_size, float *sino
 	else
 	   {
 	   dim[1] = activity_size[0];
-	   dim[2] = activity_size[2];
+	   dim[2] = activity_size[1];
 	   dim[3] = n_cameras;	   
 	   }
         nifti_image *sinogramImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
@@ -347,7 +349,7 @@ extern "C" int et_array_backproject(float *sino, int *sino_size, float *bkpr, in
                 }
             }
         if (dims==3)
-            //Sino must be of size [Nxmxn_cameras]; m>=2
+            //Sino must be of size [Nxmxn_cameras]; 
             {
             if (sino_size[2] != n_cameras)
                 {
@@ -359,7 +361,7 @@ extern "C" int et_array_backproject(float *sino, int *sino_size, float *bkpr, in
                 {
                 if (psf_size[0]%2!=1 || psf_size[1]%2!=1 || psf_size[2]!=sino_size[0])
                     {
-                    fprintf_verbose("et_array_backproject: 3D psf must be of size [h,k,N] for activity of size [N,N,m]; h,k odd.\n");
+                    fprintf_verbose("et_array_backproject: 3D psf must be of size [h,k,N] for activity of size [N,m,N]; h,k odd.\n");
                     return status;
                     }
                 }
@@ -456,10 +458,234 @@ extern "C" int et_array_backproject(float *sino, int *sino_size, float *bkpr, in
 }
 
 
-extern "C" int et_mlem_spect(float *sinogram_data, int size_x, int size_y, int n_cameras, float firstcamera, float lastcamera, int iterations, int use_psf, int use_ddpsf, int psf_size_x, int psf_size_y, float *psf_data, int use_attenuation, float *attenuation_data, float *activity_data, int GPU)
+extern "C" int et_array_calculate_size_psf(unsigned int *psf_size_x, unsigned int *psf_size_y, float fwhm_pixels_dist0, float sensitivity0, float dist0, float fwhm_pixels_dist1, float sensitivity1, float dist1)
 {
+    *psf_size_x = 5;
+    *psf_size_y = 5;
     return 0;
 }
+
+
+extern "C" int et_array_make_psf(float *psf_data, unsigned int psf_size_x, unsigned int psf_size_y, float fwhm_pixels_dist0, float sensitivity0, float dist0, float fwhm_pixels_dist1, float sensitivity1, float dist1, unsigned int N_psf_planes)
+{
+    int status;
+    unsigned int psf_size_x_calc;
+    unsigned int psf_size_y_calc;
+    status = et_array_calculate_size_psf(&psf_size_x_calc, &psf_size_y_calc, fwhm_pixels_dist0, sensitivity0, dist0, fwhm_pixels_dist1, sensitivity1, dist1); 
+    if (status!=0 || psf_size_x != psf_size_x_calc || psf_size_y != psf_size_y_calc)
+        {
+        fprintf(stderr,"et_array_make_psf: PSF size mismatch. \n");
+        return 1;
+        }
+
+    for (int i=0; i<psf_size_x*psf_size_y*N_psf_planes; i++)
+        psf_data[i] = 1;
+
+    return 0; 
+}
+
+
+extern "C" int et_array_make_cameras(float *cameras_data, float firstcamera_deg, float lastcamera_deg, unsigned int n_cameras, unsigned int rotation_axis)
+{
+    for (int cam=0; cam<n_cameras; cam++)
+        {
+        float angle = (firstcamera_deg + (lastcamera_deg-firstcamera_deg)*cam / (n_cameras-1))/180.0f*PI; 
+        for (unsigned int axis=0; axis<3; axis++)
+            {
+            if (axis==rotation_axis)
+                cameras_data[cam+axis*n_cameras] = angle;
+            else
+                cameras_data[cam+axis*n_cameras] = 0.0f; 
+            }
+        }
+    return 0;
+}
+
+
+extern "C" int et_array_osem_spect(float *activity_data, unsigned int size_x, unsigned int size_y, unsigned int subset_order, float *sinogram_data, int n_cameras, float firstcamera, float lastcamera, unsigned int rotation_axis, int iterations, int use_attenuation, float *attenuation_data, int use_psf, float *psf_data, unsigned int psf_size_x, unsigned int psf_size_y, float background, float background_attenuation, float epsilon, int use_gpu)
+{
+    int status = 0;
+
+    for (int i=0; i<size_x*size_y*size_x; i++)
+        activity_data[i] = 1.0f; 
+
+    float *cameras_data = (float*) malloc(n_cameras*3*sizeof(float)); 
+    status = status + et_array_make_cameras(cameras_data, firstcamera, lastcamera, n_cameras, rotation_axis); 
+
+    for (int iter_osem=0; iter_osem<iterations; iter_osem++)
+        {
+        fprintf(stderr,"et_array_osem_spect: step %d/%d \n",iter_osem,iterations); 
+        status = status + et_array_osem_step(activity_data, size_x, size_y, subset_order, sinogram_data, n_cameras, cameras_data, use_attenuation, attenuation_data, use_psf, psf_data, psf_size_x, psf_size_y, background, background_attenuation, epsilon, use_gpu); 
+        }
+
+    free(cameras_data); 
+    return status; 
+}
+
+float random_0_1()
+{
+  float scale=RAND_MAX+1.;
+  float base=rand()/scale;
+  float fine=rand()/scale;
+  return base+fine/scale;
+}
+
+extern "C" int et_array_osem_step(float *activity_data, int size_x, int size_y, unsigned int subset_order, float *sinogram_data, int n_cameras, float *cameras_data, int use_attenuation, float *attenuation_data, int use_psf, float *psf_data, unsigned int psf_size_x, unsigned int psf_size_y, float background, float background_attenuation, float epsilon, int use_gpu) 
+{
+    int status=0;
+    int partial_status; 
+    int sinogram_size[3]; sinogram_size[0]=size_x; sinogram_size[1]=size_y; sinogram_size[2]=n_cameras;
+    int activity_size[3]; activity_size[0]=sinogram_size[0]; activity_size[1]=sinogram_size[1]; activity_size[2]=sinogram_size[0]; 
+    int psf_size[3] = {0,0,0}; if (use_psf) {psf_size[0]=psf_size_x; psf_size[1]=psf_size_y; psf_size[2]=size_x; }; 
+    int attenuation_size[3] = {0,0,0}; if (use_attenuation) {attenuation_size[0]=activity_size[0]; attenuation_size[1]=activity_size[1]; attenuation_size[2]=activity_size[2]; }; 
+
+    // Select random subset: select randomly the first camera, 
+    // then select successive camera by drawing from a Gaussian 
+    // centred 'subset_order' indexes away 
+    // and procede that way in the same direction until 'N_cameras/subset_order' 
+    // cameras are selected
+
+    unsigned int n_cameras_sub = n_cameras / subset_order; 
+    unsigned int *cameras_indexes = (unsigned int*) malloc(n_cameras_sub*sizeof(unsigned int)); 
+    int sinogram_sub_size[3]; sinogram_sub_size[0]=size_x; sinogram_sub_size[1]=size_y; sinogram_sub_size[2]=n_cameras_sub;
+    int cameras_sub_size[2]; cameras_sub_size[1]=3; cameras_sub_size[0]=n_cameras_sub; 
+    float *projection_sub_data = (float*) malloc(sinogram_sub_size[0]*sinogram_sub_size[1]*sinogram_sub_size[2]*sizeof(float)); 
+    float *poisson_gradient_data = (float*) malloc(activity_size[0]*activity_size[1]*activity_size[2]*sizeof(float));
+    float *normalisation_data = (float*) malloc(activity_size[0]*activity_size[1]*activity_size[2]*sizeof(float));  
+    float *sinogram_sub_ones_data = (float*) malloc(sinogram_sub_size[0]*sinogram_sub_size[1]*sinogram_sub_size[2]*sizeof(float)); 
+    float *cameras_sub_data = (float*) malloc(n_cameras_sub*3*sizeof(float));
+    float *sinogram_sub_data = (float*) malloc(sinogram_sub_size[0]*sinogram_sub_size[1]*sinogram_sub_size[2]*sizeof(float)); 
+
+    for (int i=0; i<sinogram_sub_size[0]*sinogram_sub_size[1]*sinogram_sub_size[2]; i++) 
+        sinogram_sub_ones_data[i]=1.0f; 
+
+    for (int cam=0; cam<n_cameras_sub ; cam++)
+        {
+        float R = (float)random_0_1();
+        cameras_indexes[cam] = n_cameras*R; 
+        fprintf(stderr,"R: %f  Camera index: %d\n",R,cameras_indexes[cam]);
+        if(cameras_indexes[cam]>=n_cameras) cameras_indexes[cam]=n_cameras;
+        for (unsigned int axis=0; axis<3; axis++)
+             cameras_sub_data[cam+axis*n_cameras_sub] = cameras_data[cameras_indexes[cam]+axis*n_cameras]; 
+        }
+
+    for (int cam=0; cam<n_cameras_sub; cam++)
+        {
+        for (int i=0; i<sinogram_size[0]*sinogram_size[1]; i++)
+            sinogram_sub_data[cam*sinogram_size[0]*sinogram_size[1]+i]=sinogram_data[cameras_indexes[cam]*sinogram_size[0]*sinogram_size[1]+i];
+        }
+
+    partial_status = et_array_project(activity_data, activity_size, projection_sub_data, sinogram_sub_size, cameras_sub_data, cameras_sub_size, psf_data, psf_size, attenuation_data, attenuation_size, background, background_attenuation, use_gpu);     
+    status = status + partial_status; 
+    if (partial_status)
+        fprintf(stderr, "et_array_osem_step: error while performing projection \n");
+    for (int i=0; i<sinogram_sub_size[0]*sinogram_sub_size[1]*sinogram_sub_size[2]; i++) 
+        {
+        if(projection_sub_data[i]<epsilon)
+            projection_sub_data[i]=sinogram_sub_data[i]/epsilon; 
+        else
+            projection_sub_data[i]=sinogram_sub_data[i]/projection_sub_data[i];
+        }
+
+    partial_status = et_array_backproject(projection_sub_data, sinogram_sub_size, poisson_gradient_data, activity_size, cameras_sub_data, cameras_sub_size, psf_data, psf_size, attenuation_data, attenuation_size, background, background_attenuation, use_gpu); 
+    status = status + partial_status; 
+    if (partial_status)
+        fprintf(stderr, "et_array_osem_step: error while performing back-projection \n");
+
+    partial_status = et_array_backproject(sinogram_sub_ones_data, sinogram_sub_size, normalisation_data, activity_size, cameras_sub_data, cameras_sub_size, psf_data, psf_size, attenuation_data, attenuation_size, background, background_attenuation, use_gpu); 
+    status = status + partial_status; 
+    if (partial_status)
+        fprintf(stderr, "et_array_osem_step: error while computing normalisation \n");
+    for (int i=0; i<activity_size[0]*activity_size[1]*activity_size[2]; i++)
+        if(normalisation_data[i]<epsilon)
+            normalisation_data[i]=epsilon; 
+
+    for (int i=0; i<activity_size[0]*activity_size[1]*activity_size[2]; i++)
+        activity_data[i] *= poisson_gradient_data[i] / normalisation_data[i]; 
+
+    free(projection_sub_data);
+    free(poisson_gradient_data); 
+    free(normalisation_data); 
+    free(sinogram_sub_ones_data); 
+    free(cameras_indexes);
+    free(cameras_sub_data); 
+    free(sinogram_sub_data);
+    return status; 
+}
+
+
+extern "C" int et_array_mlem_spect(float *activity_data, unsigned int size_x, unsigned int size_y, float *sinogram_data, int n_cameras, float firstcamera, float lastcamera, unsigned int rotation_axis, int iterations, int use_attenuation, float *attenuation_data, int use_psf, float *psf_data, unsigned int psf_size_x, unsigned int psf_size_y, float background, float background_attenuation, float epsilon, int use_gpu)
+{
+    int status = 0;
+
+    for (int i=0; i<size_x*size_y*size_x; i++)
+        activity_data[i] = 1.0f; 
+
+    float *cameras_data = (float*) malloc(n_cameras*3*sizeof(float)); 
+    status = status + et_array_make_cameras(cameras_data, firstcamera, lastcamera, n_cameras, rotation_axis); 
+
+    for (int iter_mlem=0; iter_mlem<iterations; iter_mlem++)
+        {
+        fprintf(stderr,"et_array_mlem_spect: step %d/%d \n",iter_mlem,iterations); 
+        status = status + et_array_mlem_step(activity_data, size_x, size_y, sinogram_data, n_cameras, cameras_data, use_attenuation, attenuation_data, use_psf, psf_data, psf_size_x, psf_size_y, background, background_attenuation, epsilon, use_gpu); 
+        }
+
+    free(cameras_data); 
+    return status; 
+}
+
+extern "C" int et_array_mlem_step(float *activity_data, int size_x, int size_y, float *sinogram_data, int n_cameras, float *cameras_data, int use_attenuation, float *attenuation_data, int use_psf, float *psf_data, unsigned int psf_size_x, unsigned int psf_size_y, float background, float background_attenuation, float epsilon, int use_gpu) 
+{
+    int status=0;
+    int partial_status; 
+    int sinogram_size[3]; sinogram_size[0]=size_x; sinogram_size[1]=size_y; sinogram_size[2]=n_cameras;
+    int activity_size[3]; activity_size[0]=sinogram_size[0]; activity_size[1]=sinogram_size[1]; activity_size[2]=sinogram_size[0]; 
+    int cameras_size[2]; cameras_size[1]=3; cameras_size[0]=n_cameras; 
+    int psf_size[3] = {0,0,0}; if (use_psf) {psf_size[0]=psf_size_x; psf_size[1]=psf_size_y; psf_size[2]=size_x; }; 
+    int attenuation_size[3] = {0,0,0}; if (use_attenuation) {attenuation_size[0]=activity_size[0]; attenuation_size[1]=activity_size[1]; attenuation_size[2]=activity_size[2]; }; 
+
+    float *projection_data = (float*) malloc(sinogram_size[0]*sinogram_size[1]*sinogram_size[2]*sizeof(float)); 
+    float *poisson_gradient_data = (float*) malloc(activity_size[0]*activity_size[1]*activity_size[2]*sizeof(float));
+    float *normalisation_data = (float*) malloc(activity_size[0]*activity_size[1]*activity_size[2]*sizeof(float));  
+    float *sinogram_ones_data = (float*) malloc(sinogram_size[0]*sinogram_size[1]*sinogram_size[2]*sizeof(float)); 
+    for (int i=0; i<sinogram_size[0]*sinogram_size[1]*sinogram_size[2]; i++) 
+        sinogram_ones_data[i]=1.0f; 
+    
+    partial_status = et_array_project(activity_data, activity_size, projection_data, sinogram_size, cameras_data, cameras_size, psf_data, psf_size, attenuation_data, attenuation_size, background, background_attenuation, use_gpu);     
+    status = status + partial_status; 
+    if (partial_status)
+        fprintf(stderr, "et_array_mlem_step: error while performing projection \n");
+    for (int i=0; i<sinogram_size[0]*sinogram_size[1]*sinogram_size[2]; i++) 
+        {
+        if(projection_data[i]<epsilon)
+            projection_data[i]=sinogram_data[i]/epsilon; 
+        else
+            projection_data[i]=sinogram_data[i]/projection_data[i];
+        }
+
+    partial_status = et_array_backproject(projection_data, sinogram_size, poisson_gradient_data, activity_size, cameras_data, cameras_size, psf_data, psf_size, attenuation_data, attenuation_size, background, background_attenuation, use_gpu); 
+    status = status + partial_status; 
+    if (partial_status)
+        fprintf(stderr, "et_array_mlem_step: error while performing back-projection \n");
+
+    partial_status = et_array_backproject(sinogram_ones_data, sinogram_size, normalisation_data, activity_size, cameras_data, cameras_size, psf_data, psf_size, attenuation_data, attenuation_size, background, background_attenuation, use_gpu); 
+    status = status + partial_status; 
+    if (partial_status)
+        fprintf(stderr, "et_array_mlem_step: error while computing normalisation \n");
+    for (int i=0; i<activity_size[0]*activity_size[1]*activity_size[2]; i++)
+        if(normalisation_data[i]<epsilon)
+            normalisation_data[i]=epsilon; 
+
+    for (int i=0; i<activity_size[0]*activity_size[1]*activity_size[2]; i++)
+        activity_data[i] *= poisson_gradient_data[i] / normalisation_data[i]; 
+
+    free(projection_data);
+    free(poisson_gradient_data); 
+    free(normalisation_data); 
+    free(sinogram_ones_data); 
+    return status; 
+}
+
 
 extern "C" int et_array_fisher_grid(float *activity_ptr, int *activity_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *grid_ptr, float *fisher_ptr, float *fisher_prior_ptr, int *fisher_size, float *attenuation, int *attenuation_size, float epsilon, float background, float background_attenuation, int GPU)
 {
@@ -492,7 +718,8 @@ extern "C" int et_array_fisher_grid(float *activity_ptr, int *activity_size, flo
         // Cameras must specify all 3 axis of rotation (3D array) or can be a 1D array if rotation is only along z axis.
         if (!(n_cameras_axis == 1 || n_cameras_axis == 3))
             {
-            fprintf_verbose("et_array_project: Incorrect size of cameras %d %d. 'Cameras' must be either [n_cameras x 3] or [n_cameras x 1].\n",cameras_size[0],cameras_size[1]);
+fprintf(stderr,"et_array_project: Incorrect size of cameras %d %d. 'Cameras' must be either [n_cameras x 3] or [n_cameras x 1].\n",cameras_size[0],cameras_size[1]);
+            fprintf(stderr,"et_array_project: Incorrect size of cameras %d %d. 'Cameras' must be either [n_cameras x 3] or [n_cameras x 1].\n",cameras_size[0],cameras_size[1]);
             return status;
             }
         if (dims==2)
@@ -500,7 +727,7 @@ extern "C" int et_array_fisher_grid(float *activity_ptr, int *activity_size, flo
             {
             if (activity_size[0] != activity_size[1])
                 {
-                fprintf_verbose("et_array_project: 2D activity must be of size [N,N].\n");
+                fprintf(stderr,"et_array_project: 2D activity must be of size [N,N].\n");
                 return status;
                 }
             //Size of psf must be odd
@@ -508,25 +735,25 @@ extern "C" int et_array_fisher_grid(float *activity_ptr, int *activity_size, flo
                 {
                 if (psf_size[0]%2!=1 || psf_size[1]%2!=1)
                     {
-                    fprintf_verbose("et_array_project: 2D psf must be of size [h,k]; h,k odd.\n");
+                    fprintf(stderr,"et_array_project: 2D psf must be of size [h,k]; h,k odd.\n");
                     return status;
                     }
                 }
             }
         if (dims==3)
-            //Activity must be of size [NxNxm]; m>=2
+            //Activity must be of size [NxmxN]; 
             {
-            if (activity_size[0] != activity_size[1] || activity_size[2]<2)
+            if (activity_size[0] != activity_size[2])
                 {
-                fprintf_verbose("et_array_project: 3D activity must be of size [N,N,m]; m>=2.\n");
+                fprintf(stderr,"et_array_project: 3D activity must be of size [N,m,N]\n");
                 return status;
                 }
             //Size of psf must be odd and consistent with activity size
             if (!no_psf)
                 {
-                if (psf_size[0]%2!=1 || psf_size[1]%2!=1 || psf_size[2]!=activity_size[2])
+                if (psf_size[0]%2!=1 || psf_size[1]%2!=1 || psf_size[2]!=activity_size[0])
                     {
-                    fprintf_verbose("et_array_project: 3D psf must be of size [h,k,m] for activity of size [N,N,m]; h,k odd.\n");
+                    fprintf(stderr,"et_array_project: 3D psf must be of size [h,k,N] for activity of size [N,m,N]; h,k odd.\n");
                     return status;
                     }
                 }
@@ -553,7 +780,7 @@ extern "C" int et_array_fisher_grid(float *activity_ptr, int *activity_size, flo
 	dim[5]    = 1;
 	dim[6]    = 1;
 	dim[7]    = 1;
-	//fprintf_verbose("\nS: %d %d %d",activity_size[0],activity_size[1],activity_size[2]);
+	//fprintf(stderr,"\nS: %d %d %d",activity_size[0],activity_size[1],activity_size[2]);
 	nifti_image *activityImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
         activityImage->data = (float *)(activity_ptr);
 
@@ -603,7 +830,7 @@ extern "C" int et_array_fisher_grid(float *activity_ptr, int *activity_size, flo
             status = et_fisher_grid(from_projection, activityImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
         #else
             if (GPU)
-                fprintf_verbose( "et_array_project: No GPU support. In order to activate GPU acceleration please configure with GPU flag and compile.");
+                fprintf(stderr, "et_array_project: No GPU support. In order to activate GPU acceleration please configure with GPU flag and compile.");
             status = et_fisher_grid(from_projection, activityImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
         #endif
 
@@ -678,7 +905,7 @@ extern "C" int et_array_fisher_grid_projection(float *sinogram_ptr, int *sinogra
         // Cameras must specify all 3 axis of rotation (3D array) or can be a 1D array if rotation is only along z axis.
         if (!(n_cameras_axis == 1 || n_cameras_axis == 3))
             {
-            fprintf_verbose("et_array_project: Incorrect size of cameras %d %d. 'Cameras' must be either [n_cameras x 3] or [n_cameras x 1].\n",cameras_size[0],cameras_size[1]);
+            fprintf(stderr,"et_array_project: Incorrect size of cameras %d %d. 'Cameras' must be either [n_cameras x 3] or [n_cameras x 1].\n",cameras_size[0],cameras_size[1]);
             return status;
             }
         if (dims==2)
@@ -686,7 +913,7 @@ extern "C" int et_array_fisher_grid_projection(float *sinogram_ptr, int *sinogra
             {
             if (bkpr_size[0] != bkpr_size[1])
                 {
-                fprintf_verbose("et_array_project: 2D activity must be of size [N,N].\n");
+                fprintf(stderr,"et_array_project: 2D activity must be of size [N,N].\n");
                 return status;
                 }
             //Size of psf must be odd
@@ -694,25 +921,25 @@ extern "C" int et_array_fisher_grid_projection(float *sinogram_ptr, int *sinogra
                 {
                 if (psf_size[0]%2!=1 || psf_size[1]%2!=1)
                     {
-                    fprintf_verbose("et_array_project: 2D psf must be of size [h,k]; h,k odd.\n");
+                    fprintf(stderr,"et_array_project: 2D psf must be of size [h,k]; h,k odd.\n");
                     return status;
                     }
                 }
             }
         if (dims==3)
-            //Activity must be of size [NxNxm]; m>=2
+            //Activity must be of size [NxmxN]
             {
-            if (bkpr_size[0] != bkpr_size[1] || bkpr_size[2]<2)
-                {
-                fprintf_verbose("et_array_project: 3D activity must be of size [N,N,m]; m>=2.\n");
-                return status;
-                }
+//            if (bkpr_size[0] != bkpr_size[1])
+//                {
+//                fprintf(stderr,"et_array_project: 3D activity must be of size [N,m,N].\n");
+//                return status;
+//                }
             //Size of psf must be odd and consistent with activity size
             if (!no_psf)
                 {
-                if (psf_size[0]%2!=1 || psf_size[1]%2!=1 || psf_size[2]!=bkpr_size[2])
+                if (psf_size[0]%2!=1 || psf_size[1]%2!=1 || psf_size[2]!=bkpr_size[0])
                     {
-                    fprintf_verbose("et_array_project: 3D psf must be of size [h,k,m] for activity of size [N,N,m]; h,k odd.\n");
+                    fprintf(stderr,"et_array_project: 3D psf must be of size [h,k,N] for activity of size [N,m,N]; h,k odd.\n");
                     return status;
                     }
                 }

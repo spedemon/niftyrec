@@ -11,13 +11,15 @@ from os.path import isfile as isfile
 
 class Counter:
     def __init__(self, exclude_dir=None):
+        self.directory = ""
         self.exclude_dir = exclude_dir
         self.clear()
 
     def process_dir(self,arg,dirname,fnames):
         if self.exclude_dir:
-            if self.exclude_dir in dirname:
-                return 
+            for excl_dir in self.exclude_dir:
+                if dirname.startswith(self.directory+excl_dir):
+                    return 
         self.dirs.append(dirname)
         self.n_dirs += 1
         for f in fnames:
@@ -31,6 +33,7 @@ class Counter:
                     self.n_lines += self.count_lines_in_file(the_file)
 
     def count_lines_in_directory_tree(self,directory,extension):
+        self.directory = directory
         self.clear()
         walk(directory,self.process_dir,extension)
         n_dirs  = self.n_dirs
@@ -76,7 +79,7 @@ if __name__ == "__main__":
     if len(sys.argv) >= 3:
         exclude_dir = sys.argv[2]
     else:
-        exclude_dir = None
+        exclude_dir = ['/build','/teem','/nifti','/reg-lib','/reg-lib_gpu','/seg-lib','/tclap']
     C = Counter(exclude_dir)
     py_d,  py_f,  py_l  = C.count_lines_in_directory_tree(directory,".py")
     c_d,   c_f,   c_l   = C.count_lines_in_directory_tree(directory,".c")
