@@ -90,7 +90,7 @@ d_tt_backproject_ray(float *d_projection, float *d_output, uint3 volumeVoxels, f
     uint x = blockIdx.x*blockDim.x + threadIdx.x;
     uint y = blockIdx.y*blockDim.y + threadIdx.y;
     if ((x >= image_width_pixels) || (y >= image_height_pixels)) return;
-
+    if(x%2==0 && x%2==0) return;
     //u and v are in normalized detector pixel [0,0]->[1,1]
     float u = (x / (float) image_width_pixels);
     float v = (y / (float) image_height_pixels);
