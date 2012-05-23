@@ -15,7 +15,7 @@
 [sinogram,scaninfo,hd]=et_load_ecat('PET_SORTEO_01_FDG.S');
 
 %% Parameters
-N_cameras = 144; 
+N_projections = 144; 
 theta_first = 0.0;   %degrees
 theta_last  = 178.5; %degrees
 sino_X = 288;
@@ -28,8 +28,8 @@ attenuation = 0;
 GPU = 1; 
 
 %% Reshape sinogram, define geometry, PSF
-sinogram_reshaped = zeros(X,Y,N_cameras); 
-for i=1:N_cameras
+sinogram_reshaped = zeros(X,Y,N_projections); 
+for i=1:N_projections
     sinogram_reshaped(:,1:sino_Y,i) = sinogram(i,(sino_X-X)/2+1:sino_X-(sino_X-X)/2,:);
 end
 
