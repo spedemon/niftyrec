@@ -76,10 +76,10 @@ class Counter:
 
 if __name__ == "__main__":
     directory = sys.argv[1]
+    exclude_dir = []
     if len(sys.argv) >= 3:
-        exclude_dir = sys.argv[2]
-    else:
-        exclude_dir = ['/build','/teem','/nifti','/reg-lib','/reg-lib_gpu','/seg-lib','/tclap']
+        for i in range(len(sys.argv)-2):
+            exclude_dir.append(sys.argv[2+i])
     C = Counter(exclude_dir)
     py_d,  py_f,  py_l  = C.count_lines_in_directory_tree(directory,".py")
     c_d,   c_f,   c_l   = C.count_lines_in_directory_tree(directory,".c")
@@ -99,6 +99,7 @@ if __name__ == "__main__":
 
     print "----------------------------------------------------------------------"   
     print "Lines of code in directory",directory,"(including subdirectories)"
+    print "Excluding ",exclude_dir
     print ""
     print "   LANGUAGE   SUBDIRS    FILES    LINES"
     print "" 

@@ -191,7 +191,7 @@ int tt_backproject_ray(float h_projections[], u_int_2 detector_pixels, u_int n_p
         {
 
             float *current_projection = (float*) h_projections + proj * detector_pixels.w * detector_pixels.h;
-            fprintf(stderr,"\nBack-projection %d/%d",proj+1,n_projections);
+//            fprintf(stderr,"\nBack-projection %d/%d",proj+1,n_projections);
             tt_backproject_cpu(out_backprojection, current_projection, invViewMatrix, detectorPixels, sourcePosition, volumeVoxels, volumeSize, t_step, interpolation);
 
         }
@@ -243,7 +243,7 @@ int tt_project_ray(VolumeType h_volume[], u_int_3 volume_voxels, float out_proje
     cuInit(0);
 
     cudaExtent vsize = make_cudaExtent(volume_voxels.x,volume_voxels.y,volume_voxels.z);
-fprintf(stderr, "\n %d, %d, %d",volume_voxels.x,volume_voxels.y,volume_voxels.z);
+//fprintf(stderr, "\n %d, %d, %d",volume_voxels.x,volume_voxels.y,volume_voxels.z);
     initCuda(h_volume, vsize);
     setTextureFilterMode(linearFiltering);
     gridSize = dim3(iDivUp(detector_pixels.w, blockSize.x), iDivUp(detector_pixels.h, blockSize.y));
