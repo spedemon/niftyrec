@@ -1,3 +1,17 @@
+/*
+ *  _et.h
+ *  
+ *  NiftyRec
+ *  Stefano Pedemonte, May 2012.
+ *  Centre for Medical Image Computing (CMIC)
+ *  University College London. 
+ *  Release under BSD licence, see LICENSE.txt 
+ */
+
+
+/**
+* Plain C-types interface to NiftyRec
+*/
 
 #include "_et.h"
 

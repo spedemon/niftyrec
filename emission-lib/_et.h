@@ -1,3 +1,19 @@
+/*
+ *  _et.h
+ *  
+ *  NiftyRec
+ *  Stefano Pedemonte, May 2012.
+ *  Centre for Medical Image Computing (CMIC)
+ *  University College London. 
+ *  Release under BSD licence, see LICENSE.txt 
+ */
+
+
+/**
+* Functions for Emission Tomography
+*/
+
+
 
 #define SIZE_OF_INFO 5
 #define MAX_DEVICES 16

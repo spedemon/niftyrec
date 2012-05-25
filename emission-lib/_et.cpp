@@ -1,3 +1,13 @@
+/*
+ *  _et.h
+ *  
+ *  NiftyRec
+ *  Stefano Pedemonte, May 2012.
+ *  Centre for Medical Image Computing (CMIC)
+ *  University College London. 
+ *  Release under BSD licence, see LICENSE.txt 
+ */
+
 
 #include "_et.h"
 #include "_et_common.h"
@@ -376,6 +386,23 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *accumulatorImage, ni
                                                 cam );
                     }
 
+                // Apply Depth Dependent Point Spread Function //
+                if (psfImage != NULL)
+                    {
+                    if (separable_psf)
+                        et_convolveSeparable2D( temp_backprojectionImage,
+                                                psfSeparated,
+                                                psf_size[0],
+                                                psf_size[1],
+                                                temp_backprojectionImage, 
+                                                0.0f );
+                    else
+                        et_convolve2D(          temp_backprojectionImage,
+                                                psfImage,
+                                                temp_backprojectionImage, 
+                                                0.0f );
+                    }
+
 		/* Rotate backprojection */
 		et_create_rotation_matrix(	affineTransformation,
 						-cameras[0*n_cameras+cam],
@@ -397,23 +424,6 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *accumulatorImage, ni
 						1,
 						background  );
 
-                // Apply Depth Dependent Point Spread Function //
-                if (psfImage != NULL)
-                    {
-                    if (separable_psf)
-                        et_convolveSeparable2D( rotatedImage,
-                                                psfSeparated,
-                                                psf_size[0],
-                                                psf_size[1],
-                                                rotatedImage, 
-                                                0.0f );
-                    else
-                        et_convolve2D(          rotatedImage,
-                                                psfImage,
-                                                rotatedImage, 
-                                                0.0f );
-                    }
-	
 		/* Accumulate */
 		et_accumulate(			rotatedImage,
 						accumulatorImage );
@@ -425,7 +435,7 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *accumulatorImage, ni
         for (int i=0; i<accumulatorImage->nvox; i++)
             {
             if (accumulator_data[i] < 0)
-                accumulator_data[i] = 0;
+               accumulator_data[i] = 0;
             }
 	/*Free*/
 	nifti_image_free(rotatedImage);
@@ -1099,6 +1109,23 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *accumulatorImage, ni
 						accumulatorImage);
                     }
 
+                // Apply Depth Dependent Point Spread Function //
+                if (psfImage != NULL)
+                    {
+                    if (separable_psf)
+                        et_convolveSeparable2D_gpu( &temp_backprojection_d,
+                                                image_size,
+                                                &psfSeparatedArray_d,
+                                                psf_size,
+                                                &temp_backprojection_d);
+                    else
+                        et_convolveFFT2D_gpu(   &temp_backprojection_d,
+                                                image_size,
+                                                &psfArray_d,
+                                                psf_size,
+                                                &temp_backprojection_d);
+                    }
+
                 // Copy to texture bound memory (for rotation) //
                 cudaError_t cuda_status;
                 cudaMemcpy3DParms p = {0};
@@ -1133,23 +1160,6 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *accumulatorImage, ni
 						&mask_d,
 						accumulatorImage->nvox,
 						background);
-
-                // Apply Depth Dependent Point Spread Function //
-                if (psfImage != NULL)
-                    {
-                    if (separable_psf)
-                        et_convolveSeparable2D_gpu( &rotatedArray_d,
-                                                image_size,
-                                                &psfSeparatedArray_d,
-                                                psf_size,
-                                                &rotatedArray_d);
-                    else
-                        et_convolveFFT2D_gpu(   &rotatedArray_d,
-                                                image_size,
-                                                &psfArray_d,
-                                                psf_size,
-                                                &rotatedArray_d);
-                    }
 
 		// Accumulate //
 		et_accumulate_gpu(		&rotatedArray_d,

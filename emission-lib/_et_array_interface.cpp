@@ -1,3 +1,12 @@
+/*
+ *  _et.h
+ *  
+ *  NiftyRec
+ *  Stefano Pedemonte, May 2012.
+ *  Centre for Medical Image Computing (CMIC)
+ *  University College London. 
+ *  Release under BSD licence, see LICENSE.txt 
+ */
 
 #include "_et_array_interface.h"
 #include "_et_common.h"
