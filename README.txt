@@ -1,15 +1,15 @@
-###################################
-# NIFTYREC RECONSTRUCTION TOOLBOX #
-###################################
-
-
+##############################################################################
+#                        NIFTYREC TOMOGRAPHY TOOLBOX                         #
 ##############################################################################
 
-------------------
+-----------------------------------
 1 PACKAGE CONTENTS
-------------------
 
-NiftyRec provides routines for Emission Tomographic reconstruction. 
+See the sebsite of NiftyRec for 
+more details. 
+-----------------------------------
+
+NiftyRec provides routines for Tomographic reconstruction. 
 The software is written in C and computationally intensive functions have a 
 GPU accelerated version based on NVidia CUDA.
 NiftyRec includes a mex-based Matlab Toolbox and a Python module that access 
@@ -63,11 +63,14 @@ of the GPU accelerated algorithms, while maintaining the full speed.
     * NiftySeg bindings 
     * Barebone NiftyReg bindings 
 
-##############################################################################
+######################################################################################
 
-------------------
-3 INSTALL BINARIES
-------------------
+-----------------------------------
+3 INSTALL BINARIES 
+
+See the Wiki on the website of 
+NiftyRec for detailed instructions
+-----------------------------------
 
 --Debian Linux 
    Double click on .deb installer and follow instructions on screen.
@@ -78,11 +81,14 @@ of the GPU accelerated algorithms, while maintaining the full speed.
 --MAC OS
    Drag and drop the drag-and-drop installer in the Applications folder.
 
-##############################################################################
+######################################################################################
 
--------------------------------
-4 BUILD AND INSTALL FROM SOURCE
--------------------------------
+-----------------------------------
+4 BUILD AND INSTALL FROM SOURCE 
+
+See the Wiki on the website of 
+NiftyRec for detailed instructions
+-----------------------------------
 
 NiftyRec is based on the CMake cross-platform build system. 
 As a design choice NiftyRec does not have any external dependencies when 
@@ -131,9 +137,12 @@ Further details are in the Programming Manual of NiftyRec.
 
 ##############################################################################
 
------
+-----------------------------------
 5 USE
------
+
+See the Wiki on the website of 
+NiftyRec for detailed instructions
+-----------------------------------
 
 --Matlab Toolbox
    Launch Matlab. Add path to NiftyRec Toolbox, e.g.:
@@ -214,5 +223,5 @@ NSS-MIC 2010.
 
 ##############################################################################
 ##############################################################################
-##############################################################################
+
 
