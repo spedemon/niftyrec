@@ -116,6 +116,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    for (int i=0; i<center_size[0]*center_size[1]; i++)
        center_float[i] = center_ptr[i];
 
+   /* Shift 'center' by 1 (Matlab to C indexes) */
+   for (int i=0; i<center_size[0]*center_size[1]; i++)
+       center_float[i] = center_float[i]-1;
+
    /* Perform Affine Transform */
    status = et_array_rotate(image_float, image_size, out_float, rotation_float, center_float, background, enable_gpu);
    /* Convert to double */
