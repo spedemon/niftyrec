@@ -5,7 +5,7 @@
  *  Stefano Pedemonte, May 2012.
  *  Centre for Medical Image Computing (CMIC)
  *  University College London. 
- *  Release under BSD licence, see LICENSE.txt 
+ *  Released under BSD licence, see LICENSE.txt 
  */
 
 #include "_et_array_interface.h"
@@ -465,6 +465,168 @@ extern "C" int et_array_backproject(float *sino, int *sino_size, float *bkpr, in
 
 	return status;
 }
+
+
+
+extern "C" int et_array_gradient_attenuation(float *sino, int *sino_size, float *activity, int *activity_size, float *gradient, int *gradient_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *attenuation, int *attenuation_size, float background, float background_attenuation, int GPU)
+{
+	int status;
+	int dims;
+        int n_cameras;
+        int n_cameras_axis;
+        int no_psf = 0;
+        float *cameras_array;
+
+        n_cameras = cameras_size[0];
+        n_cameras_axis = cameras_size[1];
+
+	// 2D or 3D?
+        dims = 3;
+	if (sino_size[2] == 1)
+            dims = 2;
+
+        //PSF or not?
+        if (psf_size[0] == 0 && psf_size[1] == 0 && psf_size[2] == 0)
+            no_psf = 1;
+
+        /* Check consistency of input */
+        // Cameras must specify all 3 axis of rotation (3D array) or can be a 1D array if rotation is only along z axis.
+        if (!(n_cameras_axis == 1 || n_cameras_axis == 3))
+            {
+            fprintf_verbose("et_array_backproject: 'Cameras' must be either [n_cameras x 3] or [n_cameras x 1]\n");
+            return status;
+            }
+        if (dims==2)
+            //Sino must be of size [Nxn_cameras]
+            {
+            if (sino_size[1] != n_cameras)
+                {
+                fprintf_verbose("et_array_backproject: 2D sinogram must be of size [N,n_cameras].\n");
+                return status;
+                }
+            //Size of psf must be odd
+            if (!no_psf)
+                {
+                if (psf_size[0]%2!=1 || psf_size[1]!=sino_size[0])
+                    {
+                    fprintf_verbose("et_array_backproject: 2D psf must be of size [h,N]; h odd.\n");
+                    return status;
+                    }
+                }
+            }
+        if (dims==3)
+            //Sino must be of size [Nxmxn_cameras]; 
+            {
+            if (sino_size[2] != n_cameras)
+                {
+                fprintf_verbose("et_array_backproject: 3D sino must be of size [N,m,n_cameras].\n");
+                return status;
+                }
+            //Size of psf must be odd and consistent with activity size
+            if (!no_psf)
+                {
+                if (psf_size[0]%2!=1 || psf_size[1]%2!=1 || psf_size[2]!=sino_size[0])
+                    {
+                    fprintf_verbose("et_array_backproject: 3D psf must be of size [h,k,N] for activity of size [N,m,N]; h,k odd.\n");
+                    return status;
+                    }
+                }
+            }
+
+        // Allocate array for cameras
+        cameras_array = (float *)malloc(n_cameras*3*sizeof(float));
+        if (n_cameras_axis == 3)
+            memcpy((void*) cameras_array, (void*) cameras, n_cameras*3*sizeof(float));
+        if (n_cameras_axis == 1)
+            {
+            memset(cameras_array, 0, n_cameras*3*sizeof(float));
+            for (int cam=0; cam<n_cameras; cam++)
+                cameras_array[0*n_cameras+cam] = cameras[cam];
+            }
+
+
+	// Allocate backprojection (result) image 
+        int dim[8];
+	dim[0]    = 3;
+	dim[1]    = gradient_size[0];
+	dim[2]    = gradient_size[1];
+	dim[3]    = gradient_size[2];
+	dim[4]    = 1;
+	dim[5]    = 1;
+	dim[6]    = 1;
+	dim[7]    = 1;
+	nifti_image *gradientImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+        gradientImage->data = (float*) gradient;
+	
+        // Allocate attenuation image 
+        nifti_image *attenuationImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+        attenuationImage->data = (float*) attenuation;
+
+        // Allocate activity image 
+	nifti_image *activityImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+        activityImage->data = (float *)(activity);
+
+	// Allocate the sinogram (input) image
+	dim[1]    = gradient_size[0];
+	dim[2]    = gradient_size[1];
+	dim[3]    = n_cameras;
+        nifti_image *sinoImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+        sinoImage->data = (float*) sino;
+
+	//Allocate Point Spread Function
+        nifti_image *psfImage = NULL;
+        if (!no_psf)
+            {
+            dim[1] = psf_size[0];
+            dim[2] = psf_size[1];
+            dim[3] = psf_size[2];
+            psfImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+            psfImage->data = (float*) psf;
+            }
+	//Backproject
+	#ifdef _USE_CUDA
+	if(GPU)
+	    status = et_gradient_attenuation_gpu(gradientImage, sinoImage, activityImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation);
+	else
+	    status = et_gradient_attenuation(gradientImage, sinoImage, activityImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation);
+	#else
+	    status = et_gradient_attenuation(gradientImage, sinoImage, activityImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation);
+	#endif
+	
+	//Free (free nifti images but not their data arrays)
+	if( sinoImage->fname != NULL ) free(sinoImage->fname) ;
+	if( sinoImage->iname != NULL ) free(sinoImage->iname) ;
+	(void)nifti_free_extensions( sinoImage ) ;
+	free(sinoImage) ;
+	
+	if( gradientImage->fname != NULL ) free(gradientImage->fname) ;
+	if( gradientImage->iname != NULL ) free(gradientImage->iname) ;
+	(void)nifti_free_extensions( gradientImage ) ;
+	free(gradientImage) ;
+
+        if( attenuationImage->fname != NULL ) free(attenuationImage->fname) ;
+        if( attenuationImage->iname != NULL ) free(attenuationImage->iname) ;
+        (void)nifti_free_extensions( attenuationImage ) ;
+        free(attenuationImage) ;
+
+        if( activityImage->fname != NULL ) free(activityImage->fname) ;
+        if( activityImage->iname != NULL ) free(activityImage->iname) ;
+        (void)nifti_free_extensions( activityImage ) ;
+        free(activityImage) ;
+
+        if (!no_psf)
+            {
+            if( psfImage->fname != NULL ) free(psfImage->fname) ;
+            if( psfImage->iname != NULL ) free(psfImage->iname) ;
+            (void)nifti_free_extensions( psfImage ) ;
+            free(psfImage) ;
+            }
+
+        free(cameras_array);
+
+	return status;
+}
+
 
 
 extern "C" int et_array_calculate_size_psf(unsigned int *psf_size_x, unsigned int *psf_size_y, float fwhm_pixels_dist0, float sensitivity0, float dist0, float fwhm_pixels_dist1, float sensitivity1, float dist1)

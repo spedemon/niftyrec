@@ -4,25 +4,33 @@ from ctypes.util import find_library
 from ctypes import string_at, byref, c_int, c_long, c_size_t, c_char_p, c_double, c_void_p, c_float
 from ctypes import Structure, pointer, cast, addressof, c_int, c_double, c_float
 from ctypes import POINTER as P
-from numpy import zeros, asarray, float32, int32
+from numpy import zeros, asarray, float32, int32, ones, single, linspace, round, pi
+from thread import start_new_thread
+from time import sleep
+from numpy.random import rand
+from scipy.signal import convolve
 
 lib_name = "lib_et_array_interface"
 
 MAX_DEVICES = 16
 SIZE_INFO = 5
+ET_BACKGROUND_ACTIVITY = 0.0
+ET_BACKGROUND_ATTENUATION = 0.0
+ET_EPSILON = 0.001
 
-L = None
-for ext in ['so','dylib','dll']:
+
+lib = None
+for extension in ['so','dylib','dll']:
     try:
-        L = CDLL(lib_name + "." + ext)
+        lib = CDLL(lib_name + "." + extension)
     except OSError,e:
         pass
-if not L:
+if not lib:
     raise ImportError("Cannot find "+lib_name+" shared object.")
 
 
 
-def project(activity, cameras, psf, attenuation, gpu=1, background=0.0, background_attenuation=0.0):
+def et_project(activity, cameras, psf, attenuation, gpu=1, background=0.0, background_attenuation=0.0):
   """Project activity to multiple cameras"""
   gpu        = int32(gpu)
   background = float32(background)
@@ -68,7 +76,7 @@ def project(activity, cameras, psf, attenuation, gpu=1, background=0.0, backgrou
 
 
 
-def backproject(projections, cameras, psf, attenuation, gpu=1, background=0, background_attenuation=0.0):
+def et_backproject(projections, cameras, psf, attenuation, gpu=1, background=0, background_attenuation=0.0):
   """Backproject from multiple cameras to body space"""
   gpu        = int32(gpu)
   background = float32(background)
@@ -115,7 +123,7 @@ def backproject(projections, cameras, psf, attenuation, gpu=1, background=0, bac
 
 
 
-def set_gpu(gpu_id):
+def et_set_gpu(gpu_id):
   """Set a GPU device with given ID. Use in conjunction with get_gpu_list()"""
   L.et_array_set_gpu.restype  = c_int
   L.et_array_set_gpu.argtypes = [c_int]
@@ -123,7 +131,7 @@ def set_gpu(gpu_id):
 
 
 
-def list_gpus():
+def et_list_gpus():
   """Get list of GPU devices"""
   L.et_array_list_gpus.restype  = c_int
   L.et_array_list_gpus.argtypes = [P(c_int),P(c_int)]
@@ -141,21 +149,200 @@ def list_gpus():
 
 
 
-#def affine():
-#  """3D affine transformation of 3D image on GPU"""
-#  pass
+def et_osmapem_step(subset_order, activity_old, sinogram, cameras, attenuation, psf, beta_osl, gradient_prior, use_gpu, background_activity=ET_BACKGROUND_ACTIVITY, background_attenuation=ET_BACKGROUND_ATTENUATION, epsilon=ET_EPSILON):
+    N1 = activity_old.shape[0]
+    N3 = activity_old.shape[2]
+    N_cameras = cameras.shape[1]
+    N_cameras_sub = int32(round(N_cameras/subset_order))
+    cameras_indexes = int32(round(0.5 + (N_cameras-0.5) * rand(N_cameras_sub))-1)
+#    cameras_sub = cameras[:,cameras_indexes]
+    cameras_sub = zeros((3,N_cameras_sub))
+    cameras_sub[:,:] = cameras[:,cameras_indexes]
+    #compute sensitivity for the subset
+    normalization = backproject(ones((N1,N3,N_cameras_sub),dtype=single), cameras_sub, psf, attenuation, use_gpu, background_activity, background_attenuation)
+    normalization = (normalization - beta_osl * gradient_prior)
+    normalization = normalization*(normalization>0) + epsilon
+    #project and backproject
+    proj = project(activity_old, cameras_sub, psf, attenuation, use_gpu, background_activity, background_attenuation)
+    proj = proj*(proj>0) + epsilon
+    update = backproject(sinogram[cameras_indexes,:,:].reshape(N1,N3,N_cameras_sub) / proj, cameras_sub, psf, attenuation, use_gpu, background_activity, background_attenuation)
+    update = update*(update>0)
+    activity_new = activity_old * update;
+    activity_new = activity_new / (normalization)
+    return activity_new
 
 
 
-#def rotate():
-#  """3D rotation of 3D image on GPU"""
-#  pass
+class Reconstructor:
+    def __init__(self,volume_size):
+        self._reconstructing = False
+        self.volume_size = volume_size
+        self.clear_activity()
+        self.N_cameras   = 0
+        self.cameras     = None
+        self.psf         = None
+        self.attenuation = zeros(self.volume_size,dtype=single)
+        self.sinogram    = None
+        self.use_gpu     = True
+        self.background_activity = single(BG_ACTIVITY)
+        self.background_attenuation = single(BG_ATTENUATION)
+        self.epsilon     = EPSILON
+        
+    def set_callback_status(self,function):
+        self.callback_status = function
+
+    def set_callback_updateactivity(self,function):
+        self.callback_updateactivity = function
 
 
 
-#def convolve():
-#  """2D convolution of 3D omages 'slice by slice' on GPU"""
-#  pass
+    def set_activity(self,activity):
+        self.activity = single(activity)
 
+    def clear_activity(self):
+        self.activity = ones(self.volume_size,dtype=single)
+
+    def set_attenuation(self,attenuation):
+        self.attenuation = single(attenuation)
+
+    def set_sinogram(self,sinogram):
+        if (sinogram.shape[1] != self.volume_size[0]) or (sinogram.shape[2] != self.volume_size[1]):
+#        if (sinogram.shape[0] != self.volume_size[0]) or (sinogram.shape[1] != self.volume_size[1]):
+            print "Sinogram size not consistent with activity eatimate, need reinterpolation"
+            print "Sinogram size: ",sinogram.shape
+            print "Activity size: ",self.volume_size
+            return
+        self.sinogram = single(sinogram)
+
+    def set_psf_matrix(self,psf):
+        self.psf = single(psf)
+
+    def set_psf_two_points(self,psf0, plane0, psf1, plane1):
+        #FIXME
+        self.psf = single(ones((3,3,self.volume_size[2])))
+
+    def set_cameras_matrix(self,cameras):
+        self.cameras = single(cameras)
+        self.N_cameras = cameras.shape[1]
+
+    def set_cameras_equispaced(self,first_camera, last_camera, N_cameras, axis=1):
+        first_camera = first_camera*pi/180.0
+        last_camera  = last_camera*pi/180.0
+        cameras = zeros((3,N_cameras))
+        cameras[axis,:] = linspace(first_camera, last_camera, N_cameras)
+        self.N_cameras = N_cameras
+        self.cameras = single(cameras)        
+
+    def set_use_gpu(self,enable):
+        self.use_gpu = int(enable)
+
+    def set_background_activity(self,bg):
+        self.background_activity = single(bg)
+
+    def set_background_attenuation(self,bg):
+        self.background_attenuation = single(bg)
+
+    def set_epsilon(self, epsilon):
+        self.epsilon = single(epsilon)
+
+
+
+    def has_all_parameters(self):
+        if self.N_cameras == 0:
+            return False
+        if self.cameras == None:
+            return False
+        if self.sinogram == None: 
+            return False
+        return True
+
+
+    def is_reconstructing(self):
+        return self._reconstructing
+
+
+    def reconstruct(self, method, parameters):
+        if self.is_reconstructing():
+            print "Reconstruction running"
+            return
+        print "Reconstruction started"
+        if not self.has_all_parameters(): 
+            print "Reconstructor does not have all necessary parameters"
+            return 
+        self._stop=False
+        start_new_thread(self._reconstruct,(method,parameters))
+#        self._reconstruct(method,parameters)
+
+    def _reconstruct(self, method, parameters):
+        if method=="osem":
+            steps = parameters['steps']
+            subset_order = parameters['subset_order']
+            self._reconstructing = True
+            for step in range(steps):
+                gobject.idle_add(self.callback_status,"%d"%((100.0*step)/steps)+"% OSEM reconstruction",(1.0*step)/steps)
+                gobject.idle_add(self.callback_updateactivity, self.activity )
+                print 'activity:', self.activity.shape, self.activity.dtype
+                print 'sinogram:', self.sinogram.shape, self.sinogram.dtype
+                print 'cameras: ', self.cameras.shape, self.cameras.dtype
+                print 'psf:     ', self.psf.shape, self.psf.dtype
+                print 'attenuation:',self.attenuation.shape, self.attenuation.dtype
+                print 'use gpu: ',self.use_gpu
+                beta_osl=0
+                gradient_prior=0
+                self.activity = osmapem_step(subset_order, self.activity, self.sinogram, self.cameras, self.attenuation, 
+                self.psf, beta_osl, gradient_prior, self.use_gpu, self.background_activity, self.background_attenuation, self.epsilon)
+                gobject.idle_add(self.callback_updateactivity, self.activity)
+                if self._stop:
+                    break
+        if method=="quadratic_MRF":
+            steps = parameters['steps']
+            subset_order = parameters['subset_order']
+            self._reconstructing = True
+            for step in range(steps):
+                gobject.idle_add(self.callback_status,"%d"%((100.0*step)/steps)+"% TV OSEM reconstruction",(1.0*step)/steps)
+                gobject.idle_add(self.callback_updateactivity, self.activity )
+                print 'activity:', self.activity.shape, self.activity.dtype
+                print 'sinogram:', self.sinogram.shape, self.sinogram.dtype
+                print 'cameras: ', self.cameras.shape, self.cameras.dtype
+                print 'psf:     ', self.psf.shape, self.psf.dtype
+                print 'attenuation:',self.attenuation.shape, self.attenuation.dtype
+                print 'use gpu: ',self.use_gpu
+                beta_osl=parameters['beta']/1000.0
+                kernel = -1*ones((3,3,3))
+                kernel[1,1,1] = 26
+                gradient_prior=convolve(self.activity,kernel,'same')
+                self.activity = osmapem_step(subset_order, self.activity, self.sinogram, self.cameras, self.attenuation, 
+                self.psf, beta_osl, gradient_prior, self.use_gpu, self.background_activity, self.background_attenuation, self.epsilon)
+                gobject.idle_add(self.callback_updateactivity, self.activity)
+                if self._stop:
+                    break
+        elif method=="je":
+            steps = parameters['steps']
+            subset_order = parameters['subset_order']
+            self._reconstructing = True
+            for step in range(steps):
+                gobject.idle_add(self.callback_status,"OSEM reconstruction",(1.0*step)/steps)
+                gobject.idle_add(self.callback_updateactivity, self.activity )
+                sleep(0.1)
+                if self._stop:
+                    break
+        elif method=="ccje":
+            steps = parameters['steps']
+            subset_order = parameters['subset_order']
+            self._reconstructing = True
+            for step in range(steps):
+                gobject.idle_add(self.callback_status,"OSEM reconstruction",(1.0*step)/steps)
+                gobject.idle_add(self.callback_updateactivity, self.activity )
+                sleep(0.1)
+                if self._stop:
+                    break
+        print "Reconstruction done"
+        self._reconstructing = False
+        sleep(0.1)
+        self.callback_status(" ",0.0)       
+
+    def stop(self):
+        if self.is_reconstructing():
+            self._stop=True
 
 

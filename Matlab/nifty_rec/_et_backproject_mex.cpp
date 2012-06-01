@@ -32,7 +32,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    mxClassID cid_psf = mxGetClassID(prhs[3]);
    int       dim_psf = mxGetNumberOfDimensions(prhs[3]);   
 
-   int sino_size[3];     // Size of input activity matrix
+   int sino_size[3];     // Size of input sinogram matrix
    int psf_size[3];      // Size of input psf matrix
    int bkpr_size[3];     // Size of output backprojection matrix
    int cameras_size[2];  // Size of cameras matrix (can be (nx3) or (1xn))
