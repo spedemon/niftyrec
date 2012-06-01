@@ -5,7 +5,7 @@
  *  Stefano Pedemonte, May 2012.
  *  Centre for Medical Image Computing (CMIC)
  *  University College London. 
- *  Release under BSD licence, see LICENSE.txt 
+ *  Released under BSD licence, see LICENSE.txt 
  */
 
 
@@ -677,10 +677,14 @@ int et_fisher_grid(int from_projection, nifti_image *inputImage, nifti_image *gr
 
 int et_project_backproject(nifti_image *activity, nifti_image *sino, nifti_image *psf, int n_cameras, float *cameras_alpha, float *cameras_beta, float *cameras_gamma)
 {
-    return 0;
+    return 1;
 }
 
 
+int et_gradient_attenuation(nifti_image *gradientImage, nifti_image *sinoImage, nifti_image *activityImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation) 
+{
+    return 1;
+}
 
 int et_convolve(nifti_image *inImage, nifti_image *outImage, nifti_image *psfImage)
 {
@@ -785,7 +789,7 @@ int et_rotate_gpu(nifti_image *sourceImage, nifti_image *resultImage, float thet
 
 
 
-int et_project_gpu(nifti_image *activity, nifti_image *sinoImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation)
+int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation)
 {
 	/* initialise the cuda arrays */
 	cudaArray *activityArray_d;               //stores input activity, makes use of fetch unit
@@ -805,23 +809,23 @@ int et_project_gpu(nifti_image *activity, nifti_image *sinoImage, nifti_image *p
         //..
 	
 	/* Allocate arrays on the device */
-	if(cudaCommon_allocateArrayToDevice<float>(&activityArray_d, activity->dim)) return 1;
+	if(cudaCommon_allocateArrayToDevice<float>(&activityArray_d, activityImage->dim)) return 1;
 	if(cudaCommon_allocateArrayToDevice<float>(&sinoArray_d, sinoImage->dim)) return 1;
-	if(cudaCommon_allocateArrayToDevice<float>(&rotatedArray_d, activity->dim)) return 1;
-	if(cudaCommon_allocateArrayToDevice<float4>(&positionFieldImageArray_d, activity->dim)) return 1;
-	if(cudaCommon_allocateArrayToDevice<int>(&mask_d, activity->dim)) return 1;
+	if(cudaCommon_allocateArrayToDevice<float>(&rotatedArray_d, activityImage->dim)) return 1;
+	if(cudaCommon_allocateArrayToDevice<float4>(&positionFieldImageArray_d, activityImage->dim)) return 1;
+	if(cudaCommon_allocateArrayToDevice<int>(&mask_d, activityImage->dim)) return 1;
 
 	/* Transfer data from the host to the device */
-	if(cudaCommon_transferNiftiToArrayOnDevice<float>(&activityArray_d,activity)) return 1;
-	int *mask_h=(int *)malloc(activity->nvox*sizeof(int));
-	for(int i=0; i<activity->nvox; i++) mask_h[i]=i;
-	CUDA_SAFE_CALL(cudaMemcpy(mask_d, mask_h, activity->nvox*sizeof(int), cudaMemcpyHostToDevice));
+	if(cudaCommon_transferNiftiToArrayOnDevice<float>(&activityArray_d,activityImage)) return 1;
+	int *mask_h=(int *)malloc(activityImage->nvox*sizeof(int));
+	for(int i=0; i<activityImage->nvox; i++) mask_h[i]=i;
+	CUDA_SAFE_CALL(cudaMemcpy(mask_d, mask_h, activityImage->nvox*sizeof(int), cudaMemcpyHostToDevice));
 	free(mask_h);
 	
 	/* Define centers of rotation */
-	float center_x = ((float)(activity->nx - 1)) / 2.0;
-	float center_y = ((float)(activity->ny - 1)) / 2.0;
-	float center_z = ((float)(activity->nz - 1)) / 2.0;
+	float center_x = ((float)(activityImage->nx - 1)) / 2.0;
+	float center_y = ((float)(activityImage->ny - 1)) / 2.0;
+	float center_z = ((float)(activityImage->nz - 1)) / 2.0;
 		
 	/* Alloc transformation matrix */
 	mat44 *affineTransformation = (mat44 *)calloc(1,sizeof(mat44));
@@ -834,9 +838,9 @@ int et_project_gpu(nifti_image *activity, nifti_image *sinoImage, nifti_image *p
             psf_size[0] = psfImage->dim[1];
             psf_size[1] = psfImage->dim[2];
             psf_size[2] = psfImage->dim[3];
-            image_size[0] = activity->dim[1];
-            image_size[1] = activity->dim[2];
-            image_size[2] = activity->dim[3];
+            image_size[0] = activityImage->dim[1];
+            image_size[1] = activityImage->dim[2];
+            image_size[2] = activityImage->dim[3];
 
             if (psf_size[0]<= (MAX_SEPARABLE_KERNEL_RADIUS*2)+1)
                 separable_psf=1;
@@ -870,17 +874,17 @@ int et_project_gpu(nifti_image *activity, nifti_image *sinoImage, nifti_image *p
 		// Apply affine //
 		et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], center_x, center_y, center_z);
 		reg_affine_positionField_gpu(	affineTransformation,
-						activity,
+						activityImage,
 						&positionFieldImageArray_d);
 
 		// Resample the source image //
-		reg_resampleSourceImage_gpu(	activity,
-						activity,
+		reg_resampleSourceImage_gpu(	activityImage,
+						activityImage,
 						&rotatedArray_d,
 						&activityArray_d,
 						&positionFieldImageArray_d,
 						&mask_d,
-						activity->nvox,
+						activityImage->nvox,
 						background);
 
                 // Resample the attenuation map //
@@ -918,14 +922,14 @@ int et_project_gpu(nifti_image *activity, nifti_image *sinoImage, nifti_image *p
 						&rotatedAttenuationArray_d, 
 						&sinoArray_d,
 						cam,
-						activity);
+						activityImage);
                     }
                 else
                     {
 		    et_line_integral_gpu(	&rotatedArray_d,
 						&sinoArray_d,
 						cam,
-						activity);
+						activityImage);
                     }
 	}
 
@@ -1430,6 +1434,244 @@ int et_fisher_grid_gpu(int from_projection, nifti_image *inputImage, nifti_image
         }
     return status;
 } 
+
+
+int et_gradient_attenuation_gpu(nifti_image *gradientImage, nifti_image *sinoImage, nifti_image *activityImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation) 
+{
+	/* initialise the cuda arrays */
+	cudaArray *activityArray_d;               //stores input activity, makes use of fetch unit
+	cudaArray *backprojectionArray_d;
+	cudaArray *attenuationArray_d;
+	float     *temp_backprojection_d;
+	float     *sinoArray_d;
+	float     *rotatedArray_d;
+	float     *rotatedAttenuationArray_d;
+        float     *attenuationPlaneArray_d;
+	float     *gradientArray_d;
+	float4    *positionFieldImageArray_d;
+	int       *mask_d;
+        float     *psfArray_d;
+        float     *psfSeparatedArray_d;
+        int       psf_size[3];
+        int       image_size[3];
+        int       separable_psf=0;
+
+	/* Allocate the deformation Field image */
+	nifti_image *positionFieldImage = nifti_copy_nim_info(gradientImage);
+	positionFieldImage->dim[0]=positionFieldImage->ndim=5;
+	positionFieldImage->dim[1]=positionFieldImage->nx = gradientImage->nx;
+	positionFieldImage->dim[2]=positionFieldImage->ny = gradientImage->ny;
+	positionFieldImage->dim[3]=positionFieldImage->nz = gradientImage->nz;
+	positionFieldImage->dim[4]=positionFieldImage->nt = 1; positionFieldImage->pixdim[4]=positionFieldImage->dt = 1.0;
+	positionFieldImage->dim[5]=positionFieldImage->nu = 3; positionFieldImage->pixdim[5]=positionFieldImage->du = 1.0;
+	positionFieldImage->dim[6]=positionFieldImage->nv = 1; positionFieldImage->pixdim[6]=positionFieldImage->dv = 1.0;
+	positionFieldImage->dim[7]=positionFieldImage->nw = 1; positionFieldImage->pixdim[7]=positionFieldImage->dw = 1.0;
+	positionFieldImage->nvox=positionFieldImage->nx*positionFieldImage->ny*positionFieldImage->nz*positionFieldImage->nt*positionFieldImage->nu;
+	positionFieldImage->datatype = NIFTI_TYPE_FLOAT32;
+	positionFieldImage->nbyper = sizeof(float);
+	positionFieldImage->data=NULL;
+	
+	/* Allocate arrays on the device */
+        cudaChannelFormatDesc backprojectionArray_d_chdesc = cudaCreateChannelDesc<float>();
+        cudaExtent backprojectionArray_d_extent;
+        backprojectionArray_d_extent.width  = gradientImage->nx;
+        backprojectionArray_d_extent.height = gradientImage->ny;
+        backprojectionArray_d_extent.depth  = gradientImage->nz;
+        cudaError_t cuda_status1 = cudaMalloc3DArray(&backprojectionArray_d, &backprojectionArray_d_chdesc, backprojectionArray_d_extent);
+
+	if(cudaCommon_allocateArrayToDevice<float>(&activityArray_d, activityImage->dim)) return 1;
+        if(cudaCommon_allocateArrayToDevice<float>(&temp_backprojection_d, gradientImage->dim)) return 1;
+
+        if(cudaCommon_allocateArrayToDevice<float>(&attenuationArray_d, attenuationImage->dim)) return 1;
+        if(cudaCommon_allocateArrayToDevice<float>(&rotatedAttenuationArray_d, attenuationImage->dim)) return 1;	
+        if(cudaCommon_transferNiftiToArrayOnDevice<float>(&attenuationArray_d,attenuationImage)) return 1;
+
+	if(cudaCommon_allocateArrayToDevice<float>(&sinoArray_d, sinoImage->dim)) return 1;
+	if(cudaCommon_allocateArrayToDevice<float>(&rotatedArray_d, gradientImage->dim)) return 1;	
+	if(cudaCommon_allocateArrayToDevice<float>(&gradientArray_d, gradientImage->dim)) return 1;
+	if(cudaCommon_allocateArrayToDevice<float4>(&positionFieldImageArray_d, gradientImage->dim)) return 1;
+	if(cudaCommon_allocateArrayToDevice<int>(&mask_d, gradientImage->dim)) return 1;
+
+	/* Transfer data from the host to the device */
+	if(cudaCommon_transferNiftiToArrayOnDevice<float>(&activityArray_d,activityImage)) return 1;
+	if(cudaCommon_transferNiftiToArrayOnDevice<float>(&sinoArray_d,sinoImage)) return 1;
+	int *mask_h=(int *)malloc(gradientImage->nvox*sizeof(int));
+	for(int i=0; i<gradientImage->nvox; i++) mask_h[i]=i;
+	CUDA_SAFE_CALL(cudaMemcpy(mask_d, mask_h, gradientImage->nvox*sizeof(int), cudaMemcpyHostToDevice));
+	free(mask_h);
+
+	/* Define centers of rotation */
+	float center_x = ((float)(gradientImage->nx - 1)) / 2.0;
+	float center_y = ((float)(gradientImage->ny - 1)) / 2.0;
+	float center_z = ((float)(gradientImage->nz - 1)) / 2.0;
+
+	/* Alloc transformation matrix */
+	mat44 *affineTransformation = (mat44 *)calloc(1,sizeof(mat44));
+
+	/* Clear gradient */
+	et_clear_accumulator_gpu(		&gradientArray_d,
+						gradientImage );
+        /* Allocate and initialize kernel for DDPSF */
+        if (psfImage != NULL)
+            {
+            if(cudaCommon_allocateArrayToDevice<float>(&psfArray_d, psfImage->dim)) return 1;
+            if(cudaCommon_transferNiftiToArrayOnDevice<float>(&psfArray_d, psfImage)) return 1;
+            psf_size[0] = psfImage->dim[1];
+            psf_size[1] = psfImage->dim[2];
+            psf_size[2] = psfImage->dim[3];
+            image_size[0] = gradientImage->dim[1];
+            image_size[1] = gradientImage->dim[2];
+            image_size[2] = gradientImage->dim[3];
+
+            if (psf_size[0]<= (MAX_SEPARABLE_KERNEL_RADIUS*2)+1)
+                separable_psf=1;
+            }
+
+        if (separable_psf)
+            {
+            CUDA_SAFE_CALL(cudaMalloc((void **)&psfSeparatedArray_d, (psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float)));
+            float *psfSeparatedArray_h = (float*) malloc((psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float));
+            float psf_norm;
+            for (int n=0; n<psf_size[2];n++) {
+                psf_norm = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 * psf_size[0] + (psf_size[0]-1)/2];
+                for (int i=0;i<psf_size[0];i++) {
+                    psfSeparatedArray_h[(psf_size[0]+psf_size[1])*n + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 * psf_size[0] + i];
+                    psfSeparatedArray_h[(psf_size[0]+psf_size[1])*n + psf_size[0] + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 + i * psf_size[0]] / psf_norm;
+                    }
+                }
+            CUDA_SAFE_CALL(cudaMemcpy(psfSeparatedArray_d, psfSeparatedArray_h, (psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float), cudaMemcpyHostToDevice));
+            free(psfSeparatedArray_h);
+            }
+
+	for(int cam=0; cam<n_cameras; cam++){
+                // Rotate attenuation and activity //
+                et_create_rotation_matrix(      affineTransformation,
+						cameras[0*n_cameras+cam],
+						cameras[1*n_cameras+cam],
+						cameras[2*n_cameras+cam],
+						center_x,
+						center_y, 
+						center_z);
+                reg_affine_positionField_gpu(   affineTransformation,
+						attenuationImage,
+						&positionFieldImageArray_d);
+                reg_resampleSourceImage_gpu(    attenuationImage,
+						attenuationImage,
+						&rotatedAttenuationArray_d,
+						&attenuationArray_d,
+						&positionFieldImageArray_d,
+						&mask_d,
+						attenuationImage->nvox,
+						background_attenuation);
+                reg_resampleSourceImage_gpu(    activityImage,
+						activityImage,
+						&rotatedArray_d,
+						&activityArray_d,
+						&positionFieldImageArray_d,
+						&mask_d,
+						activityImage->nvox,
+						background);
+
+		// Line Backproject, compute gradient of the likelihood with respect of the attenuation coefficients //
+                et_attenuation_gradient_gpu(    &rotatedArray_d, 
+                                                &sinoArray_d, 
+						&temp_backprojection_d, 
+						&rotatedAttenuationArray_d, 
+                                                cam, 
+						gradientImage); 
+
+
+                // Apply Depth Dependent Point Spread Function //
+                if (psfImage != NULL)
+                    {
+                    if (separable_psf)
+                        et_convolveSeparable2D_gpu( &temp_backprojection_d,
+                                                image_size,
+                                                &psfSeparatedArray_d,
+                                                psf_size,
+                                                &temp_backprojection_d);
+                    else
+                        et_convolveFFT2D_gpu(   &temp_backprojection_d,
+                                                image_size,
+                                                &psfArray_d,
+                                                psf_size,
+                                                &temp_backprojection_d);
+                    }
+
+                // Copy to texture bound memory (for rotation) //
+                cudaError_t cuda_status;
+                cudaMemcpy3DParms p = {0};
+              
+                p.srcPtr.ptr        = temp_backprojection_d;
+                p.srcPtr.pitch      = 0;
+                p.srcPtr.xsize      = gradientImage->nx;
+                p.srcPtr.ysize      = gradientImage->ny;
+                p.dstArray          = backprojectionArray_d;
+                p.extent.width      = gradientImage->nx;
+                p.extent.height     = gradientImage->ny;
+                p.extent.depth      = gradientImage->nz;
+                p.kind              = cudaMemcpyDeviceToDevice;
+                cuda_status         = cudaMemcpy3D(&p);
+
+		// Rotate backprojection //
+		et_create_rotation_matrix(	affineTransformation,
+						-cameras[0*n_cameras+cam],
+						-cameras[1*n_cameras+cam],
+						-cameras[2*n_cameras+cam],
+						center_x,
+						center_y, 
+						center_z);
+		reg_affine_positionField_gpu(	affineTransformation,
+						gradientImage,
+						&positionFieldImageArray_d);
+		reg_resampleSourceImage_gpu(	gradientImage,
+						gradientImage,
+						&rotatedArray_d,
+						&backprojectionArray_d,
+						&positionFieldImageArray_d,
+						&mask_d,
+						gradientImage->nvox,
+						background);
+
+		// Accumulate //
+		et_accumulate_gpu(		&rotatedArray_d,
+						&gradientArray_d,
+						gradientImage );
+	}
+
+	/* Transfer result back to host */
+	if(cudaCommon_transferFromDeviceToNifti(gradientImage, &gradientArray_d)) return 1; 
+
+        /* Truncate negative values: small negative values may be found due to FFT and IFFT */
+        float* gradient_data = (float*) gradientImage->data;
+        for (int i=0; i<gradientImage->nvox; i++)
+            if (gradient_data[i] < 0)
+                gradient_data[i] = 0;
+
+	/*Free*/
+	cudaCommon_free(&activityArray_d);
+        cudaCommon_free(&backprojectionArray_d);
+
+        cudaCommon_free(&attenuationArray_d);
+        cudaCommon_free((void **)&rotatedAttenuationArray_d);
+
+	cudaCommon_free((void **)&rotatedArray_d);
+	cudaCommon_free((void **)&sinoArray_d);
+	cudaCommon_free((void **)&gradientArray_d);
+	cudaCommon_free((void **)&mask_d);
+	cudaCommon_free((void **)&positionFieldImageArray_d);
+	cudaCommon_free((void **)&temp_backprojection_d);
+        if (psfImage != NULL)
+            {
+            cudaCommon_free((void **)&psfArray_d);
+            if (separable_psf)
+                cudaCommon_free((void **)&psfSeparatedArray_d);
+            }
+	nifti_image_free(positionFieldImage);
+	free(affineTransformation);
+
+	return 0;
+}
 
 
 

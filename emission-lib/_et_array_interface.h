@@ -5,7 +5,7 @@
  *  Stefano Pedemonte, May 2012.
  *  Centre for Medical Image Computing (CMIC)
  *  University College London. 
- *  Release under BSD licence, see LICENSE.txt 
+ *  Released under BSD licence, see LICENSE.txt 
  */
 
 
@@ -32,3 +32,5 @@ extern "C" int et_array_list_gpus(int *gpu_count, int *gpus_info_array);
 extern "C" int et_array_set_gpu(int id);
 extern "C" int et_array_fisher_grid(float *activity_ptr, int *activity_size, float *cameras_ptr, int *cameras_size, float *psf_ptr, int *psf_size, float *grid_ptr, float *fisher_ptr, float *fisher_prior_ptr, int *fisher_size, float *attenuation_ptr, int *attenuation_size, float epsilon, float background, float background_attenuation, int enable_gpu);
 extern "C" int et_array_fisher_grid_projection(float *sinogram_ptr, int *sinogram_size, int *bkpr_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *grid_ptr, float *fisher_ptr, float *fisher_prior_ptr, int *fisher_size, float *attenuation, int *attenuation_size, float epsilon, float background, float background_attenuation, int GPU);
+extern "C" int et_array_gradient_attenuation(float *sino, int *sino_size, float *activity, int *activity_size, float *gradient, int *gradient_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *attenuation, int *attenuation_size, float background, float background_attenuation, int GPU);
+
