@@ -1,5 +1,5 @@
 /*
- *  niftyrec_version.h
+ *  niftyrec_version.in.h
  *  
  *  NiftyRec
  *  Stefano Pedemonte, May 2012.

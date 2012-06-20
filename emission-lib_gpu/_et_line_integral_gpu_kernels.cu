@@ -13,7 +13,7 @@
 __device__ __constant__ int3 c_ImageSize;
 
 
-__global__ void et_line_integral_gpu_kernel(float *g_activity, float *g_sinogram)
+__global__ void et_line_integral_gpu_kernel(float *g_activity, float *g_sinogram, float background_activity)
 {
 	const unsigned int tid = blockIdx.x*blockDim.x + threadIdx.x;
 	const unsigned int pixelNumber = c_ImageSize.x * c_ImageSize.y;
@@ -25,6 +25,7 @@ __global__ void et_line_integral_gpu_kernel(float *g_activity, float *g_sinogram
 			sum += g_activity[index];
 			index += pixelNumber;
 			}
+                sum += background_activity;
 		g_sinogram[tid]=sum;
 	}
 	return; 	

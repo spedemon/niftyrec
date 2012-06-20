@@ -113,31 +113,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
       {
       /* Check consistency of input if 2D (and create size of sinogram for return) */
       case 2:
-           if (!no_psf)
-               if (dim_psf != 2)
-                   mexErrMsgTxt("Dimension of Point Spread Function matrix must match the simension of Sinogram (ddpsf).");        
-           sino_size[0] = mxGetDimensions(prhs[0])[0];
-           sino_size[1] = mxGetDimensions(prhs[0])[1];
-           sino_size[2] = 1;
-           if (sino_size[0]<2)
-               mexErrMsgTxt("Size of Activity matrix must be greater then 2");
-           if (sino_size[1] != cameras_size[0])
-               mexErrMsgTxt("Number of cameras must match Sinogram size");    
-           if (!no_psf)
-               {
-               psf_size[0] = mxGetDimensions(prhs[3])[0];
-               psf_size[1] = mxGetDimensions(prhs[3])[1];
-               psf_size[2] = 1;
-               if (psf_size[0]%2!=1 || psf_size[1]!=sino_size[0])
-                   mexErrMsgTxt("Point Spread Function must be of size hxN for Backprojection of size Nxn; h odd.");
-               }
-           bkpr_size[0] = sino_size[0];
-           bkpr_size[1] = sino_size[0];
-           bkpr_size[2] = 1;
-           if(!no_attenuation)
-               if(mxGetDimensions(prhs[0])[0] != mxGetDimensions(prhs[2])[0] || mxGetDimensions(prhs[0])[1] != mxGetDimensions(prhs[2])[1])
-                   mexErrMsgTxt("Attenuation must be of the same size of Activity");
-           break;
+            mexErrMsgTxt("For 2D reconstructions use sinograms of size [Nx1xN_projections]. E.g. sinogram = reshape(sinogram,N,1,N_projections); ");
       /* Check consistency of input if 3D (and create size of sinogram for return */
       case 3:
            if (!no_psf)
