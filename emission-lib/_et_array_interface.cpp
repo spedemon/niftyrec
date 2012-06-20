@@ -117,20 +117,22 @@ extern "C" int et_array_rotate(float *image, int *size, float *rotated_image, fl
 extern "C" int et_array_project(float *activity, int *activity_size, float *sinogram, int *sinogram_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *attenuation, int *attenuation_size, float background, float background_attenuation, int GPU)
 {
 	int status = 1;
-	int dims;
         int n_cameras;
         int n_cameras_axis;
         int no_psf = 0;
         int no_attenuation = 0;
+        int no_activity = 0;
         float *cameras_array;
 
         n_cameras = cameras_size[0];
         n_cameras_axis = cameras_size[1];
 
-	// 2D or 3D?
-        dims = 3;
-	if (activity_size[2] == 1)
-            dims = 2;
+        //activity or not? 
+        if (activity_size[0] == 0 && activity_size[1] == 0 && activity_size[2] == 0) 
+            {
+            no_activity = 1;
+            activity_size[0] = attenuation_size[0]; activity_size[1] = attenuation_size[1]; activity_size[2] = attenuation_size[2];
+            }
 
         //PSF or not?
         if (psf_size[0] == 0 && psf_size[1] == 0 && psf_size[2] == 0)
@@ -140,40 +142,21 @@ extern "C" int et_array_project(float *activity, int *activity_size, float *sino
         if (attenuation_size[0] == 0 && attenuation_size[1] == 0 && attenuation_size[2] == 0)
             no_attenuation = 1;
 
-        /* Check consistency of input */
-        // Cameras must specify all 3 axis of rotation (3D array) or can be a 1D array if rotation is only along z axis.
+        if (no_attenuation && no_activity) 
+            { 
+            fprintf(stderr,"_et_array_project: Error - define at least one between 'activity' and 'attenuation'. \n"); 
+            return 1; 
+            } 
+
+        /* Check consistency of input */ 
+        // Cameras must specify all 3 axis of rotation (3D array) or can be a 1D array if rotation is only along z axis. 
         if (!(n_cameras_axis == 1 || n_cameras_axis == 3))
             {
             fprintf_verbose("et_array_project: Incorrect size of cameras %d %d. 'Cameras' must be either [n_cameras x 3] or [n_cameras x 1].\n",cameras_size[0],cameras_size[1]);
             return status;
             }
-        if (dims==2)
-            //Activity must be of size [NxN]
-            {
-            if (activity_size[0] != activity_size[1])
-                {
-                fprintf_verbose("et_array_project: 2D activity must be of size [N,N].\n");
-                return status;
-                }
-            //Size of sinogram must be consistent with activity size
-            if (sinogram_size[0] != activity_size[0] || sinogram_size[1] != n_cameras) 
-                {
-                fprintf_verbose("et_array_project: 2D sinogram must be of size [N,n_cameras] for activity of size [N,N] and 'n_cameras' cameras.\n");
-                return status;
-                }
-            //Size of psf must be odd
-            if (!no_psf)
-                {
-                if (psf_size[0]%2!=1 || psf_size[1]!=activity_size[0])
-                    {
-                    fprintf_verbose("et_array_project: 2D psf must be of size [h,k]; h,k odd.\n");
-                    return status;
-                    }
-                }
-            }
-        if (dims==3)
+
             //Activity must be of size [NxmxN];
-            {
 //            if (activity_size[0] != activity_size[1] || activity_size[2]<2)
 //                {
 //                fprintf_verbose("et_array_project: 3D activity must be of size [N,N,m]; m>=2.\n");
@@ -194,7 +177,6 @@ extern "C" int et_array_project(float *activity, int *activity_size, float *sino
                     return status;
                     }
                 }
-            }
 
 
         // Allocate array for cameras
@@ -208,9 +190,9 @@ extern "C" int et_array_project(float *activity, int *activity_size, float *sino
                 cameras_array[0*n_cameras+cam] = cameras[cam];
             }
 
-	// Allocate source nifti image 
+	// Allocate nifti images
         int dim[8];
-	dim[0]    = 3;//dims;            FIXME: bug in cudaCommon_transferNiftiToArrayOnDevice for 2D nifti images
+	dim[0]    = 3;
 	dim[1]    = activity_size[0];
 	dim[2]    = activity_size[1];
 	dim[3]    = activity_size[2];
@@ -218,9 +200,14 @@ extern "C" int et_array_project(float *activity, int *activity_size, float *sino
 	dim[5]    = 1;
 	dim[6]    = 1;
 	dim[7]    = 1;
-	//fprintf_verbose("\nS: %d %d %d",activity_size[0],activity_size[1],activity_size[2]);
-	nifti_image *activityImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
-        activityImage->data = (float *)(activity);
+
+	// Allocate activity nifti images
+	nifti_image *activityImage = NULL;
+        if(!no_activity)
+            {
+            activityImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+            activityImage->data = (float *)(activity);
+            }
 
         // Allocate attenuation nifti image
         nifti_image *attenuationImage = NULL;
@@ -232,18 +219,11 @@ extern "C" int et_array_project(float *activity, int *activity_size, float *sino
 
 	// Allocate the result nifti image
 	//fprintf_verbose( "\nN CAMERAS: %d ",n_cameras);
-	if (dims == 2)
-	   {
-	   dim[1] = activity_size[0];
-	   dim[2] = n_cameras;
-	   dim[3] = 1;
-	   }
-	else
-	   {
-	   dim[1] = activity_size[0];
-	   dim[2] = activity_size[1];
-	   dim[3] = n_cameras;	   
-	   }
+
+        dim[1] = activity_size[0];
+        dim[2] = activity_size[1];
+        dim[3] = n_cameras;	   
+
         nifti_image *sinogramImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
         sinogramImage->data = (float *)(sinogram);
 
@@ -271,10 +251,13 @@ extern "C" int et_array_project(float *activity, int *activity_size, float *sino
         #endif
 
 	//Free
-	if( activityImage->fname != NULL ) free(activityImage->fname) ;
-	if( activityImage->iname != NULL ) free(activityImage->iname) ;
-	(void)nifti_free_extensions( activityImage ) ;
-	free(activityImage) ;
+        if(!no_activity)
+            {
+            if( activityImage->fname != NULL ) free(activityImage->fname) ;
+            if( activityImage->iname != NULL ) free(activityImage->iname) ;
+            (void)nifti_free_extensions( activityImage ) ;
+            free(activityImage) ;
+            }
 
         if(!no_attenuation)
             {
@@ -309,7 +292,6 @@ extern "C" int et_array_project(float *activity, int *activity_size, float *sino
 extern "C" int et_array_backproject(float *sino, int *sino_size, float *bkpr, int *bkpr_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *attenuation, int *attenuation_size, float background, float background_attenuation, int GPU)
 {
 	int status;
-	int dims;
         int n_cameras;
         int n_cameras_axis;
         int no_psf = 0;
@@ -318,11 +300,6 @@ extern "C" int et_array_backproject(float *sino, int *sino_size, float *bkpr, in
 
         n_cameras = cameras_size[0];
         n_cameras_axis = cameras_size[1];
-
-	// 2D or 3D?
-        dims = 3;
-	if (sino_size[2] == 1)
-            dims = 2;
 
         //PSF or not?
         if (psf_size[0] == 0 && psf_size[1] == 0 && psf_size[2] == 0)
@@ -339,42 +316,23 @@ extern "C" int et_array_backproject(float *sino, int *sino_size, float *bkpr, in
             fprintf_verbose("et_array_backproject: 'Cameras' must be either [n_cameras x 3] or [n_cameras x 1]\n");
             return status;
             }
-        if (dims==2)
-            //Sino must be of size [Nxn_cameras]
+
+        //Sino must be of size [Nxmxn_cameras]; 
+        if (sino_size[2] != n_cameras)
             {
-            if (sino_size[1] != n_cameras)
+            fprintf_verbose("et_array_backproject: 3D sino must be of size [N,m,n_cameras].\n");
+            return status;
+            }
+        //Size of psf must be odd and consistent with activity size
+        if (!no_psf)
+            {
+            if (psf_size[0]%2!=1 || psf_size[1]%2!=1 || psf_size[2]!=sino_size[0])
                 {
-                fprintf_verbose("et_array_backproject: 2D sinogram must be of size [N,n_cameras].\n");
+                fprintf_verbose("et_array_backproject: 3D psf must be of size [h,k,N] for activity of size [N,m,N]; h,k odd.\n");
                 return status;
                 }
-            //Size of psf must be odd
-            if (!no_psf)
-                {
-                if (psf_size[0]%2!=1 || psf_size[1]!=sino_size[0])
-                    {
-                    fprintf_verbose("et_array_backproject: 2D psf must be of size [h,N]; h odd.\n");
-                    return status;
-                    }
-                }
             }
-        if (dims==3)
-            //Sino must be of size [Nxmxn_cameras]; 
-            {
-            if (sino_size[2] != n_cameras)
-                {
-                fprintf_verbose("et_array_backproject: 3D sino must be of size [N,m,n_cameras].\n");
-                return status;
-                }
-            //Size of psf must be odd and consistent with activity size
-            if (!no_psf)
-                {
-                if (psf_size[0]%2!=1 || psf_size[1]%2!=1 || psf_size[2]!=sino_size[0])
-                    {
-                    fprintf_verbose("et_array_backproject: 3D psf must be of size [h,k,N] for activity of size [N,m,N]; h,k odd.\n");
-                    return status;
-                    }
-                }
-            }
+
 
         // Allocate array for cameras
         cameras_array = (float *)malloc(n_cameras*3*sizeof(float));

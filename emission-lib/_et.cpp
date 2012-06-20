@@ -267,7 +267,6 @@ int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *
 
         /* Truncate negative values: small negative values may be found due to FFT and IFFT */
         float* sino_data = (float*) sinoImage->data;
-//#pragma omp parallel for 
         for (int i=0; i<sinoImage->nvox; i++)
             {
             if (sino_data[i] < 0)
@@ -849,26 +848,43 @@ int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_ima
         int       separable_psf=0;
 
         /* Check consistency of input */
+        nifti_image *referenceImage;              // this image holds information about image size and voxel size (activity or attenuation might not be defined (NULL pointers) ) 
+        if (activityImage==NULL && attenuationImage==NULL)
+            {
+            fprintf(stderr, "et_project_gpu: Error - define at least one between activityImage and attenuationImage. \n");
+            return 1;
+            }
+        else if (attenuationImage==NULL)
+            referenceImage=activityImage;
+        else
+            referenceImage=attenuationImage; 
         //..
 	
-	/* Allocate arrays on the device */
-	if(cudaCommon_allocateArrayToDevice<float>(&activityArray_d, activityImage->dim)) return 1;
-	if(cudaCommon_allocateArrayToDevice<float>(&sinoArray_d, sinoImage->dim)) return 1;
-	if(cudaCommon_allocateArrayToDevice<float>(&rotatedArray_d, activityImage->dim)) return 1;
-	if(cudaCommon_allocateArrayToDevice<float4>(&positionFieldImageArray_d, activityImage->dim)) return 1;
-	if(cudaCommon_allocateArrayToDevice<int>(&mask_d, activityImage->dim)) return 1;
+	/* Allocate arrays on the device and transfer data to the device */
+        
+        // Activity
+        if (activityImage != NULL)
+            {
+            if(cudaCommon_allocateArrayToDevice<float>(&activityArray_d, activityImage->dim)) return 1;
+            if(cudaCommon_allocateArrayToDevice<float>(&rotatedArray_d, activityImage->dim)) return 1;
+            if(cudaCommon_transferNiftiToArrayOnDevice<float>(&activityArray_d,activityImage)) return 1;
+            }
 
-	/* Transfer data from the host to the device */
-	if(cudaCommon_transferNiftiToArrayOnDevice<float>(&activityArray_d,activityImage)) return 1;
-	int *mask_h=(int *)malloc(activityImage->nvox*sizeof(int));
-	for(int i=0; i<activityImage->nvox; i++) mask_h[i]=i;
-	CUDA_SAFE_CALL(cudaMemcpy(mask_d, mask_h, activityImage->nvox*sizeof(int), cudaMemcpyHostToDevice));
+        // Singoram 
+	if(cudaCommon_allocateArrayToDevice<float>(&sinoArray_d, sinoImage->dim)) return 1;
+	if(cudaCommon_allocateArrayToDevice<float4>(&positionFieldImageArray_d, referenceImage->dim)) return 1;
+	if(cudaCommon_allocateArrayToDevice<int>(&mask_d, referenceImage->dim)) return 1;
+
+	// Mask 
+	int *mask_h=(int *)malloc(referenceImage->nvox*sizeof(int));
+	for(int i=0; i<referenceImage->nvox; i++) mask_h[i]=i;
+	CUDA_SAFE_CALL(cudaMemcpy(mask_d, mask_h, referenceImage->nvox*sizeof(int), cudaMemcpyHostToDevice));
 	free(mask_h);
 	
 	/* Define centers of rotation */
-	float center_x = ((float)(activityImage->nx - 1)) / 2.0;
-	float center_y = ((float)(activityImage->ny - 1)) / 2.0;
-	float center_z = ((float)(activityImage->nz - 1)) / 2.0;
+	float center_x = ((float)(referenceImage->nx - 1)) / 2.0;
+	float center_y = ((float)(referenceImage->ny - 1)) / 2.0;
+	float center_z = ((float)(referenceImage->nz - 1)) / 2.0;
 		
 	/* Alloc transformation matrix */
 	mat44 *affineTransformation = (mat44 *)calloc(1,sizeof(mat44));
@@ -881,9 +897,9 @@ int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_ima
             psf_size[0] = psfImage->dim[1];
             psf_size[1] = psfImage->dim[2];
             psf_size[2] = psfImage->dim[3];
-            image_size[0] = activityImage->dim[1];
-            image_size[1] = activityImage->dim[2];
-            image_size[2] = activityImage->dim[3];
+            image_size[0] = referenceImage->dim[1];
+            image_size[1] = referenceImage->dim[2];
+            image_size[2] = referenceImage->dim[3];
 
             if (psf_size[0]<= (MAX_SEPARABLE_KERNEL_RADIUS*2)+1)
                 separable_psf=1;
@@ -917,11 +933,12 @@ int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_ima
 		// Apply affine //
 		et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], center_x, center_y, center_z);
 		reg_affine_positionField_gpu(	affineTransformation,
-						activityImage,
+						referenceImage,
 						&positionFieldImageArray_d);
 
-		// Resample the source image //
-		reg_resampleSourceImage_gpu(	activityImage,
+		// Resample the activity image //
+                if (activityImage != NULL)
+		    reg_resampleSourceImage_gpu(activityImage,
 						activityImage,
 						&rotatedArray_d,
 						&activityArray_d,
@@ -932,7 +949,7 @@ int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_ima
 
                 // Resample the attenuation map //
                 if (attenuationImage != NULL)
-		    reg_resampleSourceImage_gpu(	attenuationImage,
+		    reg_resampleSourceImage_gpu(attenuationImage,
 						attenuationImage,
 						&rotatedAttenuationArray_d,
 						&attenuationArray_d,
@@ -942,7 +959,7 @@ int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_ima
 						background_attenuation);
 
                 // Apply Depth Dependent Point Spread Function //
-                if (psfImage != NULL)
+                if ((psfImage != NULL) && (activityImage!=NULL))
                     {
                     if (separable_psf)
                         et_convolveSeparable2D_gpu(&rotatedArray_d, 
@@ -959,23 +976,27 @@ int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_ima
                     }
 
 		// Integrate along lines //
-                if (attenuationImage != NULL)
-                    {
-                    et_line_integral_attenuated_gpu(	&rotatedArray_d,
-						&rotatedAttenuationArray_d, 
-						&sinoArray_d,
+                if ((activityImage!=NULL) && (attenuationImage != NULL))
+                    et_line_integral_attenuated_gpu(	rotatedArray_d,
+						rotatedAttenuationArray_d, 
+						sinoArray_d,
 						cam,
-						activityImage);
-                    }
-                else
-                    {
-		    et_line_integral_gpu(	&rotatedArray_d,
-						&sinoArray_d,
+						referenceImage,
+                                                background);
+                else if (attenuationImage==NULL)
+		    et_line_integral_gpu(	rotatedArray_d,
+						sinoArray_d,
 						cam,
-						activityImage);
-                    }
+						referenceImage,
+                                                background);
+                else 
+                    et_line_integral_attenuated_gpu(NULL,
+						rotatedAttenuationArray_d, 
+						sinoArray_d,
+						cam,
+						referenceImage,
+                                                background);
 	}
-
 
 	/* Transfer result back to host */
 	if(cudaCommon_transferFromDeviceToNifti(sinoImage, &sinoArray_d)) return 1;
@@ -987,11 +1008,14 @@ int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_ima
                 sino_data[i] = 0;
 
 	/*Free*/
-	cudaCommon_free(&activityArray_d);
-	cudaCommon_free((void **)&rotatedArray_d);
 	cudaCommon_free((void **)&sinoArray_d);
 	cudaCommon_free((void **)&mask_d);
 	cudaCommon_free((void **)&positionFieldImageArray_d);
+        if (activityImage != NULL)
+            {
+            cudaCommon_free(&activityArray_d);
+            cudaCommon_free((void **)&rotatedArray_d);     
+            }
         if (psfImage != NULL)
             {
             cudaCommon_free((void **)&psfArray_d);
@@ -1854,7 +1878,7 @@ int et_set_gpu(int id)
     CUDA_SAFE_CALL(cudaGetDeviceProperties(&deviceProp, id ));
     if (deviceProp.major < 1)
         {
-        printf("ERROR\tThe specified graphical card does not exist.\n");
+        printf("ERROR - The specified graphical card does not exist.\n");
         status = 1;
 	}
     else

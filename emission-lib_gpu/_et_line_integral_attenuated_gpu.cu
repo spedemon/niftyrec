@@ -13,7 +13,7 @@
 
 #define BLOCK 256
 
-void et_line_integral_attenuated_gpu(float **d_activity, float **d_attenuation, float **d_sinogram, int cam, nifti_image *img)
+void et_line_integral_attenuated_gpu(float *d_activity, float *d_attenuation, float *d_sinogram, int cam, nifti_image *img, float background_activity)
 {
 	int3 imageSize = make_int3(img->dim[1],img->dim[2],img->dim[3]);
 	CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_ImageSize,&imageSize,sizeof(int3)));
@@ -22,15 +22,14 @@ void et_line_integral_attenuated_gpu(float **d_activity, float **d_attenuation, 
 	dim3 B1(BLOCK,1,1);
 	dim3 G1(Grid,1,1);
 	
-	float *currentCamPointer = (*d_sinogram) + cam * img->dim[1] * img->dim[2] ;
+	float *currentCamPointer = (d_sinogram) + cam * img->dim[1] * img->dim[2] ;
 
 	//float *attenuationIntegralPlaneArray_d;    //stores partial integral on planes parallel to the camera
 	//CUDA_SAFE_CALL(cudaMalloc((void **)&attenuationIntegralPlaneArray_d, img->dim[1]*img->dim[3]*sizeof(float)));
 	
-	et_line_integral_attenuated_gpu_kernel <<<G1,B1>>> (*d_activity, *d_attenuation, currentCamPointer);
+	et_line_integral_attenuated_gpu_kernel <<<G1,B1>>> (d_activity, d_attenuation, currentCamPointer, background_activity);
 
 	CUDA_SAFE_CALL(cudaThreadSynchronize());
 }
-
 
 
