@@ -1,3 +1,13 @@
+/*
+ *  _et_line_integral_gpu_kernels.cu
+ *  
+ *  NiftyRec
+ *  Stefano Pedemonte, May 2012.
+ *  CMIC - Centre for Medical Image Computing 
+ *  UCL - University College London. 
+ *  Released under BSD licence, see LICENSE.txt 
+ */
+
 #include "_et_line_integral_gpu.h"
 
 __device__ __constant__ int3 c_ImageSize;

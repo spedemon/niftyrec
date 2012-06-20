@@ -1,4 +1,13 @@
 
+#  CMakeLists.txt
+#  
+#  NiftyRec
+#  Stefano Pedemonte, May 2012.
+#  CMIC - Centre for Medical Image Computing 
+#  UCL - University College London. 
+#  Released under BSD licence, see LICENSE.txt 
+
+#-----------------------------------------------------------------------------
 SUBDIRS(niftyrec_gui)
 
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/lib)

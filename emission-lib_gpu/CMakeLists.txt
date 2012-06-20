@@ -1,6 +1,13 @@
 
-#-----------------------------------------------------------------------------
+#  CMakeLists.txt
+#  
+#  NiftyRec
+#  Stefano Pedemonte, May 2012.
+#  CMIC - Centre for Medical Image Computing 
+#  UCL - University College London. 
+#  Released under BSD licence, see LICENSE.txt 
 
+#-----------------------------------------------------------------------------
 MACRO(BUILD_INSTALL_LIBRARY LIBRARY_NAME LIBRARY_TYPE)
 #        IF(${LIBRARY_TYPE} MATCHES SHARED)
 #                CUDA_ADD_LIBRARY(${LIBRARY_NAME} SHARED ${LIBRARY_NAME}.h ${LIBRARY_NAME}.cu ${LIBRARY_NAME}_kernels.cu)
@@ -13,7 +20,6 @@ MACRO(BUILD_INSTALL_LIBRARY LIBRARY_NAME LIBRARY_TYPE)
 ENDMACRO(BUILD_INSTALL_LIBRARY)
 
 #-----------------------------------------------------------------------------
-
 IF(NiftyRec_USE_CUDA)
         FOREACH(LIBRARY_NAME ${NIFTY_REC_ET_LIBRARIES_GPU})
                 BUILD_INSTALL_LIBRARY(${LIBRARY_NAME} ${LIB_TYPE})

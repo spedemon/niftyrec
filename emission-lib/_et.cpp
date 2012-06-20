@@ -1,10 +1,10 @@
 /*
- *  _et.h
+ *  _et.cpp
  *  
  *  NiftyRec
  *  Stefano Pedemonte, May 2012.
- *  Centre for Medical Image Computing (CMIC)
- *  University College London. 
+ *  CMIC - Centre for Medical Image Computing 
+ *  UCL - University College London. 
  *  Released under BSD licence, see LICENSE.txt 
  */
 
@@ -36,6 +36,13 @@ int et_get_block_size(void)
 }
 
 
+//! Affine transformation of nifti_image 
+/*!
+  \param *sourceImage the source image to be transformed. 
+  \param *transformedImage the transformed image. 
+  \param *affineTransformation the [4x4] transformed matrix. 
+  \param background the background value when resampling the transformed image. 
+*/
 int et_affine(nifti_image *sourceImage, nifti_image *transformedImage, mat44 *affineTransformation, float background)
 {
     int status = 1;
@@ -72,7 +79,18 @@ int et_affine(nifti_image *sourceImage, nifti_image *transformedImage, mat44 *af
 }
 
 
-
+//! Rotate a nifti_image in 3D 
+/*!
+  \param *sourceImage the source image to be transformed. 
+  \param *resultImage the rotated image. 
+  \param theta_x the rotation angle around x axis in radians. 
+  \param theta_y the rotation angle around y axis in radians. 
+  \param theta_z the rotation angle around z axis in radians. 
+  \param center_x the center of rotation along x.  
+  \param center_y the center of rotation along y. 
+  \param center_z the center of rotation along z. 
+  \param background the background value when resampling the transformed image. 
+*/
 int et_rotate(nifti_image *sourceImage, nifti_image *resultImage, float theta_x, float theta_y, float theta_z, float center_x, float center_y, float center_z, float background)
 {
 	int status = 1;
@@ -92,6 +110,17 @@ int et_rotate(nifti_image *sourceImage, nifti_image *resultImage, float theta_x,
 
 
 
+//! Projection for Emission Imaging
+/*!
+  \param *activityImage the activity (or its estimate) 
+  \param *sinoImage the photon counts in projection space. 
+  \param *psfImage the depth-dependent point spread function. 
+  \param *attenuationImage the attenuation map. 
+  \param *cameras [n_camerasx3] array of camera orientations in radians. 
+  \param n_cameras number of projections (camera positions). 
+  \param background the activity background (used when activity is rotated and resampled). 
+  \param background the attenuation background (used when the attenuation map is rotated and resampled). 
+*/
 int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation)
 {
 #ifdef _OPENMP
@@ -260,7 +289,18 @@ int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *
 
 
 
-int et_backproject(nifti_image *sinogramImage, nifti_image *accumulatorImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation)
+//! Back-projection for Emission Imaging
+/*!
+  \param *sinogramImage the data to be back-projected in projection space. 
+  \param *backprojectionImage the depth-dependent point spread function. 
+  \param *psfImage the depth-dependent point spread function. 
+  \param *attenuationImage the attenuation map. 
+  \param *cameras [n_camerasx3] array of camera orientations in radians. 
+  \param n_cameras number of projections (camera positions). 
+  \param background the activity background (used when activity is rotated and resampled). 
+  \param background the attenuation background (used when the attenuation map is rotated and resampled). 
+*/
+int et_backproject(nifti_image *sinogramImage, nifti_image *backprojectionImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation)
 {
 #ifdef _OPENMP
     omp_set_num_threads( 8 );
@@ -272,11 +312,11 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *accumulatorImage, ni
         //...
 
 	/* Allocate the deformation Field image */
-	nifti_image *positionFieldImage = nifti_copy_nim_info(accumulatorImage);
+	nifti_image *positionFieldImage = nifti_copy_nim_info(backprojectionImage);
 	positionFieldImage->dim[0]=positionFieldImage->ndim=5;
-	positionFieldImage->dim[1]=positionFieldImage->nx=accumulatorImage->nx;
-	positionFieldImage->dim[2]=positionFieldImage->ny=accumulatorImage->ny;
-	positionFieldImage->dim[3]=positionFieldImage->nz=accumulatorImage->nz;
+	positionFieldImage->dim[1]=positionFieldImage->nx=backprojectionImage->nx;
+	positionFieldImage->dim[2]=positionFieldImage->ny=backprojectionImage->ny;
+	positionFieldImage->dim[3]=positionFieldImage->nz=backprojectionImage->nz;
 	positionFieldImage->dim[4]=positionFieldImage->nt=1;positionFieldImage->pixdim[4]=positionFieldImage->dt=1.0;
 	positionFieldImage->dim[5]=positionFieldImage->nu=3;positionFieldImage->pixdim[5]=positionFieldImage->du=1.0;
 	positionFieldImage->dim[6]=positionFieldImage->nv=1;positionFieldImage->pixdim[6]=positionFieldImage->dv=1.0;
@@ -289,20 +329,20 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *accumulatorImage, ni
 	/* Allocate arrays */
         int dim[8];
 	dim[0]    = 3;
-	dim[1]    = accumulatorImage->dim[1];
-	dim[2]    = accumulatorImage->dim[2];
-	dim[3]    = accumulatorImage->dim[3];
+	dim[1]    = backprojectionImage->dim[1];
+	dim[2]    = backprojectionImage->dim[2];
+	dim[3]    = backprojectionImage->dim[3];
 	dim[4]    = 1;
 	dim[5]    = 1;
 	dim[6]    = 1;
 	dim[7]    = 1;
 	nifti_image *rotatedImage;
         rotatedImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
-        rotatedImage->data = (int *)malloc(accumulatorImage->nvox*sizeof(int));	
+        rotatedImage->data = (int *)malloc(backprojectionImage->nvox*sizeof(int));	
 
 	nifti_image *temp_backprojectionImage;
         temp_backprojectionImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
-        temp_backprojectionImage->data = (int *)malloc(accumulatorImage->nvox*sizeof(int));	        
+        temp_backprojectionImage->data = (int *)malloc(backprojectionImage->nvox*sizeof(int));	        
 
 	nifti_image *rotatedAttenuationImage;
         if (attenuationImage != NULL)
@@ -312,12 +352,12 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *accumulatorImage, ni
             }
 
 	/* Define centers of rotation */
-	float center_x = ((float)(accumulatorImage->nx - 1)) / 2.0;
-	float center_y = ((float)(accumulatorImage->ny - 1)) / 2.0;
-	float center_z = ((float)(accumulatorImage->nz - 1)) / 2.0;
+	float center_x = ((float)(backprojectionImage->nx - 1)) / 2.0;
+	float center_y = ((float)(backprojectionImage->ny - 1)) / 2.0;
+	float center_z = ((float)(backprojectionImage->nz - 1)) / 2.0;
 
 	/* Clear accumulator */
-	et_clear_accumulator(accumulatorImage);	
+	et_clear_accumulator(backprojectionImage);	
 	
 	/* Alloc transformation matrix */
 	mat44 *affineTransformation = (mat44 *)calloc(1,sizeof(mat44));
@@ -413,7 +453,7 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *accumulatorImage, ni
 						center_z);
 						
 		reg_affine_positionField(	affineTransformation,
-						accumulatorImage,
+						backprojectionImage,
 						positionFieldImage);
 
 		reg_resampleSourceImage(	temp_backprojectionImage,
@@ -426,13 +466,13 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *accumulatorImage, ni
 
 		/* Accumulate */
 		et_accumulate(			rotatedImage,
-						accumulatorImage );
+						backprojectionImage );
 	}
 
         /* Truncate negative values: small negative values may be found due to FFT and IFFT */
-        float* accumulator_data = (float*) accumulatorImage->data;
+        float* accumulator_data = (float*) backprojectionImage->data;
 //#pragma omp parallel for 
-        for (int i=0; i<accumulatorImage->nvox; i++)
+        for (int i=0; i<backprojectionImage->nvox; i++)
             {
             if (accumulator_data[i] < 0)
                accumulator_data[i] = 0;
@@ -453,6 +493,9 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *accumulatorImage, ni
 
 
 
+//! Compute Fisher Information Matrix on a grid of points
+/*!
+*/
 int et_fisher_grid(int from_projection, nifti_image *inputImage, nifti_image *gridImage, nifti_image *fisherImage, nifti_image *fisherpriorImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float epsilon, float background, float background_attenuation)
 {
     int status = 0;
@@ -965,7 +1008,7 @@ int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_ima
 }
 
 
-int et_backproject_gpu(nifti_image *sinoImage, nifti_image *accumulatorImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation)
+int et_backproject_gpu(nifti_image *sinoImage, nifti_image *backprojectionImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation)
 {
 	/* initialise the cuda arrays */
 	cudaArray *backprojectionArray_d;
@@ -985,11 +1028,11 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *accumulatorImage, ni
         int       separable_psf=0;
 
 	/* Allocate the deformation Field image */
-	nifti_image *positionFieldImage = nifti_copy_nim_info(accumulatorImage);
+	nifti_image *positionFieldImage = nifti_copy_nim_info(backprojectionImage);
 	positionFieldImage->dim[0]=positionFieldImage->ndim=5;
-	positionFieldImage->dim[1]=positionFieldImage->nx = accumulatorImage->nx;
-	positionFieldImage->dim[2]=positionFieldImage->ny = accumulatorImage->ny;
-	positionFieldImage->dim[3]=positionFieldImage->nz = accumulatorImage->nz;
+	positionFieldImage->dim[1]=positionFieldImage->nx = backprojectionImage->nx;
+	positionFieldImage->dim[2]=positionFieldImage->ny = backprojectionImage->ny;
+	positionFieldImage->dim[3]=positionFieldImage->nz = backprojectionImage->nz;
 	positionFieldImage->dim[4]=positionFieldImage->nt = 1; positionFieldImage->pixdim[4]=positionFieldImage->dt = 1.0;
 	positionFieldImage->dim[5]=positionFieldImage->nu = 3; positionFieldImage->pixdim[5]=positionFieldImage->du = 1.0;
 	positionFieldImage->dim[6]=positionFieldImage->nv = 1; positionFieldImage->pixdim[6]=positionFieldImage->dv = 1.0;
@@ -1003,12 +1046,12 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *accumulatorImage, ni
 
         cudaChannelFormatDesc backprojectionArray_d_chdesc = cudaCreateChannelDesc<float>();
         cudaExtent backprojectionArray_d_extent;
-        backprojectionArray_d_extent.width  = accumulatorImage->nx;
-        backprojectionArray_d_extent.height = accumulatorImage->ny;
-        backprojectionArray_d_extent.depth  = accumulatorImage->nz;
+        backprojectionArray_d_extent.width  = backprojectionImage->nx;
+        backprojectionArray_d_extent.height = backprojectionImage->ny;
+        backprojectionArray_d_extent.depth  = backprojectionImage->nz;
         cudaError_t cuda_status1 = cudaMalloc3DArray(&backprojectionArray_d, &backprojectionArray_d_chdesc, backprojectionArray_d_extent);
 
-        if(cudaCommon_allocateArrayToDevice<float>(&temp_backprojection_d, accumulatorImage->dim)) return 1;
+        if(cudaCommon_allocateArrayToDevice<float>(&temp_backprojection_d, backprojectionImage->dim)) return 1;
 
         if (attenuationImage != NULL)
             {
@@ -1018,29 +1061,29 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *accumulatorImage, ni
             }
 
 	if(cudaCommon_allocateArrayToDevice<float>(&sinoArray_d, sinoImage->dim)) return 1;
-	if(cudaCommon_allocateArrayToDevice<float>(&rotatedArray_d, accumulatorImage->dim)) return 1;	
-	if(cudaCommon_allocateArrayToDevice<float>(&accumulatorArray_d, accumulatorImage->dim)) return 1;
-	if(cudaCommon_allocateArrayToDevice<float4>(&positionFieldImageArray_d, accumulatorImage->dim)) return 1;
-	if(cudaCommon_allocateArrayToDevice<int>(&mask_d, accumulatorImage->dim)) return 1;
+	if(cudaCommon_allocateArrayToDevice<float>(&rotatedArray_d, backprojectionImage->dim)) return 1;	
+	if(cudaCommon_allocateArrayToDevice<float>(&accumulatorArray_d, backprojectionImage->dim)) return 1;
+	if(cudaCommon_allocateArrayToDevice<float4>(&positionFieldImageArray_d, backprojectionImage->dim)) return 1;
+	if(cudaCommon_allocateArrayToDevice<int>(&mask_d, backprojectionImage->dim)) return 1;
 
 	/* Transfer data from the host to the device */
 	if(cudaCommon_transferNiftiToArrayOnDevice<float>(&sinoArray_d,sinoImage)) return 1;
-	int *mask_h=(int *)malloc(accumulatorImage->nvox*sizeof(int));
-	for(int i=0; i<accumulatorImage->nvox; i++) mask_h[i]=i;
-	CUDA_SAFE_CALL(cudaMemcpy(mask_d, mask_h, accumulatorImage->nvox*sizeof(int), cudaMemcpyHostToDevice));
+	int *mask_h=(int *)malloc(backprojectionImage->nvox*sizeof(int));
+	for(int i=0; i<backprojectionImage->nvox; i++) mask_h[i]=i;
+	CUDA_SAFE_CALL(cudaMemcpy(mask_d, mask_h, backprojectionImage->nvox*sizeof(int), cudaMemcpyHostToDevice));
 	free(mask_h);
 
 	/* Define centers of rotation */
-	float center_x = ((float)(accumulatorImage->nx - 1)) / 2.0;
-	float center_y = ((float)(accumulatorImage->ny - 1)) / 2.0;
-	float center_z = ((float)(accumulatorImage->nz - 1)) / 2.0;
+	float center_x = ((float)(backprojectionImage->nx - 1)) / 2.0;
+	float center_y = ((float)(backprojectionImage->ny - 1)) / 2.0;
+	float center_z = ((float)(backprojectionImage->nz - 1)) / 2.0;
 
 	/* Alloc transformation matrix */
 	mat44 *affineTransformation = (mat44 *)calloc(1,sizeof(mat44));
 
 	/* Clear accumulator */
 	et_clear_accumulator_gpu(		&accumulatorArray_d,
-						accumulatorImage );
+						backprojectionImage );
         /* Allocate and initialize kernel for DDPSF */
         if (psfImage != NULL)
             {
@@ -1049,9 +1092,9 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *accumulatorImage, ni
             psf_size[0] = psfImage->dim[1];
             psf_size[1] = psfImage->dim[2];
             psf_size[2] = psfImage->dim[3];
-            image_size[0] = accumulatorImage->dim[1];
-            image_size[1] = accumulatorImage->dim[2];
-            image_size[2] = accumulatorImage->dim[3];
+            image_size[0] = backprojectionImage->dim[1];
+            image_size[1] = backprojectionImage->dim[2];
+            image_size[2] = backprojectionImage->dim[3];
 
             if (psf_size[0]<= (MAX_SEPARABLE_KERNEL_RADIUS*2)+1)
                 separable_psf=1;
@@ -1103,14 +1146,14 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *accumulatorImage, ni
 						&temp_backprojection_d,
 						&rotatedAttenuationArray_d,
                                                 cam,
-						accumulatorImage);
+						backprojectionImage);
                     }
                 else
                     {
                     et_line_backproject_gpu(	&sinoArray_d,
 						&temp_backprojection_d,
 						cam,
-						accumulatorImage);
+						backprojectionImage);
                     }
 
                 // Apply Depth Dependent Point Spread Function //
@@ -1136,12 +1179,12 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *accumulatorImage, ni
               
                 p.srcPtr.ptr        = temp_backprojection_d;
                 p.srcPtr.pitch      = 0;
-                p.srcPtr.xsize      = accumulatorImage->nx;
-                p.srcPtr.ysize      = accumulatorImage->ny;
+                p.srcPtr.xsize      = backprojectionImage->nx;
+                p.srcPtr.ysize      = backprojectionImage->ny;
                 p.dstArray          = backprojectionArray_d;
-                p.extent.width      = accumulatorImage->nx;
-                p.extent.height     = accumulatorImage->ny;
-                p.extent.depth      = accumulatorImage->nz;
+                p.extent.width      = backprojectionImage->nx;
+                p.extent.height     = backprojectionImage->ny;
+                p.extent.depth      = backprojectionImage->nz;
                 p.kind              = cudaMemcpyDeviceToDevice;
                 cuda_status         = cudaMemcpy3D(&p);
 
@@ -1154,29 +1197,29 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *accumulatorImage, ni
 						center_y, 
 						center_z);
 		reg_affine_positionField_gpu(	affineTransformation,
-						accumulatorImage,
+						backprojectionImage,
 						&positionFieldImageArray_d);
-		reg_resampleSourceImage_gpu(	accumulatorImage,
-						accumulatorImage,
+		reg_resampleSourceImage_gpu(	backprojectionImage,
+						backprojectionImage,
 						&rotatedArray_d,
 						&backprojectionArray_d,
 						&positionFieldImageArray_d,
 						&mask_d,
-						accumulatorImage->nvox,
+						backprojectionImage->nvox,
 						background);
 
 		// Accumulate //
 		et_accumulate_gpu(		&rotatedArray_d,
 						&accumulatorArray_d,
-						accumulatorImage );
+						backprojectionImage );
 	}
 
 	/* Transfer result back to host */
-	if(cudaCommon_transferFromDeviceToNifti(accumulatorImage, &accumulatorArray_d)) return 1; 
+	if(cudaCommon_transferFromDeviceToNifti(backprojectionImage, &accumulatorArray_d)) return 1; 
 
         /* Truncate negative values: small negative values may be found due to FFT and IFFT */
-        float* accumulator_data = (float*) accumulatorImage->data;
-        for (int i=0; i<accumulatorImage->nvox; i++)
+        float* accumulator_data = (float*) backprojectionImage->data;
+        for (int i=0; i<backprojectionImage->nvox; i++)
             if (accumulator_data[i] < 0)
                 accumulator_data[i] = 0;
 

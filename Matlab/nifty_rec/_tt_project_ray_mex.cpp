@@ -1,3 +1,12 @@
+/*
+ *  _tt_project_ray_mex.cpp
+ *  
+ *  NiftyRec
+ *  Stefano Pedemonte, May 2012.
+ *  CMIC - Centre for Medical Image Computing
+ *  UCL - University College London 
+ *  Released under BSD licence, see LICENSE.txt 
+ */
 
 #include <mex.h>
 
@@ -22,7 +31,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    }
 
    int status = 1;
-   unsigned short *attenuation;
+   VolumeType *attenuation;
    u_int_3 voxels; 
    u_int n_projections; 
    u_int_2 detector_pixels;
@@ -35,7 +44,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
    //check consistency of arguments
 //   if ( mxGetClassID(prhs[0]) != mxDOUBLE_CLASS ) mexErrMsgTxt("'attenuation' must be noncomplex  double.");
-   if ( mxGetClassID(prhs[0]) != mxUINT16_CLASS ) mexErrMsgTxt("'attenuation' must be noncomplex ushort.");
+   if ( mxGetClassID(prhs[0]) != mxSINGLE_CLASS ) mexErrMsgTxt("'attenuation' must be noncomplex single.");
    if ( mxGetClassID(prhs[1]) != mxDOUBLE_CLASS ) mexErrMsgTxt("'volume_size' must be noncomplex double.");
    if ( mxGetClassID(prhs[2]) != mxDOUBLE_CLASS ) mexErrMsgTxt("'source_position' must be noncomplex double.");
    if ( mxGetClassID(prhs[3]) != mxINT32_CLASS )  mexErrMsgTxt("'detector_pixels' must be noncomplex int.");
@@ -86,10 +95,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
        enable_gpu = (int) (mxGetScalar(prhs[8]));
 
    //convert to CUDA compatible types
-//   attenuation = (unsigned short*) malloc(voxels.x*voxels.y*voxels.z*sizeof(unsigned short));
-//   for(int i=0; i<voxels.x*voxels.y*voxels.z; i++)
-//       attenuation[i] = a_double[i];
-   attenuation = (unsigned short *) mxGetData(prhs[0]);
+   attenuation = (VolumeType *) mxGetData(prhs[0]);
 
    source_pos           = (float_3 *) malloc(n_projections*sizeof(float_3));
    detector_size        = (float_2 *) malloc(n_projections*sizeof(float_2));

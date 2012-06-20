@@ -1,4 +1,4 @@
-function tt_project_ray_anim(v,det_size,source,vsize_mm,scale,trans,rot,step,proj)
+function tt_project_ray_animation(v,det_size,source,vsize_mm,scale,trans,rot,step,proj)
 
 %Jamie McClelland
 %Copyright 2010-2011 CMIC-UCL.

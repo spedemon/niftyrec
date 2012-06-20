@@ -1,3 +1,12 @@
+/*
+ *  _et_joint_histogram_gpu.cu
+ *  
+ *  NiftyRec
+ *  Stefano Pedemonte, May 2012.
+ *  CMIC - Centre for Medical Image Computing 
+ *  UCL - University College London. 
+ *  Released under BSD licence, see LICENSE.txt 
+ */
 
 #include "_et_joint_histogram_gpu.h"
 #include "_et_joint_histogram_gpu_kernels.cu"

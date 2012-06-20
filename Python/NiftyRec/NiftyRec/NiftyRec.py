@@ -18,15 +18,36 @@ ET_BACKGROUND_ACTIVITY = 0.0
 ET_BACKGROUND_ATTENUATION = 0.0
 ET_EPSILON = 0.001
 
+NIFTYREC_WEBSITE = "http://niftyrec.sourceforge.net"
 
 lib = None
 for extension in ['so','dylib','dll']:
     try:
         lib = CDLL(lib_name + "." + extension)
-    except OSError,e:
+    except(OSError,e):
         pass
 if not lib:
-    raise ImportError("Cannot find "+lib_name+" shared object.")
+    raise(ImportError("Cannot find NiftyRec libraries ("+lib_name+")."))
+    print("Please make sure that: ")
+    print(" 1) NiftyRec is installed. If not, download from "+NIFTYREC_WEBSITE+" and install.")
+    print(" 2) The path to the NiftyRec libraries is included in the system libraries path: ")
+    print("    - LINUX: type the following at the terminal before you launch python: ")
+    print("               export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/pathtoniftyreclibraries/ ")
+    print("               (where '/pathtoniftyreclibraries/' is typically '/usr/local/lib/' or '/home/yourusername/niftyrec/lib/')")
+    print("    - MAC OSx: type the following at the terminal before you launch python: ")
+    print("               export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:/pathtoniftyreclibraries/ ")
+    print("               (where '/pathtoniftyreclibraries/' is typically '/usr/local/lib/' or '/Users/yourusername/niftyrec/lib/')")
+    print("    - WINDOWS: Open the control panel, click on classic view, system, advanced ")
+    print("               1) click on 'Start'")
+    print("               2) click on 'Control Panel' and switch to 'Classic View' on the left panel.  ")
+    print("               3) Click on 'System' to open the 'system properties' window. ")
+    print("               4) Select the 'Advanced' tab in 'System properties' and click on 'Environment Variables'. ")
+    print("               5) Scroll down the list under 'System Variables' and find the 'Path' variable. ")
+    print("               6) Click on 'Path' to highlight it and then on the 'Edit' button. A new window 'Edit System Variables' should appear. ")
+    print("               7) Click on the field next to 'Variable Value' and using the right arrow '--->' on the keyboard, reach to the end of the string. Then type ';C:\pathtoniftyreclibraries\ ' ")
+    print("               8) (where '/pathtoniftyreclibraries/' is typically '\Program Files\NiftyRec\NiftyRec\lib\ '.) ")
+    print("               9) Click 'OK' then 'OK' again. Then click 'OK' once again to close the 'system properties' window.  ")
+    print("               10) Relaunch Python ")
 
 
 
@@ -208,9 +229,9 @@ class Reconstructor:
     def set_sinogram(self,sinogram):
         if (sinogram.shape[1] != self.volume_size[0]) or (sinogram.shape[2] != self.volume_size[1]):
 #        if (sinogram.shape[0] != self.volume_size[0]) or (sinogram.shape[1] != self.volume_size[1]):
-            print "Sinogram size not consistent with activity eatimate, need reinterpolation"
-            print "Sinogram size: ",sinogram.shape
-            print "Activity size: ",self.volume_size
+            print("Sinogram size not consistent with activity eatimate, need reinterpolation")
+            print("Sinogram size: "+str(sinogram.shape))
+            print("Activity size: "+str(self.volume_size))
             return
         self.sinogram = single(sinogram)
 
@@ -263,11 +284,11 @@ class Reconstructor:
 
     def reconstruct(self, method, parameters):
         if self.is_reconstructing():
-            print "Reconstruction running"
+            print("Reconstruction running")
             return
-        print "Reconstruction started"
+        print("Reconstruction started")
         if not self.has_all_parameters(): 
-            print "Reconstructor does not have all necessary parameters"
+            print("Reconstructor does not have all necessary parameters")
             return 
         self._stop=False
         start_new_thread(self._reconstruct,(method,parameters))
@@ -281,12 +302,12 @@ class Reconstructor:
             for step in range(steps):
                 gobject.idle_add(self.callback_status,"%d"%((100.0*step)/steps)+"% OSEM reconstruction",(1.0*step)/steps)
                 gobject.idle_add(self.callback_updateactivity, self.activity )
-                print 'activity:', self.activity.shape, self.activity.dtype
-                print 'sinogram:', self.sinogram.shape, self.sinogram.dtype
-                print 'cameras: ', self.cameras.shape, self.cameras.dtype
-                print 'psf:     ', self.psf.shape, self.psf.dtype
-                print 'attenuation:',self.attenuation.shape, self.attenuation.dtype
-                print 'use gpu: ',self.use_gpu
+                print('activity:'+str(self.activity.shape)+str(self.activity.dtype))
+                print('sinogram:'+str(self.sinogram.shape)+str(self.sinogram.dtype))
+                print('cameras: '+str(self.cameras.shape)+str(self.cameras.dtype))
+                print('psf:     '+str(self.psf.shape)+str(self.psf.dtype))
+                print('attenuation:',self.attenuation.shape)+str(self.attenuation.dtype))
+                print('use gpu: ',self.use_gpu))
                 beta_osl=0
                 gradient_prior=0
                 self.activity = osmapem_step(subset_order, self.activity, self.sinogram, self.cameras, self.attenuation, 
@@ -301,12 +322,12 @@ class Reconstructor:
             for step in range(steps):
                 gobject.idle_add(self.callback_status,"%d"%((100.0*step)/steps)+"% TV OSEM reconstruction",(1.0*step)/steps)
                 gobject.idle_add(self.callback_updateactivity, self.activity )
-                print 'activity:', self.activity.shape, self.activity.dtype
-                print 'sinogram:', self.sinogram.shape, self.sinogram.dtype
-                print 'cameras: ', self.cameras.shape, self.cameras.dtype
-                print 'psf:     ', self.psf.shape, self.psf.dtype
-                print 'attenuation:',self.attenuation.shape, self.attenuation.dtype
-                print 'use gpu: ',self.use_gpu
+                print('activity:'+str(self.activity.shape)+str(self.activity.dtype))
+                print('sinogram:'+str(self.sinogram.shape)+str(self.sinogram.dtype))
+                print('cameras: '+str(self.cameras.shape)+str(self.cameras.dtype))
+                print('psf:     '+str(self.psf.shape)+str(self.psf.dtype))
+                print('attenuation:',self.attenuation.shape)+str(self.attenuation.dtype))
+                print('use gpu: ',self.use_gpu))
                 beta_osl=parameters['beta']/1000.0
                 kernel = -1*ones((3,3,3))
                 kernel[1,1,1] = 26
@@ -336,7 +357,7 @@ class Reconstructor:
                 sleep(0.1)
                 if self._stop:
                     break
-        print "Reconstruction done"
+        print("Reconstruction done")
         self._reconstructing = False
         sleep(0.1)
         self.callback_status(" ",0.0)       

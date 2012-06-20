@@ -1,10 +1,10 @@
 
-% ET_OSEM_DEMO_2D
+% ET_DEMO_OSEM_2D
 %     NiftyRec Demo: Ordered Subsets Expectation Maximisation (OSEM) SPECT
 %     reconstruction - 2D.
 %
 %See also
-%   ET_MLEM_DEMO, ET_MAPEM_MRF_DEMO, ET_MAPEM_STEP
+%   ET_DEMO_MLEM, ET_DEMO_MAPEM_MRF, ET_OSMAPEM_STEP
 %
 % 
 %Stefano Pedemonte

@@ -3,7 +3,7 @@
 %     NiftyRec Demo: Reconstruction of PET-SORTEO Monte Carlo simulation. 
 %
 %See also
-%     ET_DEMO_SIMIND, ET_OSEM_DEMO, ET_OSEM_DEMO_2D, ET_MLEM_DEMO
+%     ET_DEMO_SIMIND, ET_DEMO_OSEM, ET_DEMO_OSEM_2D, ET_DEMO_MLEM
 %
 % 
 %Stefano Pedemonte

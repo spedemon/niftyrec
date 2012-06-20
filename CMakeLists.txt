@@ -1,3 +1,13 @@
+
+#  CMakeLists.txt
+#  
+#  NiftyRec
+#  Stefano Pedemonte, May 2012.
+#  CMIC - Centre for Medical Image Computing 
+#  UCL - University College London. 
+#  Released under BSD licence, see LICENSE.txt 
+
+#-----------------------------------------------------------------------------
 PROJECT(nifty_rec)
 
 cmake_minimum_required(VERSION 2.8)
@@ -70,6 +80,8 @@ SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR})
 
 #-----------------------------------------------------------------------------
+FIND_PACKAGE(Threads)
+
 IF(NiftyRec_USE_OPENMP)
     IF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         IF(CMAKE_SYSTEM_VERSION VERSION_GREATER 11.0 OR CMAKE_SYSTEM_VERSION VERSION_EQUAL 11.0.0)
@@ -116,10 +128,10 @@ IF(NiftyRec_BUILD_SHARED)
         IF(UNIX)
                 IF("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
                         ADD_DEFINITIONS(-fPIC)
-                        SET(CMAKE_CC_FLAGS_RELEASE "${CMAKE_CC_FLAGS_RELEASE} -fPIC"  )
-                        SET(CMAKE_CC_FLAGS_DEBUG "${CMAKE_CC_FLAGS_DEBUG} -fPIC"  )
-                        SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fPIC"  )
-                        SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fPIC"  )
+                        SET(CMAKE_CC_FLAGS_RELEASE "${CMAKE_CC_FLAGS_RELEASE} -fPIC -ldl"  )
+                        SET(CMAKE_CC_FLAGS_DEBUG "${CMAKE_CC_FLAGS_DEBUG} -fPIC -ldl"  )
+                        SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fPIC -ldl"  )
+                        SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fPIC -ldl"  )
                 ENDIF("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
         ENDIF(UNIX)
 ELSE(NiftyRec_BUILD_SHARED)
@@ -162,9 +174,9 @@ SET(NIFTY_REC_REG_INTERF_LIBRARY _reg_array_interface)
 SET(NIFTY_REC_ET_LIBRARIES _et_common _et_line_integral _et_line_integral_attenuated _et_line_backproject_attenuated _et_line_backproject _et_accumulate _et_clear_accumulator _et_convolve2D _et_convolveSeparable2D _et_convolveFFT2D)
 SET(NIFTY_REC_ET_LIBRARIES_GPU _et_line_integral_gpu _et_line_integral_attenuated_gpu _et_line_backproject_gpu _et_line_backproject_attenuated_gpu _et_clear_accumulator_gpu _et_accumulate_gpu _et_convolveSeparable2D_gpu _et_convolveFFT2D_gpu _et_attenuation_gradient_gpu)
 SET(NIFTY_REC_ET_MEX et_project_mex et_backproject_mex et_project_backproject_mex et_convolve_mex et_rotate_mex et_list_gpus_mex et_set_gpu_mex et_affine_mex et_reorder_activity_in et_reorder_activity_out et_variance_centre_approx_mex et_fisher_grid_mex et_fisher_grid_invprojection_mex et_gradient_attenuation_mex)
-SET(NIFTY_REC_TT_LIBRARIES _tt_common _tt_project_ray _tt_backproject_ray)
-SET(NIFTY_REC_TT_LIBRARIES_GPU _tt_project_ray_gpu _tt_backproject_ray_gpu ) #_tt_perspective_gpu
-SET(NIFTY_REC_TT_MEX tt_project_ray_mex tt_backproject_ray_mex)
+SET(NIFTY_REC_TT_LIBRARIES _tt_common _tt_line_project_ray_cpu _tt_line_backproject_ray_cpu)
+SET(NIFTY_REC_TT_LIBRARIES_GPU _tt_line_project_ray_gpu _tt_line_backproject_ray_gpu) 
+SET(NIFTY_REC_TT_MEX tt_project_ray_mex tt_backproject_ray_mex) 
 
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/emission-lib)
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/transmission-lib)

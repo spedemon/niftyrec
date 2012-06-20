@@ -1,8 +1,16 @@
+/*
+ *  _tt_line_project_ray_gpu_kernels.cu
+ *  
+ *  NiftyRec
+ *  Stefano Pedemonte, May 2012.
+ *  CMIC - Centre for Medical Image Computing 
+ *  UCL - University College London. 
+ *  Released under BSD licence, see LICENSE.txt 
+ */
 
 #ifndef _TTPROJECTRAY_KERNEL_CU_
 #define _TTPROJECTRAY_KERNEL_CU_
 
-//#include <_tt_project_ray_gpu.h>
 #include <cutil_inline.h>
 #include <vector_types.h>
 #include <vector_functions.h>
@@ -10,11 +18,12 @@
 #include <cutil_math.h>
 #include <_tt_common.h>
 
-#define MAX_STEPS 10000
+#define MAX_STEPS 1000000000
 
 cudaArray *d_volumeArray = 0;
 
-texture<VolumeType, 3, cudaReadModeNormalizedFloat> tex;         // 3D texture
+//texture<VolumeType, 3, cudaReadModeNormalizedFloat> tex;         // 3D texture
+texture<VolumeType, 3, cudaReadModeElementType> tex;         // 3D texture
 
 typedef struct {
         float4 m[3];
@@ -77,7 +86,7 @@ float4 mul(const float3x4 &M, const float4 &v)
 
 
 __global__ void
-d_tt_project_ray(float *d_output, float3 sourcePosition, float3 volumeSize, uint imageWidthPixels, uint imageHeightPixels, float tStep, int interpolation)
+d_tt_line_project_ray_gpu(float *d_output, float3 sourcePosition, float3 volumeSize, uint imageWidthPixels, uint imageHeightPixels, float tStep, int interpolation)
 {
     const uint   image_width_pixels = imageWidthPixels; 
     const uint   image_height_pixels = imageHeightPixels; 
@@ -85,7 +94,8 @@ d_tt_project_ray(float *d_output, float3 sourcePosition, float3 volumeSize, uint
     const float3 source_position = sourcePosition;
 
     const float  tstep    = tStep;
-    const int    maxSteps = MAX_STEPS; //(volume_size.x^2+volume_size.y^2+volume_size.z^2)^0.5f/tStep;       //diagonal of the bounding box
+    const int    maxSteps = MAX_STEPS;          
+    //const int    maxSteps = MAX_STEPS;          //(volume_size.x^2+volume_size.y^2+volume_size.z^2)^0.5f/tStep;       //diagonal of the bounding box
     const float3 boxMin = make_float3(0.0f, 0.0f, 0.0f);
     const float3 boxMax = make_float3(volume_size.x, volume_size.y, volume_size.z);
 
@@ -173,9 +183,9 @@ extern "C" void freeCudaBuffers()
 
 
 
-extern "C" void tt_project_ray_kernel(dim3 gridSize, dim3 blockSize, float *d_output, float3 source_position, float3 volume_size, uint imageW, uint imageH, float t_step, int interpolation)
+extern "C" void tt_line_project_ray_gpu(dim3 gridSize, dim3 blockSize, float *d_output, float3 source_position, float3 volume_size, uint imageW, uint imageH, float t_step, int interpolation)
 {
-	d_tt_project_ray<<<gridSize, blockSize>>>( d_output, source_position, volume_size, imageW, imageH, t_step, interpolation);
+	d_tt_line_project_ray_gpu<<<gridSize, blockSize>>>( d_output, source_position, volume_size, imageW, imageH, t_step, interpolation);
 }
 
 

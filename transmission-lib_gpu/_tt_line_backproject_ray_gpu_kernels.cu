@@ -1,3 +1,12 @@
+/*
+ *  _tt_line_backproject_ray_gpu_kernels.cu
+ *  
+ *  NiftyRec
+ *  Stefano Pedemonte, May 2012.
+ *  CMIC - Centre for Medical Image Computing 
+ *  UCL - University College London. 
+ *  Released under BSD licence, see LICENSE.txt 
+ */
 
 #ifndef _TTBACKPROJECTRAY_KERNEL_CU_
 #define _TTBACKPROJECTRAY_KERNEL_CU_
@@ -73,7 +82,7 @@ float4 mul(const float3x4 &M, const float4 &v)
 
 
 __global__ void
-d_tt_backproject_ray(float *d_projection, float *d_output, uint3 volumeVoxels, float3 sourcePosition, float3 volumeSize, uint2 detectorPixels, float tStep, int interpolation)
+d_tt_line_backproject_ray_gpu(float *d_projection, float *d_output, uint3 volumeVoxels, float3 sourcePosition, float3 volumeSize, uint2 detectorPixels, float tStep, int interpolation)
 {
     const uint   image_width_pixels  = detectorPixels.x; 
     const uint   image_height_pixels = detectorPixels.y; 
@@ -90,7 +99,7 @@ d_tt_backproject_ray(float *d_projection, float *d_output, uint3 volumeVoxels, f
     uint x = blockIdx.x*blockDim.x + threadIdx.x;
     uint y = blockIdx.y*blockDim.y + threadIdx.y;
     if ((x >= image_width_pixels) || (y >= image_height_pixels)) return;
-    if(x%2==0 && x%2==0) return;
+//    if(!(x%2==0 && y%2==0)) return;
     //u and v are in normalized detector pixel [0,0]->[1,1]
     float u = (x / (float) image_width_pixels);
     float v = (y / (float) image_height_pixels);
@@ -121,13 +130,19 @@ d_tt_backproject_ray(float *d_projection, float *d_output, uint3 volumeVoxels, f
         {
             index = (int) floor(pos.z)*volume_voxels.x*volume_voxels.y + floor(pos.y)*volume_voxels.x + floor(pos.x);
     //        atomicAdd(d_output+index, proj);
-//            if (pos.x<volume_voxels.x)
-//                if (pos.y<volume_voxels.y)
-//                    if (pos.z<volume_voxels.z)
+            if (pos.x<volume_voxels.x && pos.x>=0)
+                if (pos.y<volume_voxels.y && pos.y>=0)
+                    if (pos.z<volume_voxels.z && pos.z>=0)
             d_output[index] += proj;        
         }
         else if (interpolation==INTERP_TRILINEAR)
         {
+            if (pos.x<(volume_voxels.x-1) && pos.x>=1) 
+            {
+                if (pos.y<(volume_voxels.y-1) && pos.y>=1) 
+                {
+                    if (pos.z<(volume_voxels.z-1) && pos.z>=1) 
+                    {
                         int3 p000, p001, p010, p011, p100, p101, p110, p111;
                         p000.x = (int)floor(pos.x); p000.y = (int)floor(pos.y); p000.z = (int)floor(pos.z); 
                         p001 = p000; p001.x+=1;
@@ -158,6 +173,9 @@ d_tt_backproject_ray(float *d_projection, float *d_output, uint3 volumeVoxels, f
                         d_output[p101.z*volumeVoxels.y*volumeVoxels.x+p101.y*volumeVoxels.x+p101.x] += w101;
                         d_output[p110.z*volumeVoxels.y*volumeVoxels.x+p110.y*volumeVoxels.x+p110.x] += w110;
                         d_output[p111.z*volumeVoxels.y*volumeVoxels.x+p111.y*volumeVoxels.x+p111.x] += w111;
+                    }
+                }
+            }
         }
 
         __syncthreads();
@@ -171,7 +189,7 @@ d_tt_backproject_ray(float *d_projection, float *d_output, uint3 volumeVoxels, f
 
 
 
-extern "C" void tt_backproject_ray_kernel(dim3 gridSize, dim3 blockSize, float *d_projection, float *d_output, uint2 detectorPixels, float3 sourcePosition, uint3 volumeVoxels, float3 volumeSize, float t_step, int interpolation)
+extern "C" void tt_line_backproject_ray_gpu(dim3 gridSize, dim3 blockSize, float *d_projection, float *d_output, uint2 detectorPixels, float3 sourcePosition, uint3 volumeVoxels, float3 volumeSize, float t_step, int interpolation)
 {
 //        fprintf(stderr,"\nGrid:  %d %d %d",gridSize.x,gridSize.y,gridSize.z);
 //        fprintf(stderr,"\nBlock: %d %d %d",blockSize.x,blockSize.y,blockSize.z);
@@ -179,7 +197,7 @@ extern "C" void tt_backproject_ray_kernel(dim3 gridSize, dim3 blockSize, float *
 //        fprintf(stderr,"\nVolume voxels:  %d %d %d",volumeVoxels.x,volumeVoxels.y,volumeVoxels.z);
 //        fprintf(stderr,"\nSource:         %f %f %f",sourcePosition.x,sourcePosition.y,sourcePosition.z);
 //        fprintf(stderr,"\ndetectorPixels: %d %d   ",detectorPixels.x, detectorPixels.y);
-	d_tt_backproject_ray<<<gridSize, blockSize>>>( d_projection, d_output, volumeVoxels, sourcePosition, volumeSize, detectorPixels, t_step, interpolation);
+	d_tt_line_backproject_ray_gpu<<<gridSize, blockSize>>>( d_projection, d_output, volumeVoxels, sourcePosition, volumeSize, detectorPixels, t_step, interpolation);
         CUDA_SAFE_CALL(cudaThreadSynchronize());
 }
 
@@ -200,3 +218,4 @@ extern "C" void copyInvViewMatrix_bk(float *invViewMatrix, size_t sizeofMatrix)
 
 
 #endif // #ifndef _TTBACKPROJECTRAY_KERNEL_CU_
+

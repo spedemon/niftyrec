@@ -1,11 +1,11 @@
 
 
-% ET_MAPEM_MRF_DEMO
+% ET_DEMO_MAPEM_MRF
 %     NiftyRec SPECT demo: Maximum a posteriori Expectation Maximisation reconstruction 
 %     with regularisation based on quadratic Markov Random Field. 
 %
 %See also
-%   ET_MLEM_DEMO, ET_MAPEM_STEP, ET_OSEM_DEMO
+%   ET_DEMO_MLEM, ET_MAPEM_STEP, ET_DEMO_OSEM
 %
 % 
 %Stefano Pedemonte

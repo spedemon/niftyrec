@@ -1,3 +1,12 @@
+/*
+ *  _tt_project_perspective_mex.cpp
+ *  
+ *  NiftyRec
+ *  Stefano Pedemonte, May 2012.
+ *  CMIC - Centre for Medical Image Computing
+ *  UCL - University College London 
+ *  Released under BSD licence, see LICENSE.txt 
+ */
 
 #include <mex.h>
 
@@ -222,7 +231,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    float *projection_ptr = (float *)(mxGetData(plhs[0]));
 
    /* Perform projection */
-   status = tt_array_project(attenuation_ptr, attenuation_size, projection_ptr, projection_size, image_origin_ptr, detector_origin_ptr, detector_shape_ptr, psf_ptr, psf_size, background, enable_gpu);
+   status = tt_array_project_perspective(attenuation_ptr, attenuation_size, projection_ptr, projection_size, image_origin_ptr, detector_origin_ptr, detector_shape_ptr, psf_ptr, psf_size, background, enable_gpu);
 
    /* Shutdown */
    if (mxGetClassID(prhs[0]) != mxSINGLE_CLASS) free(attenuation_ptr);

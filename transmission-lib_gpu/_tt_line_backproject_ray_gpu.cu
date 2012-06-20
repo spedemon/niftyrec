@@ -1,30 +1,26 @@
-
-#ifndef _TTPROJECTRAY_CU_
-#define _TTPROJECTRAY_CU_
-
-// Utilities and System includes
-
-//#include <_tt_project_ray_gpu.h>
-
-#define MAX_EPSILON_ERROR 5.00f
-#define THRESHOLD         0.30f
-
-#define MAX(a,b) ((a > b) ? a : b)
+/*
+ *  _tt_line_backproject_ray_gpu.cu
+ *  
+ *  NiftyRec
+ *  Stefano Pedemonte, May 2012.
+ *  CMIC - Centre for Medical Image Computing 
+ *  UCL - University College London. 
+ *  Released under BSD licence, see LICENSE.txt 
+ */
 
 
-#include <cutil_inline.h>
-#include <vector_types.h>
-#include <vector_functions.h>
-#include <driver_functions.h>
-//#include <sys/time.h>
-#include <_tt_common.h>
+#ifndef _TTBACKPROJECTRAY_CU_
+#define _TTBACKPROJECTRAY_CU_
+
+#include <_tt_backproject_ray_gpu.h>
+
 
 
 inline int iDivUp(int a, int b){
     return (a % b != 0) ? (a / b + 1) : (a / b);
 }
 
-int set_inViewMatrix(float *invViewMatrix, float_2 detector_scale, float_3 detector_transl, float_3 detector_rotat)
+extern "C" int set_inViewMatrix(float *invViewMatrix, float_2 detector_scale, float_3 detector_transl, float_3 detector_rotat)
 {
     memset((void*)invViewMatrix,0,12*sizeof(float));
     //rotate
