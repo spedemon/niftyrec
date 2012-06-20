@@ -1,3 +1,14 @@
+/*
+ *  _et_attenuation_gradient_gpu_kernels.h
+ *  
+ *  NiftyRec
+ *  Stefano Pedemonte, May 2012.
+ *  CMIC - Centre for Medical Image Computing 
+ *  UCL - University College London. 
+ *  Released under BSD licence, see LICENSE.txt 
+ */
+
+
 #include "_et_accumulate_gpu.h"
 
 __device__ __constant__ int3 c_image_size;

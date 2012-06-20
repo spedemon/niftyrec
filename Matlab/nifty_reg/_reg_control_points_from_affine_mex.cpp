@@ -1,3 +1,13 @@
+/*
+ *  _reg_control_points_from_affine_mex.cpp
+ *  
+ *  NiftyRec
+ *  Stefano Pedemonte, May 2012.
+ *  CMIC - Centre for Medical Image Computing
+ *  UCL - University College London 
+ *  Released under BSD licence, see LICENSE.txt 
+ */
+
 
 #include <mex.h>
 #include "_reg_array_interface.h"

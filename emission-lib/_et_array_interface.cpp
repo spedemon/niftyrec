@@ -1,10 +1,10 @@
 /*
- *  _et.h
+ *  _et_array_interface.cpp
  *  
  *  NiftyRec
  *  Stefano Pedemonte, May 2012.
- *  Centre for Medical Image Computing (CMIC)
- *  University College London. 
+ *  CMIC - Centre for Medical Image Computing 
+ *  UCL - University College London. 
  *  Released under BSD licence, see LICENSE.txt 
  */
 

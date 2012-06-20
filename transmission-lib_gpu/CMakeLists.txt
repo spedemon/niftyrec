@@ -1,4 +1,13 @@
 
+#  CMakeLists.txt
+#  
+#  NiftyRec
+#  Stefano Pedemonte, May 2012.
+#  CMIC - Centre for Medical Image Computing 
+#  UCL - University College London. 
+#  Released under BSD licence, see LICENSE.txt 
+
+#-----------------------------------------------------------------------------
 MACRO(BUILD_INSTALL_LIBRARY_WITH_OPTIONS LIBRARY_NAME LIBRARY_TYPE OPTS)
         CUDA_ADD_LIBRARY(${LIBRARY_NAME} ${LIB_TYPE} ${LIBRARY_NAME}.h ${LIBRARY_NAME}.cu ${LIBRARY_NAME}_kernels.cu OPTIONS ${OPTS})
         TARGET_LINK_LIBRARIES(${LIBRARY_NAME} ${NIFTY_REC_TT_LIBRARIES} ${NIFTY_REG_LIBRARIES} ${NIFTY_REG_LIBRARIES_GPU} ${CUDA_LIBRARIES} ${CUDA_cufft_LIBRARY})
@@ -16,6 +25,7 @@ MACRO(BUILD_INSTALL_LIBRARY LIBRARY_NAME LIBRARY_TYPE)
         INSTALL(TARGETS ${LIBRARY_NAME} DESTINATION ${LIB_INSTALL_DIR})
         INSTALL(FILES ${LIBRARY_NAME}.h DESTINATION ${INC_INSTALL_DIR})
 ENDMACRO(BUILD_INSTALL_LIBRARY)
+
 #-----------------------------------------------------------------------------
 IF(USE_CUDA)
         set(GENCODE_SM13 -gencode=arch=compute_13,code=sm_13 -gencode=arch=compute_13,code=compute_13)

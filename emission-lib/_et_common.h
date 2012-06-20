@@ -1,3 +1,12 @@
+/*
+ *  _et_common.h
+ *  
+ *  NiftyRec
+ *  Stefano Pedemonte, May 2012.
+ *  CMIC - Centre for Medical Image Computing 
+ *  UCL - University College London. 
+ *  Released under BSD licence, see LICENSE.txt 
+ */
 
 #include<stdio.h>
 #include<stdarg.h>

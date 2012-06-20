@@ -1,3 +1,14 @@
+/*
+ *  _seg_set_biasfield_parameters.cpp
+ *  
+ *  NiftyRec
+ *  Stefano Pedemonte, May 2012.
+ *  CMIC - Centre for Medical Image Computing
+ *  UCL - University College London 
+ *  Released under BSD licence, see LICENSE.txt 
+ */
+
+
 #include <mex.h>
 #include "_seg_array_interface.h"
 

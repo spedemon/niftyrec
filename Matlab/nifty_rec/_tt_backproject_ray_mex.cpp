@@ -1,3 +1,12 @@
+/*
+ *  _tt_backproject_ray_mex.cpp
+ *  
+ *  NiftyRec
+ *  Stefano Pedemonte, May 2012.
+ *  CMIC - Centre for Medical Image Computing
+ *  UCL - University College London 
+ *  Released under BSD licence, see LICENSE.txt 
+ */
 
 #include <mex.h>
 
@@ -68,12 +77,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    if ( (mxGetDimensions(prhs[6])[1] != 3) | (mxGetDimensions(prhs[6])[0] != 1)) 
        mexErrMsgTxt("size of parameter 7 should be the same: [1,3]");  
 
-   //extract pointers to Matlab arrays
-//   double* proj_double    = (double *) mxGetData(prhs[0]);
-   if (mxGetNumberOfDimensions(prhs[0]) == 2)
-      n_projections = 1;
-   else
-      n_projections = mxGetDimensions(prhs[0])[2];
+   n_projections = mxGetDimensions(prhs[2])[0];
 
    detector_pixels.w = mxGetDimensions(prhs[0])[0];
    detector_pixels.h = mxGetDimensions(prhs[0])[1];
@@ -123,7 +127,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    plhs[0] =  mxCreateNumericArray(3, mw_out_size, mxSINGLE_CLASS, mxREAL);
    float *out_single = (float *)(mxGetData(plhs[0]));   
 
-fprintf(stderr,"\n---> %f %f %f - %d %d %d",volume_size.x,volume_size.y,volume_size.z,volume_voxels.x,volume_voxels.y,volume_voxels.z);
+fprintf(stderr,"---MEX> %f %f %f - %d %d %d - %f %f \n",volume_size.x,volume_size.y,volume_size.z,volume_voxels.x,volume_voxels.y,volume_voxels.z,detector_size[0].x,detector_size[0].y);
 
    // Backproject   
    status = tt_array_backproject_ray(projections, detector_pixels, n_projections, out_single, detector_size, detector_translation, detector_rotation, source_pos, volume_voxels, volume_size, t_step, interpolation, enable_gpu);

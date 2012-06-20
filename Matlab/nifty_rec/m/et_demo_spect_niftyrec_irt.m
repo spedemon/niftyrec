@@ -1,4 +1,16 @@
 
+% ET_DEMO_SPECT_NIFTYREC_IRT
+%     NiftyRec Demo: Compare NiftyRec and IRT reconstructions. 
+%     NiftyRec has a NiftyRec style interface to IRT to enable interoperability and comparison. 
+%
+%See also
+%     ET_PROJECT_IRT, ET_BACKPROJECT_IRT, ET_PROJECT, ET_BACKPROJECT
+%
+% 
+%Stefano Pedemonte
+%Copyright 2009-2012 CMIC-UCL
+%Gower Street, London, UK
+
 
 N_x = 64;
 N_y = 64;
@@ -58,4 +70,5 @@ for iter = 1:N_iter
     subplot(1,2,1); imagesc(reshape(activity(:,floor(N_z/2),:),N_x,N_y)); colormap gray; axis equal tight off; title('NiftyRec');
     subplot(1,2,2); imagesc(reshape(activity_irt(:,floor(N_z/2),:),N_x,N_y)); colormap gray; axis equal tight off; title('IRT'); pause(0.1)
 end
+
 

@@ -13,7 +13,8 @@
 
 %% Load attenuation data 
 attenuation = et_load_nifti('attenuation_01.nii'); 
-attenuation = attenuation.img; 
+attenuation = single(attenuation.img)*5e-7; 
+attenuation(attenuation<=0)=0;
 
 %% Parameters
 detector_to_centre_mm        = 500;            % mm 
@@ -50,10 +51,13 @@ for i=1:N_projections
     source_location_mm(i,:) = (M*(source_location_mm_0'-center_rotation_mm'))'+center_rotation_mm;
 end
 
-p = tt_project_ray_mex(uint16(attenuation),volume_size_mm,source_location_mm,int32(detector_size_pix),detector_size_mm,detector_translation_mm,detector_rotation_rad,ray_step_vox);
+p = tt_project_ray_mex(single(attenuation),volume_size_mm,source_location_mm,int32(detector_size_pix),detector_size_mm,detector_translation_mm,detector_rotation_rad,ray_step_vox);
+p = exp(-p); 
+min_invp = min(1./p(:)); 
+max_invp = max(1./p(:)); 
 
-figure; imagesc(p(:,:,1)); colormap gray; axis equal; 
+figure; image((-min_invp+1./p(:,:,1))/max_invp*128); colormap gray; axis tight off equal; 
 for i=1:N_projections
-    image(3*p(:,:,i)); colormap gray; axis equal; axis tight; axis off; pause(0.1);   
+    image((-min_invp+1./p(:,:,i))/max_invp*128); colormap gray; axis equal tight off; pause(0.1);
 end
 

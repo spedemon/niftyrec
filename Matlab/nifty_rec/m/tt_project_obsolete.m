@@ -1,10 +1,10 @@
-function projection = tt_project(attenuation, image_origin, detector_origin, detector_shape, psf, use_gpu, background)
+function projection = tt_project_perspective(attenuation, image_origin, detector_origin, detector_shape, psf, use_gpu, background)
 %ET_PROJECT
 %    Projection function for Transmission Tomography
 %
 %Description
 %
-%    PROJECTION = TT_PROJECT(ATTENUATION, IMAGE_ORIGIN, DETECTOR_ORIGIN, DETECTOR_SHAPE, PSF, USE_GPU, BACKGROUND)
+%    PROJECTION = TT_PROJECT_PERSPECTIVE(ATTENUATION, IMAGE_ORIGIN, DETECTOR_ORIGIN, DETECTOR_SHAPE, PSF, USE_GPU, BACKGROUND)
 %
 %    ATTENUATION is a 3D matrix of attenuation.
 %
@@ -46,7 +46,7 @@ function projection = tt_project(attenuation, image_origin, detector_origin, det
 %
 % 
 %Stefano Pedemonte
-%Copyright 2009-2010 CMIC-UCL
+%Copyright 2009-2012 CMIC-UCL
 %Gower Street, London, UK
 
 
@@ -62,5 +62,5 @@ if not(exist('background'))
     background = 0;
 end
 
-projection = tt_project_mex(attenuation, image_origin, detector_origin, detector_shape, psf, use_gpu, background);
+projection = tt_project_perspective_mex(attenuation, image_origin, detector_origin, detector_shape, psf, use_gpu, background);
 

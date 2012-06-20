@@ -1,3 +1,12 @@
+/*
+ *  _et_convolveSeparable2D_gpu.cu
+ *  
+ *  NiftyRec
+ *  Stefano Pedemonte, May 2012.
+ *  CMIC - Centre for Medical Image Computing 
+ *  UCL - University College London. 
+ *  Released under BSD licence, see LICENSE.txt 
+ */
 
 #include "_et_convolveSeparable2D_gpu_kernels.cu"
 #include "_et_common.h"
