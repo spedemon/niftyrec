@@ -1,4 +1,12 @@
 
+#  CMakeLists.txt
+#  
+#  NiftyRec
+#  Stefano Pedemonte, May 2012.
+#  CMIC - Centre for Medical Image Computing 
+#  UCL - University College London. 
+#  Released under BSD licence, see LICENSE.txt 
+
 #-----------------------------------------------------------------------------
 MACRO(BUILD_INSTALL_LIBRARY LIBRARY_NAME LIBRARY_TYPE LIBRARY_USE_GPU)
     ADD_LIBRARY(${LIBRARY_NAME} ${LIBRARY_TYPE} ${LIBRARY_NAME}.h ${LIBRARY_NAME}.cpp)
