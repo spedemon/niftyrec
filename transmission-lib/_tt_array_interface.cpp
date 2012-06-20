@@ -1,8 +1,21 @@
+/*
+ *  _tt_array_interface.cpp
+ *  
+ *  NiftyRec
+ *  Stefano Pedemonte, May 2012.
+ *  CMIC - Centre for Medical Image Computing 
+ *  UCL - University College London. 
+ *  Released under BSD licence, see LICENSE.txt 
+ */
 
 #include "_tt_array_interface.h"
 #include "_et_common.h"
 
-extern "C" int tt_array_project(float *attenuation, int *attenuation_size, float *projection, int *projection_size, float *image_origin, float *detector_origin, float *detector_shape, float *psf, int *psf_size, float background, int GPU)
+////////////////////////////////////////////////////////////////////////////////
+// tt_array_project_perspective
+////////////////////////////////////////////////////////////////////////////////
+
+extern "C" int tt_array_project_perspective(float *attenuation, int *attenuation_size, float *projection, int *projection_size, float *image_origin, float *detector_origin, float *detector_shape, float *psf, int *psf_size, float background, int GPU)
 {
 	int status = 1;
         int n_projections;
@@ -73,13 +86,13 @@ extern "C" int tt_array_project(float *attenuation, int *attenuation_size, float
         //Do projection
         #ifdef _USE_CUDA
         if (GPU)
-            status = tt_project_gpu(attenuationImage, projectionImage, psfImage, n_projections, image_origin, detector_origin, detector_shape, background);
+            status = tt_project_perspective_gpu(attenuationImage, projectionImage, psfImage, n_projections, image_origin, detector_origin, detector_shape, background);
         else
-            status = tt_project(attenuationImage, projectionImage, psfImage, n_projections, image_origin, detector_origin, detector_shape, background);
+            status = tt_project_perspective(attenuationImage, projectionImage, psfImage, n_projections, image_origin, detector_origin, detector_shape, background);
         #else
             if (GPU)
                 fprintf_verbose( "tt_array_project: No GPU support. In order to activate GPU acceleration please configure with GPU flag and compile.");
-            status = tt_project(attenuationImage, projectionImage, psfImage, n_projections, image_origin, detector_origin, detector_shape, background);
+            status = tt_project_perspective(attenuationImage, projectionImage, psfImage, n_projections, image_origin, detector_origin, detector_shape, background);
         #endif
 
 	//Free

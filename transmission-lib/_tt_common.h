@@ -1,3 +1,13 @@
+/*
+ *  _tt_common.h
+ *  
+ *  NiftyRec
+ *  Stefano Pedemonte, May 2012.
+ *  CMIC - Centre for Medical Image Computing 
+ *  UCL - University College London. 
+ *  Released under BSD licence, see LICENSE.txt 
+ */
+
 
 #ifndef _TT_COMMON_H
 #define _TT_COMMON_H
@@ -11,7 +21,9 @@
 
 typedef unsigned int  u_int;
 typedef unsigned char u_char;
-typedef unsigned short VolumeType;
+//typedef unsigned short VolumeType;
+typedef float VolumeType;
+//typedef char VolumeType;
 
 struct float_2
 {
