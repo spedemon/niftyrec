@@ -19,6 +19,7 @@
 #define max(a,b)	(((a) > (b)) ? (a) : (b))
 #define min(a,b)	(((a) < (b)) ? (a) : (b))
 
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////   CPU   ///////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -782,7 +783,7 @@ int et_affine_gpu(nifti_image *sourceImage, nifti_image *resultImage, mat44 *aff
 	if(cudaCommon_transferNiftiToArrayOnDevice<float>(&sourceImageArray_d,sourceImage)) return 1;
 	int *mask_h=(int *)malloc(resultImage->nvox*sizeof(int));
 	for(int i=0; i<resultImage->nvox; i++) mask_h[i]=i;
-	CUDA_SAFE_CALL(cudaMemcpy(mask_d, mask_h, resultImage->nvox*sizeof(int), cudaMemcpyHostToDevice));
+	cudaMemcpy(mask_d, mask_h, resultImage->nvox*sizeof(int), cudaMemcpyHostToDevice);
 	free(mask_h);
 
 	/* Apply affine */
@@ -834,15 +835,15 @@ int et_rotate_gpu(nifti_image *sourceImage, nifti_image *resultImage, float thet
 int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation)
 {
 	/* initialise the cuda arrays */
-	cudaArray *activityArray_d;               //stores input activity, makes use of fetch unit
-        cudaArray *attenuationArray_d;            //stores input attenuation coefficients, makes use of fetch unit
-	float     *sinoArray_d;                   //stores sinogram (output)
-	float     *rotatedArray_d;                //stores activity aligned with current camera
-        float     *rotatedAttenuationArray_d;     //stores attenuation coefficients aligned with current camera
-	float4    *positionFieldImageArray_d;     //stores position field for rotation of activity and attenuation
-	int       *mask_d;                        //binary mask that defines active voxels (typically all active)
-        float     *psfArray_d;                    //stores point spread function
-        float     *psfSeparatedArray_d;           //stores point spread function
+	cudaArray *activityArray_d=NULL;               //stores input activity, makes use of fetch unit
+        cudaArray *attenuationArray_d=NULL;            //stores input attenuation coefficients, makes use of fetch unit
+	float     *sinoArray_d=NULL;                   //stores sinogram (output)
+	float     *rotatedArray_d=NULL;                //stores activity aligned with current camera
+        float     *rotatedAttenuationArray_d=NULL;     //stores attenuation coefficients aligned with current camera
+	float4    *positionFieldImageArray_d=NULL;     //stores position field for rotation of activity and attenuation
+	int       *mask_d=NULL;                        //binary mask that defines active voxels (typically all active)
+        float     *psfArray_d=NULL;                    //stores point spread function
+        float     *psfSeparatedArray_d=NULL;           //stores point spread function
         int       psf_size[3];
         int       image_size[3];
         int       separable_psf=0;
@@ -852,7 +853,7 @@ int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_ima
         if (activityImage==NULL && attenuationImage==NULL)
             {
             fprintf(stderr, "et_project_gpu: Error - define at least one between activityImage and attenuationImage. \n");
-            return 1;
+            return 1; 
             }
         else if (attenuationImage==NULL)
             referenceImage=activityImage;
@@ -865,20 +866,20 @@ int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_ima
         // Activity
         if (activityImage != NULL)
             {
-            if(cudaCommon_allocateArrayToDevice<float>(&activityArray_d, activityImage->dim)) return 1;
-            if(cudaCommon_allocateArrayToDevice<float>(&rotatedArray_d, activityImage->dim)) return 1;
-            if(cudaCommon_transferNiftiToArrayOnDevice<float>(&activityArray_d,activityImage)) return 1;
+            if(cudaCommon_allocateArrayToDevice<float>(&activityArray_d, activityImage->dim)) return 1; 
+            if(cudaCommon_allocateArrayToDevice<float>(&rotatedArray_d, activityImage->dim)) return 1;  
+            if(cudaCommon_transferNiftiToArrayOnDevice<float>(&activityArray_d,activityImage)) return 1; 
             }
 
         // Singoram 
-	if(cudaCommon_allocateArrayToDevice<float>(&sinoArray_d, sinoImage->dim)) return 1;
-	if(cudaCommon_allocateArrayToDevice<float4>(&positionFieldImageArray_d, referenceImage->dim)) return 1;
-	if(cudaCommon_allocateArrayToDevice<int>(&mask_d, referenceImage->dim)) return 1;
+	if(cudaCommon_allocateArrayToDevice<float>(&sinoArray_d, sinoImage->dim)) return 1; 
+	if(cudaCommon_allocateArrayToDevice<float4>(&positionFieldImageArray_d, referenceImage->dim)) return 1; 
+	if(cudaCommon_allocateArrayToDevice<int>(&mask_d, referenceImage->dim)) return 1; 
 
 	// Mask 
 	int *mask_h=(int *)malloc(referenceImage->nvox*sizeof(int));
 	for(int i=0; i<referenceImage->nvox; i++) mask_h[i]=i;
-	CUDA_SAFE_CALL(cudaMemcpy(mask_d, mask_h, referenceImage->nvox*sizeof(int), cudaMemcpyHostToDevice));
+	cudaMemcpy(mask_d, mask_h, referenceImage->nvox*sizeof(int), cudaMemcpyHostToDevice);
 	free(mask_h);
 	
 	/* Define centers of rotation */
@@ -892,8 +893,8 @@ int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_ima
         /* Allocate and initialize kernel for DDPSF */
         if (psfImage != NULL)
             {
-            if(cudaCommon_allocateArrayToDevice<float>(&psfArray_d, psfImage->dim)) return 1;
-            if(cudaCommon_transferNiftiToArrayOnDevice<float>(&psfArray_d, psfImage)) return 1;
+            if(cudaCommon_allocateArrayToDevice<float>(&psfArray_d, psfImage->dim)) return 1; 
+            if(cudaCommon_transferNiftiToArrayOnDevice<float>(&psfArray_d, psfImage)) return 1; 
             psf_size[0] = psfImage->dim[1];
             psf_size[1] = psfImage->dim[2];
             psf_size[2] = psfImage->dim[3];
@@ -907,7 +908,7 @@ int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_ima
 
         if (separable_psf)
             {
-            CUDA_SAFE_CALL(cudaMalloc((void **)&psfSeparatedArray_d, (psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float)));
+            cudaMalloc((void **)&psfSeparatedArray_d, (psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float));
             float *psfSeparatedArray_h = (float*) malloc((psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float));
             float psf_norm;
             for (int n=0; n<psf_size[2];n++) {
@@ -917,7 +918,7 @@ int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_ima
                     psfSeparatedArray_h[(psf_size[0]+psf_size[1])*n + psf_size[0] + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 + i * psf_size[0]] / psf_norm;
                     }
                 }
-            CUDA_SAFE_CALL(cudaMemcpy(psfSeparatedArray_d, psfSeparatedArray_h, (psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float), cudaMemcpyHostToDevice));
+            cudaMemcpy(psfSeparatedArray_d, psfSeparatedArray_h, (psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float), cudaMemcpyHostToDevice);
             free(psfSeparatedArray_h);
             }
 
@@ -1008,6 +1009,7 @@ int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_ima
                 sino_data[i] = 0;
 
 	/*Free*/
+        //free_all:
 	cudaCommon_free((void **)&sinoArray_d);
 	cudaCommon_free((void **)&mask_d);
 	cudaCommon_free((void **)&positionFieldImageArray_d);
@@ -1094,7 +1096,7 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *backprojectionImage,
 	if(cudaCommon_transferNiftiToArrayOnDevice<float>(&sinoArray_d,sinoImage)) return 1;
 	int *mask_h=(int *)malloc(backprojectionImage->nvox*sizeof(int));
 	for(int i=0; i<backprojectionImage->nvox; i++) mask_h[i]=i;
-	CUDA_SAFE_CALL(cudaMemcpy(mask_d, mask_h, backprojectionImage->nvox*sizeof(int), cudaMemcpyHostToDevice));
+	cudaMemcpy(mask_d, mask_h, backprojectionImage->nvox*sizeof(int), cudaMemcpyHostToDevice);
 	free(mask_h);
 
 	/* Define centers of rotation */
@@ -1126,7 +1128,7 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *backprojectionImage,
 
         if (separable_psf)
             {
-            CUDA_SAFE_CALL(cudaMalloc((void **)&psfSeparatedArray_d, (psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float)));
+            cudaMalloc((void **)&psfSeparatedArray_d, (psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float));
             float *psfSeparatedArray_h = (float*) malloc((psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float));
             float psf_norm;
             for (int n=0; n<psf_size[2];n++) {
@@ -1136,7 +1138,7 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *backprojectionImage,
                     psfSeparatedArray_h[(psf_size[0]+psf_size[1])*n + psf_size[0] + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 + i * psf_size[0]] / psf_norm;
                     }
                 }
-            CUDA_SAFE_CALL(cudaMemcpy(psfSeparatedArray_d, psfSeparatedArray_h, (psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float), cudaMemcpyHostToDevice));
+            cudaMemcpy(psfSeparatedArray_d, psfSeparatedArray_h, (psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float), cudaMemcpyHostToDevice);
             free(psfSeparatedArray_h);
             }
 
@@ -1564,7 +1566,7 @@ int et_gradient_attenuation_gpu(nifti_image *gradientImage, nifti_image *sinoIma
 	if(cudaCommon_transferNiftiToArrayOnDevice<float>(&sinoArray_d,sinoImage)) return 1;
 	int *mask_h=(int *)malloc(gradientImage->nvox*sizeof(int));
 	for(int i=0; i<gradientImage->nvox; i++) mask_h[i]=i;
-	CUDA_SAFE_CALL(cudaMemcpy(mask_d, mask_h, gradientImage->nvox*sizeof(int), cudaMemcpyHostToDevice));
+	cudaMemcpy(mask_d, mask_h, gradientImage->nvox*sizeof(int), cudaMemcpyHostToDevice);
 	free(mask_h);
 
 	/* Define centers of rotation */
@@ -1596,7 +1598,7 @@ int et_gradient_attenuation_gpu(nifti_image *gradientImage, nifti_image *sinoIma
 
         if (separable_psf)
             {
-            CUDA_SAFE_CALL(cudaMalloc((void **)&psfSeparatedArray_d, (psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float)));
+            cudaMalloc((void **)&psfSeparatedArray_d, (psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float));
             float *psfSeparatedArray_h = (float*) malloc((psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float));
             float psf_norm;
             for (int n=0; n<psf_size[2];n++) {
@@ -1606,7 +1608,7 @@ int et_gradient_attenuation_gpu(nifti_image *gradientImage, nifti_image *sinoIma
                     psfSeparatedArray_h[(psf_size[0]+psf_size[1])*n + psf_size[0] + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 + i * psf_size[0]] / psf_norm;
                     }
                 }
-            CUDA_SAFE_CALL(cudaMemcpy(psfSeparatedArray_d, psfSeparatedArray_h, (psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float), cudaMemcpyHostToDevice));
+            cudaMemcpy(psfSeparatedArray_d, psfSeparatedArray_h, (psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float), cudaMemcpyHostToDevice);
             free(psfSeparatedArray_h);
             }
 
@@ -1798,14 +1800,14 @@ int et_joint_histogram_gpu(nifti_image *matrix_A_Image, nifti_image *matrix_B_Im
 	int *joint_histogram_d;
 	
 	// Allocate arrays on device 
-	CUDA_SAFE_CALL(cudaMalloc((void **)&matrix_A_d,  matrix_A_Image->nvox*sizeof(float)));
-	CUDA_SAFE_CALL(cudaMalloc((void **)&matrix_B_d,  matrix_B_Image->nvox*sizeof(float)));
-	CUDA_SAFE_CALL(cudaMalloc((void **)&joint_histogram_d,  joint_histogram_Image->nvox*sizeof(int)));
+	cudaMalloc((void **)&matrix_A_d,  matrix_A_Image->nvox*sizeof(float));
+	cudaMalloc((void **)&matrix_B_d,  matrix_B_Image->nvox*sizeof(float));
+	cudaMalloc((void **)&joint_histogram_d,  joint_histogram_Image->nvox*sizeof(int));
         cudaMemset((void*)joint_histogram_d,0,joint_histogram_Image->nvox*sizeof(int));
         
 	// Transfer data from the host to the device 
-	CUDA_SAFE_CALL(cudaMemcpy(matrix_A_d, matrix_A_Image->data, matrix_A_Image->nvox*sizeof(float), cudaMemcpyHostToDevice));
-	CUDA_SAFE_CALL(cudaMemcpy(matrix_B_d, matrix_B_Image->data, matrix_B_Image->nvox*sizeof(float), cudaMemcpyHostToDevice));
+	cudaMemcpy(matrix_A_d, matrix_A_Image->data, matrix_A_Image->nvox*sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpy(matrix_B_d, matrix_B_Image->data, matrix_B_Image->nvox*sizeof(float), cudaMemcpyHostToDevice);
 
 	// Compute joint histogram 
 	et_joint_histogram_gpu(		&matrix_A_d,
@@ -1820,7 +1822,7 @@ int et_joint_histogram_gpu(nifti_image *matrix_A_Image, nifti_image *matrix_B_Im
 	
 	// Transfer joint histogram back to host 
 	fprintf_verbose( "\nJH: %d %d %d %f %f %f %f",joint_histogram_Image->nx, joint_histogram_Image->nvox, matrix_A_Image->nvox, min_A, max_A, min_B, max_B);
-	CUDA_SAFE_CALL(cudaMemcpy(joint_histogram_Image->data, joint_histogram_d, joint_histogram_Image->nvox*sizeof(int), cudaMemcpyDeviceToHost));
+	cudaMemcpy(joint_histogram_Image->data, joint_histogram_d, joint_histogram_Image->nvox*sizeof(int), cudaMemcpyDeviceToHost);
 	
 	// Free arrays on device 
 	cudaCommon_free((void **)&matrix_A_d);
@@ -1874,8 +1876,8 @@ int et_set_gpu(int id)
     int status = 1;
     struct cudaDeviceProp deviceProp;
 
-    CUDA_SAFE_CALL(cudaSetDevice( id ));
-    CUDA_SAFE_CALL(cudaGetDeviceProperties(&deviceProp, id ));
+    cudaSetDevice( id );
+    cudaGetDeviceProperties(&deviceProp, id );
     if (deviceProp.major < 1)
         {
         printf("ERROR - The specified graphical card does not exist.\n");
