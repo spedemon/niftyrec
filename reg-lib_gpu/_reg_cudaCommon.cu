@@ -15,6 +15,21 @@
 
 #include "_reg_cudaCommon.h"
 
+#  define CUDA_SAFE_CALL_NO_SYNC( call) do {                                 \
+    cudaError err = call;                                                    \
+    if( cudaSuccess != err) {                                                \
+        fprintf(stderr, "Cuda error in file '%s' in line %i : %s.\n",        \
+                __FILE__, __LINE__, cudaGetErrorString( err) ); return 1;    \
+    } } while (0)
+#  define CUDA_SAFE_CALL( call) do {                                         \
+    CUDA_SAFE_CALL_NO_SYNC(call);                                            \
+    cudaError err = cudaThreadSynchronize();                                 \
+    if( cudaSuccess != err) {                                                \
+        fprintf(stderr, "Cuda error in file '%s' in line %i : %s.\n",        \
+                __FILE__, __LINE__, cudaGetErrorString( err) ); return 1;    \
+    } } while (0)
+
+
 /* ******************************** */
 /* ******************************** */
 template <class DTYPE, class NIFTI_TYPE>
@@ -314,13 +329,13 @@ template int cudaCommon_transferFromDeviceToNifti<float4>(nifti_image *, float4 
 /* ******************************** */
 /* ******************************** */
 void cudaCommon_free(cudaArray **cuArray_d){
-	CUDA_SAFE_CALL(cudaFreeArray(*cuArray_d));
+	cudaFreeArray(*cuArray_d);
 	return;
 }
 /* ******************************** */
 /* ******************************** */
 void cudaCommon_free(void **array_d){
-	CUDA_SAFE_CALL(cudaFree(*array_d));
+	cudaFree(*array_d);
 	return;
 }
 /* ******************************** */
