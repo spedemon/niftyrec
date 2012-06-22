@@ -8,6 +8,7 @@
  *  Released under BSD licence, see LICENSE.txt 
  */
 
+
 #include "_et_common.h"
 
 
@@ -106,6 +107,48 @@ int et_create_rotation_matrix(mat44 *transformationMatrix, float theta_x, float 
 	free(rotation_z);
 
 	return status;
+}
+
+
+
+
+extern "C" char *niftyrec_error_msg(int status)
+{
+
+    switch (status)
+        {
+        case niftyrec_success:
+            sprintf(_niftyrec_msg,"niftyrec: OK.\n");
+            break;
+        case niftyrec_error_unspecified:
+            sprintf(_niftyrec_msg,"niftyrec: ERROR - unspecified error.\n");
+            break;
+        case niftyrec_error_parameters:
+            sprintf(_niftyrec_msg,"niftyrec: ERROR - inconsisten paramenters.\n");
+            break;
+        case niftyrec_error_kernel:
+            sprintf(_niftyrec_msg,"niftyrec: ERROR - gpu kernel execution error.\n");
+            break;
+        case niftyrec_error_allocgpu:
+            sprintf(_niftyrec_msg,"niftyrec: ERROR - GPU memory allocation.\n");
+            break;
+        case niftyrec_error_alloccpu:
+            sprintf(_niftyrec_msg,"niftyrec: ERROR - cpu memory allocation.\n");
+            break;
+        case niftyrec_error_transfergpu:
+            sprintf(_niftyrec_msg,"niftyrec: ERROR - transfering memory from guest to GPU or vice versa.\n");
+            break;
+        case niftyrec_error_nogpubuilt:
+            sprintf(_niftyrec_msg,"niftyrec: ERROR - niftyrec was built without GPU support. Please rebuild or install binary built with GPU support in order to use the GPU.\n");
+            break;
+        case niftyrec_error_nogpuinstalled:
+            sprintf(_niftyrec_msg,"niftyrec: ERROR - no GPUs installed in the system.\n");
+            break;
+        default: 
+            sprintf(_niftyrec_msg,"niftyrec: unknown status.\n");
+            break;
+        }
+    return _niftyrec_msg;
 }
 
 

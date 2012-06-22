@@ -116,7 +116,7 @@ extern "C" int et_array_rotate(float *image, int *size, float *rotated_image, fl
 
 extern "C" int et_array_project(float *activity, int *activity_size, float *sinogram, int *sinogram_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *attenuation, int *attenuation_size, float background, float background_attenuation, int GPU)
 {
-	int status = 1;
+	int status = 0;
         int n_cameras;
         int n_cameras_axis;
         int no_psf = 0;
@@ -145,7 +145,7 @@ extern "C" int et_array_project(float *activity, int *activity_size, float *sino
         if (no_attenuation && no_activity) 
             { 
             fprintf(stderr,"_et_array_project: Error - define at least one between 'activity' and 'attenuation'. \n"); 
-            return 1; 
+            return niftyrec_error_parameters; 
             } 
 
         /* Check consistency of input */ 
@@ -153,34 +153,24 @@ extern "C" int et_array_project(float *activity, int *activity_size, float *sino
         if (!(n_cameras_axis == 1 || n_cameras_axis == 3))
             {
             fprintf_verbose("et_array_project: Incorrect size of cameras %d %d. 'Cameras' must be either [n_cameras x 3] or [n_cameras x 1].\n",cameras_size[0],cameras_size[1]);
-            return status;
+            return niftyrec_error_parameters;
             }
 
-            //Activity must be of size [NxmxN];
-//            if (activity_size[0] != activity_size[1] || activity_size[2]<2)
-//                {
-//                fprintf_verbose("et_array_project: 3D activity must be of size [N,N,m]; m>=2.\n");
-//                return status;
-//                }
-            //Size of sinogram must be consistent with activity size
-//            if (sinogram_size[0] != activity_size[0] || sinogram_size[1] != activity_size[2] || sinogram_size[2] != n_cameras) 
-//                {
-//                fprintf_verbose("et_array_project: 3D sinogram must be of size [N,m,n_cameras] for activity of size [N,N,m] and 'n_cameras' cameras.\n");
-//                return status;
-//                }
-            //Size of psf must be odd and consistent with activity size
-            if (!no_psf)
+        //Size of psf must be odd and consistent with activity size
+        if (!no_psf)
+            {
+            if (psf_size[0]%2!=1 || psf_size[1]%2!=1 || psf_size[2]!=activity_size[0])
                 {
-                if (psf_size[0]%2!=1 || psf_size[1]%2!=1 || psf_size[2]!=activity_size[0])
-                    {
-                    fprintf_verbose("et_array_project: 3D psf must be of size [h,k,N] for activity of size [N,m,N]; h,k odd.\n");
-                    return status;
-                    }
+                fprintf_verbose("et_array_project: 3D psf must be of size [h,k,N] for activity of size [N,m,N]; h,k odd.\n");
+                return niftyrec_error_parameters;
                 }
+            }
 
 
         // Allocate array for cameras
-        cameras_array = (float *)malloc(n_cameras*3*sizeof(float));
+        cameras_array = (float *)malloc(n_cameras*3*sizeof(float)); 
+        if (cameras_array==NULL)
+            return niftyrec_error_alloccpu;
         if (n_cameras_axis == 3)
             memcpy((void*) cameras_array, (void*) cameras, n_cameras*3*sizeof(float));
         if (n_cameras_axis == 1)
@@ -336,6 +326,8 @@ extern "C" int et_array_backproject(float *sino, int *sino_size, float *bkpr, in
 
         // Allocate array for cameras
         cameras_array = (float *)malloc(n_cameras*3*sizeof(float));
+        if (cameras_array==NULL)
+            return niftyrec_error_alloccpu; 
         if (n_cameras_axis == 3)
             memcpy((void*) cameras_array, (void*) cameras, n_cameras*3*sizeof(float));
         if (n_cameras_axis == 1)
@@ -493,6 +485,8 @@ extern "C" int et_array_gradient_attenuation(float *sino, int *sino_size, float 
 
         // Allocate array for cameras
         cameras_array = (float *)malloc(n_cameras*3*sizeof(float));
+        if (cameras_array==NULL)
+            return niftyrec_error_alloccpu; 
         if (n_cameras_axis == 3)
             memcpy((void*) cameras_array, (void*) cameras, n_cameras*3*sizeof(float));
         if (n_cameras_axis == 1)
@@ -639,6 +633,8 @@ extern "C" int et_array_osem_spect(float *activity_data, unsigned int size_x, un
         activity_data[i] = 1.0f; 
 
     float *cameras_data = (float*) malloc(n_cameras*3*sizeof(float)); 
+    if (cameras_data==NULL)
+        return niftyrec_error_alloccpu; 
     status = status + et_array_make_cameras(cameras_data, firstcamera, lastcamera, n_cameras, rotation_axis); 
 
     for (int iter_osem=0; iter_osem<iterations; iter_osem++)
@@ -890,6 +886,8 @@ fprintf(stderr,"et_array_project: Incorrect size of cameras %d %d. 'Cameras' mus
 
         // Allocate array for cameras
         cameras_array = (float *)malloc(n_cameras*3*sizeof(float));
+        if (cameras_array==NULL)
+            return niftyrec_error_alloccpu; 
         if (n_cameras_axis == 3)
             memcpy((void*) cameras_array, (void*) cameras, n_cameras*3*sizeof(float));
         if (n_cameras_axis == 1)
@@ -954,13 +952,13 @@ fprintf(stderr,"et_array_project: Incorrect size of cameras %d %d. 'Cameras' mus
         //Compute Fisher Information Matrix
         #ifdef _USE_CUDA
         if (GPU)
-            status = et_fisher_grid_gpu(from_projection, activityImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
+            status = et_fisher_grid_gpu(from_projection, activityImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation); 
         else
-            status = et_fisher_grid(from_projection, activityImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
+            status = et_fisher_grid(from_projection, activityImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation); 
         #else
             if (GPU)
                 fprintf(stderr, "et_array_project: No GPU support. In order to activate GPU acceleration please configure with GPU flag and compile.");
-            status = et_fisher_grid(from_projection, activityImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
+            status = et_fisher_grid(from_projection, activityImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation); 
         #endif
 
 	//Free
@@ -1076,6 +1074,8 @@ extern "C" int et_array_fisher_grid_projection(float *sinogram_ptr, int *sinogra
 
         // Allocate array for cameras
         cameras_array = (float *)malloc(n_cameras*3*sizeof(float));
+        if (cameras_array==NULL)
+            return niftyrec_error_alloccpu; 
         if (n_cameras_axis == 3)
             memcpy((void*) cameras_array, (void*) cameras, n_cameras*3*sizeof(float));
         if (n_cameras_axis == 1)
@@ -1142,13 +1142,13 @@ extern "C" int et_array_fisher_grid_projection(float *sinogram_ptr, int *sinogra
         //Compute Fisher Information Matrix
         #ifdef _USE_CUDA
         if (GPU)
-            status = et_fisher_grid_gpu(from_projection, projectionImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
+            status = et_fisher_grid_gpu(from_projection, projectionImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation); 
         else
-            status = et_fisher_grid(from_projection, projectionImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
+            status = et_fisher_grid(from_projection, projectionImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation); 
         #else
             if (GPU)
                 fprintf(stderr,"et_array_project: No GPU support. In order to activate GPU acceleration please configure with GPU flag and compile.");
-            status = et_fisher_grid(from_projection, projectionImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, epsilon, background, background_attenuation); 
+            status = et_fisher_grid(from_projection, projectionImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation); 
         #endif
 
 	//Free
@@ -1258,6 +1258,34 @@ extern "C" int et_array_convolve(float *image, int *image_size, float *out, int 
 }
 
 
+
+extern "C" int et_array_list_gpus(int *gpu_count, int *gpus_info_array)
+{
+        int status = 1;
+	#ifdef _USE_CUDA
+        status = et_list_gpus(gpu_count, gpus_info_array);
+	#else
+        gpu_count[0] = 0;
+        status = niftyrec_error_nogpubuilt;
+	#endif
+        return status;
+}
+
+
+
+extern "C" int et_array_set_gpu(int id)
+{
+        int status = 1;
+	#ifdef _USE_CUDA
+        status = et_set_gpu(id);
+	#else
+        status = niftyrec_error_nogpubuilt;
+	#endif
+        return status;
+}
+
+
+
 /*
 extern "C" int et_array_joint_histogram(float *matrix_A, float *matrix_B, int *joint_histogram, int matrix_dimensions, int *matrix_size, int histogram_size, float min_A, float max_A, float min_B, float max_B, int GPU)
 {
@@ -1315,30 +1343,7 @@ extern "C" int et_array_joint_histogram(float *matrix_A, float *matrix_B, int *j
 */
 
 
-extern "C" int et_array_list_gpus(int *gpu_count, int *gpus_info_array)
-{
-        int status = 1;
-	#ifdef _USE_CUDA
-        status = et_list_gpus(gpu_count, gpus_info_array);
-	#else
-        gpu_count[0] = 0;
-        status = 0;
-	#endif
-        return status;
-}
 
-
-
-extern "C" int et_array_set_gpu(int id)
-{
-        int status = 1;
-	#ifdef _USE_CUDA
-        status = et_set_gpu(id);
-	#else
-        status = 1;
-	#endif
-        return status;
-}
 
 
 

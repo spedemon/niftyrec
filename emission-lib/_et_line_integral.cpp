@@ -37,7 +37,7 @@ void *line_integral_thread(void *arg)
                 sino_data[x + y*p->nx] = sino_data[x + y*p->nx] + input_data[x + y*p->nx + z*p->nx*p->ny];  
 }
 
-void et_line_integral(nifti_image *inputImage, nifti_image *sinoImage, int cam)
+void et_line_integral(nifti_image *inputImage, nifti_image *sinoImage, int cam, float background)
 {
 //    struct timespec start, end;
 //    clock_gettime(CLOCK_MONOTONIC, &start);

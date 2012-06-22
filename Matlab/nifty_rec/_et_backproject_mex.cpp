@@ -228,14 +228,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
                psf_ptr[i] = psf_ptr_d[i];  
            }
        }
-
-   /* Check if rotations are not only along Z axis: in this case activity must be a cube */
-//   if (dim_sino==3)
-//       if (cameras_size[1]==3)
-//           for (int cam=0; cam<cameras_size[0]; cam++)
-//               if (fabs(cameras_ptr[1*cameras_size[0]+cam])>eps || fabs(cameras_ptr[2*cameras_size[0]+cam])>eps)
-//                   mexErrMsgTxt("At least one of the cameras has multiple axis of rotation, in this case Activity must be a cube (N,N,N)"); 
-                 
+           
    /* Allocate backprojection matrix */   
    int dim_bkpr;   
    mwSize mw_bkpr_size[3];
@@ -258,8 +251,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    if ((!no_psf) && (mxGetClassID(prhs[3]) != mxSINGLE_CLASS)) free(psf_ptr);
    
    /* Return */
-   if (status != 0)
-   	mexErrMsgTxt("Error while performing projection.");
+   if (status != niftyrec_success)
+   	mexErrMsgTxt(niftyrec_error_msg(status));
    return;
 }
 

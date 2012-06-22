@@ -14,6 +14,8 @@
 
 #include <limits>
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 #include <cmath>
 
@@ -282,8 +284,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    if ((!no_psf)         && (mxGetClassID(prhs[3]) != mxSINGLE_CLASS)) free(psf_ptr);
 
    /* Return */
-   if (status != 0)
-   	mexErrMsgTxt("Error while performing projection, see the stderr output for more information (launch Matlab from the console).");
+   if (status != niftyrec_success)
+   	mexErrMsgTxt(niftyrec_error_msg(status));
    return;
 }
 
