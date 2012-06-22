@@ -23,8 +23,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 __constant__ float c_Kernel[2*MAX_SEPARABLE_KERNEL_RADIUS+1];
 
-extern "C" void setConvolutionKernel(float *d_Kernel,int kernelRadius){
+extern "C" int setConvolutionKernel(float *d_Kernel,int kernelRadius){
     cudaMemcpyToSymbol(c_Kernel, d_Kernel, 2 * (2*kernelRadius+1) * sizeof(float), 0, cudaMemcpyDeviceToDevice);
+    if (cudaGetLastError() != cudaSuccess)
+        return 1;
+    return 0;
 }
 
 
@@ -75,16 +78,17 @@ __global__ void convolutionRowsKernel(float *d_Dst,float *d_Src,int imageW,int i
     }
 }
 
-extern "C" void convolutionRowsGPU(float *d_Dst,float *d_Src,int imageW,int imageH,int kernelRadius){
-//    assert( ROWS_BLOCKDIM_X * ROWS_HALO_STEPS >= KERNEL_RADIUS );
+extern "C" int convolutionRowsGPU(float *d_Dst,float *d_Src,int imageW,int imageH,int kernelRadius){
     assert( imageW % (ROWS_RESULT_STEPS * ROWS_BLOCKDIM_X) == 0 );
     assert( imageH % ROWS_BLOCKDIM_Y == 0 );
 
     dim3 blocks(imageW / (ROWS_RESULT_STEPS * ROWS_BLOCKDIM_X), imageH / ROWS_BLOCKDIM_Y);
     dim3 threads(ROWS_BLOCKDIM_X, ROWS_BLOCKDIM_Y);
 
-    convolutionRowsKernel<<<blocks, threads>>>(d_Dst,d_Src,imageW,imageH,imageW,kernelRadius);
-    cutilCheckMsg("convolutionRowsKernel() execution failed\n");
+    convolutionRowsKernel<<<blocks, threads>>>(d_Dst,d_Src,imageW,imageH,imageW,kernelRadius); 
+    if (cudaGetLastError() != cudaSuccess)
+        return 1;
+    return 0; 
 }
 
 
@@ -134,8 +138,7 @@ __global__ void convolutionColumnsKernel(float *d_Dst,float *d_Src,int imageW,in
     }
 }
 
-extern "C" void convolutionColumnsGPU(float *d_Dst,float *d_Src,int imageW,int imageH,int kernelRadius){
-//    assert( COLUMNS_BLOCKDIM_Y * COLUMNS_HALO_STEPS >= KERNEL_RADIUS );
+extern "C" int convolutionColumnsGPU(float *d_Dst,float *d_Src,int imageW,int imageH,int kernelRadius){
     assert( imageW % COLUMNS_BLOCKDIM_X == 0 );
     assert( imageH % (COLUMNS_RESULT_STEPS * COLUMNS_BLOCKDIM_Y) == 0 );
 
@@ -143,6 +146,8 @@ extern "C" void convolutionColumnsGPU(float *d_Dst,float *d_Src,int imageW,int i
     dim3 threads(COLUMNS_BLOCKDIM_X, COLUMNS_BLOCKDIM_Y);
 
     convolutionColumnsKernel<<<blocks, threads>>>(d_Dst, d_Src, imageW, imageH, imageW, kernelRadius);
-    cutilCheckMsg("convolutionColumnsKernel() execution failed\n");
+    if (cudaGetLastError() != cudaSuccess)
+        return 1;
+    return 0; 
 }
 
