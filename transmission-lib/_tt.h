@@ -15,7 +15,7 @@
 #include "_et_accumulate.h"
 #include "_et_line_backproject.h"
 #include "_et_clear_accumulator.h"
-#include "_tt_project_ray.h"
+//#include "_tt_project_ray.h"
 #include "_tt_common.h"
 #include "_tt_line_project_ray_cpu.h"
 #include "_tt_line_backproject_ray_cpu.h"

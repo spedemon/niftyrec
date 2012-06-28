@@ -12,7 +12,7 @@
 #ifndef _TTBACKPROJECTRAY_CU_
 #define _TTBACKPROJECTRAY_CU_
 
-#include <_tt_backproject_ray_gpu.h>
+#include <_tt_line_backproject_ray_gpu.h>
 
 
 

@@ -25,8 +25,10 @@ __constant__ float c_Kernel[2*MAX_SEPARABLE_KERNEL_RADIUS+1];
 
 extern "C" int setConvolutionKernel(float *d_Kernel,int kernelRadius){
     cudaMemcpyToSymbol(c_Kernel, d_Kernel, 2 * (2*kernelRadius+1) * sizeof(float), 0, cudaMemcpyDeviceToDevice);
-    if (cudaGetLastError() != cudaSuccess)
-        return 1;
+    cudaError_t error = cudaGetLastError();
+//    if (error != cudaSuccess) {
+//        fprintf(stderr,"CUDA error: %d %s\n",(int)error,cudaGetErrorString(error));
+//        return 1; }
     return 0;
 }
 

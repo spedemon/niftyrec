@@ -1,4 +1,4 @@
-function [activity_new, update] = et_osmapem_step_irt(subset_order, activity_old, sinogram, cameras, attenuation, psf, beta, gradient_prior,epsilon)
+function [activity_new, projection, normalization, update] = et_osmapem_step_irt(subset_order, activity_old, sinogram, cameras, attenuation, psf, beta, gradient_prior,epsilon)
 
 %ET_OSMAPEM_STEP_IRT
 %    Step of Maximum A Posteriori Ordered Subset iterative reconstsruction algorithm for Emission Tomography
@@ -8,7 +8,7 @@ function [activity_new, update] = et_osmapem_step_irt(subset_order, activity_old
 %    This function computes an estimate of the activity, given the previous estimate and the gradient 
 %    of the prior distribution.
 %
-%    [NEW_ACTIVITY, UPDATE] = ET_OSMAPEM_STEP_IRT(SUBSET_ORDER, ACTIVITY, SINO, CAMERAS, ATTENUATION, PSF, BETA, GRAD_PRIOR)
+%    [NEW_ACTIVITY, PROJECTION, NORMALIZATION, UPDATE] = ET_OSMAPEM_STEP_IRT(SUBSET_ORDER, ACTIVITY, SINO, CAMERAS, ATTENUATION, PSF, BETA, GRAD_PRIOR)
 %
 %    SUBSET_ORDER is the subset of cameras to be used for each iteration.
 %    SUBSET_ORDER=8 means that 1/8 of the cameras are used, SUBSET_ORDER=16
@@ -112,9 +112,9 @@ cameras_sub = cameras(cameras_indexes,:);
 normalization = et_backproject_irt(ones(N1,N2,N_cameras_sub), cameras_sub, attenuation, psf);
 
 %project and backproject
-proj = et_project_irt(activity_old, cameras_sub, attenuation, psf);
-proj(proj<epsilon) = epsilon ;
-update = et_backproject_irt(sinogram(:,:,cameras_indexes) ./ proj, cameras_sub, attenuation, psf);
+projection = et_project_irt(activity_old, cameras_sub, attenuation, psf);
+projection(projection<epsilon) = epsilon ;
+update = et_backproject_irt(sinogram(:,:,cameras_indexes) ./ projection, cameras_sub, attenuation, psf);
 activity_new = activity_old .* update;
 normalization = (normalization - beta * gradient_prior);
 normalization(normalization<epsilon) = epsilon;

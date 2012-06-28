@@ -18,12 +18,13 @@
 
 int et_convolveSeparable2D_gpu(float **d_data, int *data_size, float **d_kernel_separated, int *kernel_size, float **d_result)
 {
+fprintf(stderr,"size: %d %d %d\n",data_size[0],data_size[1],data_size[2]);
     int status = 0;
     const int dataH = data_size[1];
-    const int dataW = data_size[0];
+    const int dataW = data_size[2];
     const int kernelRadius = (kernel_size[0]-1)/2;
 
-    const int n_slices = data_size[2];
+    const int n_slices = kernel_size[2];
     const int data_slice_size = dataH * dataW;
 
     float *d_Data, *d_Kernel_separated, *d_Result, *d_Buffer;
@@ -37,7 +38,6 @@ int et_convolveSeparable2D_gpu(float **d_data, int *data_size, float **d_kernel_
         d_Data = (*d_data) + slice * data_slice_size; 
         d_Result = (*d_result) + slice * data_slice_size;
         d_Kernel_separated = (*d_kernel_separated) + slice * 2 * kernel_size[0];
-
         //Convolve  //FIXME: make it approximately 10 percent faster by using texture memory for the kernels 
         status += setConvolutionKernel(d_Kernel_separated,kernelRadius);
         status += convolutionRowsGPU(d_Buffer,d_Data,dataW,dataH,kernelRadius);

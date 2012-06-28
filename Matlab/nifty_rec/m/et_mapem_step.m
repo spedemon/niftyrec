@@ -1,4 +1,4 @@
-function [activity_new, update] = et_mapem_step(activity_old, normalization, sinogram, cameras, attenuation, psf, beta, gradient_prior, GPU, background, background_attenuation, epsilon)
+function [activity_new, projection, normalization, update] = et_mapem_step(activity_old, normalization, sinogram, cameras, attenuation, psf, beta, gradient_prior, GPU, background, background_attenuation, epsilon)
 %ET_MAPEM_STEP
 %    Step of Maximum A Posteriori iterative reconstsruction algorithm for Emission Tomography
 %
@@ -6,7 +6,7 @@ function [activity_new, update] = et_mapem_step(activity_old, normalization, sin
 %    This function computes an estimate of the activity, given the previous estimate and the gradient 
 %    of the prior distribution.
 %
-%    [NEW_ACTIVITY, UPDATE] = ET_MAPEM_STEP(ACTIVITY, NORM, SINO, CAMERAS, ATTENUATION, PSF, BETA, GRAD_PRIOR, USE_GPU, BACKGROUND, EPSILON)
+%    [NEW_ACTIVITY, PROJECTION, NORMALIZATION, UPDATE] = ET_MAPEM_STEP(ACTIVITY, NORM, SINO, CAMERAS, ATTENUATION, PSF, BETA, GRAD_PRIOR, USE_GPU, BACKGROUND, EPSILON)
 %
 %    ATIVITY is a 2D or 3D matrix of activity, typically estimated in the previous MAPEM step
 %
@@ -108,13 +108,13 @@ if not(exist('attenuation','var'))
     attenuation = 0;
 end
 
-proj = et_project(activity_old, cameras, attenuation, psf, GPU, background, background_attenuation);
-proj(proj<epsilon) = epsilon ;
-update = et_backproject(sinogram ./ proj, cameras, attenuation, psf, GPU, background, background_attenuation);
-activity_new = activity_old .* update;
+projection = et_project(activity_old, cameras, attenuation, psf, GPU, background, background_attenuation);
+projection(projection<0) = 0 ;
+update = et_backproject((sinogram+epsilon) ./ (projection+epsilon), cameras, attenuation, psf, GPU, background, background_attenuation);
+activity_new = activity_old .* (update+epsilon);
 normalization = normalization - beta * gradient_prior;
-normalization(normalization<epsilon) = epsilon;
-activity_new = activity_new ./ (normalization);
+normalization(normalization<0) = 0;
+activity_new = activity_new ./ (normalization+epsilon);
 
 return 
 
