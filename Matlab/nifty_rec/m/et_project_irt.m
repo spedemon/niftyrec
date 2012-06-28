@@ -1,4 +1,4 @@
-function sinogram = et_project_irt(activity, cameras, attenuation, psf)
+function sinogram = et_project_irt(activity, cameras, attenuation, psf, use_gpu, background, background_attenuation)
 %ET_PROJECT_IRT
 %    Projection function for Emission Tomographic reconstruction
 %
@@ -19,6 +19,12 @@ function sinogram = et_project_irt(activity, cameras, attenuation, psf)
 %    ATTENUATION specifies attenuation coefficients. It must be the same size as ACTIVITY.
 %
 %    PSF is a Depth-Dependent Point Spread Function. 
+%
+%    USE_GPU not enabled, compatibility with et_backproject
+%
+%    BACKGROUND not enabled, compatibility with et_backproject
+%
+%    BACKGROUND_ATTENUATION not enabled, compatibility with et_backproject
 %
 %Reference
 %    IRT reconstruction toolbox. Fessler
@@ -41,8 +47,20 @@ function sinogram = et_project_irt(activity, cameras, attenuation, psf)
 %Gower Street, London, UK
 
 
-if not(exist('attenuation'))
+if not(exist('attenuation','var'))
     attenuation = 0;
+end
+if not(exist('psf','var'))
+    psf = 0;
+end
+if (exist('use_gpu','var'))
+    fprintf('Warning et_project_irt: use_gpu option not enabled on IRT version. \n');
+end
+if (exist('background','var'))
+    fprintf('Warning et_project_irt: background option not enabled on IRT version. \n');
+end
+if (exist('background_attenuation','var'))
+    fprintf('Warning et_project_irt: background_attenuation option not enabled on IRT version. \n');
 end
 
 N_x = size(activity,1);
@@ -50,10 +68,10 @@ N_y = size(activity,3);
 N_z = size(activity,2);
 N_projections = size(cameras,1); 
 if size(cameras,2)==3
-    rotation_angle = 180/pi*(cameras(N_projections,2)-cameras(1,2)); 
+    rotation_angle = 180/pi*(((cameras(N_projections,2)-cameras(1,2))/N_projections)*(N_projections+1));
     initial_rotation_angle = 180/pi*cameras(1,2);
 else
-    rotation_angle = 180/pi*(cameras(N_projections)-cameras(1)); 
+    rotation_angle = 180/pi*(((cameras(N_projections)-cameras(1))/N_projections)*(N_projections+1));
     initial_rotation_angle = 180/pi*cameras(1);
 end
 
@@ -61,22 +79,25 @@ activity2 = zeros(N_x,N_y,N_z);
 for i=1:N_z
     activity2(:,:,i)=activity(:,i,:);
 end
-
 f.chat = 0;
 f.option = {};
 f.test = '3s';
 dx=1;
 ig = image_geom('nx', N_x, 'ny', N_y, 'nz', N_z, 'dx', dx, 'dz', dx);
-f.psfs = '/tmp/t,psfs.fld';
+if isscalar(psf)
+    f.psfs = '-';
+else
+    f.psfs = '/tmp/t,psfs.fld';
+    fld_write(f.psfs, psf)
+end
 f.blur = ',fft'; 
-fld_write(f.psfs, psf)
 f.na = N_projections;
 f.dir = test_dir;
-if attenuation==0
+if isscalar(attenuation)
     f.mumap = '-';
 else
     f.mumap = [f.dir 'mumap.fld'];
-    fld_write(f.mumap, mumap); 
+    fld_write(f.mumap, attenuation); 
 end
 f.sfilter = 1; 
 f.sys_type = '3s@%g,%g,%g,%g,%g,%d%s@%s@%s@-%d,%d,%d';

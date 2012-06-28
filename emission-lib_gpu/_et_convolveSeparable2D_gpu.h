@@ -14,7 +14,7 @@
 #include <cutil_inline.h>
 #include "nifti1_io.h"
 
-#define MAX_SEPARABLE_KERNEL_RADIUS 128
+#define MAX_SEPARABLE_KERNEL_RADIUS 16
 #define ET_BLOCK_SIZE 8
 
 extern "C" int convolutionRowsGPU(float *d_Dst,float *d_Src,int imageW,int imageH,int kernelRadius);

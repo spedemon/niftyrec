@@ -1,4 +1,4 @@
-function [activity_new, update] = et_mapem_step_irt(activity_old, normalization, sinogram, cameras, attenuation, psf, beta, gradient_prior, epsilon)
+function [activity_new, projection, normalization, update] = et_mapem_step_irt(activity_old, normalization, sinogram, cameras, attenuation, psf, beta, gradient_prior, epsilon)
 %ET_MAPEM_STEP_IRT
 %    Step of Maximum A Posteriori iterative reconstsruction algorithm for Emission Tomography
 %    This function is equivalent to 'et_mapem_step' but based on the IRT toolbox. 
@@ -7,7 +7,7 @@ function [activity_new, update] = et_mapem_step_irt(activity_old, normalization,
 %    This function computes an estimate of the activity, given the previous estimate and the gradient 
 %    of the prior distribution.
 %
-%    [NEW_ACTIVITY, UPDATE] = ET_MAPEM_STEP_IRT(ACTIVITY, NORM, SINO, CAMERAS, ATTENUATION, PSF, BETA, GRAD_PRIOR, EPSILON)
+%    [NEW_ACTIVITY, PROJECTION, NORMALIZATION, UPDATE] = ET_MAPEM_STEP_IRT(ACTIVITY, NORM, SINO, CAMERAS, ATTENUATION, PSF, BETA, GRAD_PRIOR, EPSILON)
 %
 %    ATIVITY is a 2D or 3D matrix of activity, typically estimated in the previous MAPEM step
 %
@@ -79,9 +79,9 @@ if not(exist('attenuation','var'))
     attenuation = 0;
 end
 
-proj = et_project_irt(activity_old, cameras, attenuation, psf);
-proj(proj<epsilon) = epsilon ;
-update = et_backproject_irt(sinogram ./ proj, cameras, attenuation, psf);
+projection = et_project_irt(activity_old, cameras, attenuation, psf);
+projection(projection<epsilon) = epsilon ;
+update = et_backproject_irt(sinogram ./ projection, cameras, attenuation, psf);
 activity_new = activity_old .* update;
 normalization = normalization - beta * gradient_prior;
 normalization(normalization<epsilon) = epsilon;

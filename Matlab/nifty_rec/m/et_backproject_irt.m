@@ -55,10 +55,10 @@ N_y = size(sinogram,1);
 N_z = size(sinogram,2);
 N_projections = size(sinogram,3); 
 if size(cameras,2)==3
-    rotation_angle = 180/pi*(cameras(N_projections,2)-cameras(1,2)); 
+    rotation_angle = 180/pi*(((cameras(N_projections,2)-cameras(1,2))/N_projections)*(N_projections+1));
     initial_rotation_angle = 180/pi*cameras(1,2);
 else
-    rotation_angle = 180/pi*(cameras(N_projections)-cameras(1)); 
+    rotation_angle = 180/pi*(((cameras(N_projections)-cameras(1))/N_projections)*(N_projections+1));
     initial_rotation_angle = 180/pi*cameras(1);
 end
 
@@ -67,16 +67,20 @@ f.option = {};
 f.test = '3s';
 dx=1;
 ig = image_geom('nx', N_x, 'ny', N_y, 'nz', N_z, 'dx', dx, 'dz', dx);
-f.psfs = '/tmp/t,psfs.fld';
+if isscalar(psf)
+    f.psfs = '-';
+else
+    f.psfs = '/tmp/t,psfs.fld';
+    fld_write(f.psfs, psf)
+end
 f.blur = ',fft'; 
-fld_write(f.psfs, psf)
 f.na = N_projections;
 f.dir = test_dir;
 if attenuation==0
     f.mumap = '-';
 else
     f.mumap = [f.dir 'mumap.fld'];
-    fld_write(f.mumap, mumap); 
+    fld_write(f.mumap, attenuation); 
 end
 f.sfilter = 1; 
 f.sys_type = '3s@%g,%g,%g,%g,%g,%d%s@%s@%s@-%d,%d,%d';
