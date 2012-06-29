@@ -10,10 +10,9 @@
 #-----------------------------------------------------------------------------
 PROJECT(nifty_rec)
 
-cmake_minimum_required(VERSION 2.8)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 cmake_policy(VERSION 2.8)
-include(CPack)
-include(ExternalProject)
+INCLUDE(ExternalProject)
 ENABLE_TESTING()
 
 #-----------------------------------------------------------------------------
@@ -35,7 +34,6 @@ OPTION(NiftyRec_COMPILE_DOC         "Compile pdf documentation from the Latex so
 OPTION(NiftyRec_INCLUDE_DATA        "Include data sets for examples and demos" OFF)
 OPTION(NiftyRec_BUILD_RENDERER      "Build multi-modal volume renderer" OFF)
 OPTION(NiftyRec_VERBOSE             "Print out extra information when compiling" OFF)
-#OPTION(NiftyRec_DO_PACKAGE          "Generate platform specific self-installing packages" ON)
 #OPTION(NiftyRec_INSTALL_NIFTYSEG    "Download and install NiftySeg" OFF)
 #OPTION(NiftyRec_BUILD_SHARED        "Build as shared libraries" ON)
 
@@ -251,7 +249,6 @@ ENDIF(NiftyRec_INCLUDE_DATA)
 SUBDIRS(seg-lib)
 
 #-----------------------------------------------------------------------------
-
 IF(NiftyRec_DO_PACKAGE)
         IF(UNIX)
             IF(APPLE)
@@ -298,7 +295,7 @@ IF(NiftyRec_DO_PACKAGE)
 
         #Deb
         SET(CPACK_DEBIAN_PACKAGE_MAINTAINER "Stefano Pedemonte s.pedemonte@cs.ucl.ac.uk")
-#        SET(CPACK_DEBIAN_PACKAGE_DEPENDS "niftyreg (>= 1.2.1)")
+        #SET(CPACK_DEBIAN_PACKAGE_DEPENDS "niftyreg (>= 1.2.1)")
 
         #Nsis
         SET(CPACK_NSIS_INSTALLED_ICON_NAME "bin\\\\NiftyRec.exe")
