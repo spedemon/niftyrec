@@ -25,8 +25,8 @@
 	};
 #endif
 
-#define Block_reg_affine_deformationField 32                       // 16 regs - 067% occupancy
-#define Block_reg_resampleSourceImage 32                           // 16 regs - 067% occupancy
+#define Block_reg_affine_deformationField 256                       // 16 regs - 067% occupancy
+#define Block_reg_resampleSourceImage 256                           // 16 regs - 067% occupancy
 #define Block_reg_freeForm_interpolatePosition 320                  // 22 regs - 042% occupancy
 #define Block_reg_getSourceImageGradient 320                        // 23 regs - 042% occupancy
 #define Block_reg_getVoxelBasedNMIGradientUsingPW 320               // 24 regs - 042% occupancy
