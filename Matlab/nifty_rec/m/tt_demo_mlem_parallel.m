@@ -16,13 +16,14 @@ n_iter = 1000;
 N = 128; 
 N_projections = 120; 
 GPU = 1; 
-which_phantom = 1;
+which_phantom = 0;
 
 mask = et_spherical_phantom(N,N,N,N/2,1,0,(N+1)/2,(N+1)/2,(N+1)/2);
 
 if which_phantom==0
     %0)uniform activity:
-    load attenuation_128.mat
+    attenuation_128 = et_load_nifti('attenuation_02_128.nii');
+    attenuation_128 = double(attenuation_128.img);
     phantom_attenuation = mask.*et_rotate(attenuation_128,[pi/2,0,0],[64.5,64.5,64.5],1,0)*1e-5; 
 else which_phantom==1
     %1)spheres:

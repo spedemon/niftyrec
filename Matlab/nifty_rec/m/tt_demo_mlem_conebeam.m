@@ -32,8 +32,9 @@ INTERP=1;
 
 
 %% Load data
-load attenuation_128.mat
-attenuation = attenuation_128*1e-5; 
+attenuation = et_load_nifti('attenuation_02_128.nii'); 
+attenuation = double(attenuation.img); 
+attenuation = attenuation*1e-5; 
 mask = et_spherical_phantom(N,N,N,N/2-2,1,0,(N+1)/2,(N+1)/2,(N+1)/2);
 attenuation = single(attenuation.*mask);
 
