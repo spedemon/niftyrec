@@ -19,6 +19,7 @@ __global__ void et_line_integral_attenuated_gpu_kernel(float *g_activity, float 
 	const unsigned int pixelNumber = c_ImageSize.x * c_ImageSize.y;
 	if(tid<pixelNumber){
 		unsigned int index=tid;
+                unsigned int index_inv=tid;
                 float sum_attenuation=0.0f;
 		float sum_activity=0.0f;
                 if (g_partialsum==NULL)
@@ -64,12 +65,12 @@ __global__ void et_line_integral_attenuated_gpu_kernel(float *g_activity, float 
                         }
                     else if (g_activity!=NULL && g_attenuation!=NULL)
                         {
+                        index_inv=tid+pixelNumber*(c_ImageSize.z-1);
 		        for(unsigned int z=0; z<c_ImageSize.z; z++)
                             {
-                            sum_attenuation += g_attenuation[index];
-                            sum_activity    += g_activity[index]*exp(-sum_attenuation);
-                            g_partialsum[index] = sum_activity+background_activity*exp(-sum_attenuation); 
-                            index += pixelNumber;
+                            sum_activity = (sum_activity+g_activity[index_inv])*exp(-g_attenuation[index_inv]);
+                            g_partialsum[index_inv] = sum_activity;
+                            index_inv -= pixelNumber;
                             }
                         }
                     else if (g_activity!=NULL && g_attenuation==NULL)
