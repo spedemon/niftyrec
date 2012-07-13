@@ -1345,5 +1345,180 @@ extern "C" int et_array_joint_histogram(float *matrix_A, float *matrix_B, int *j
 
 
 
+extern "C" int et_array_project_partial(float *activity, int *activity_size, float *sinogram, int *sinogram_size, float *partialsum, int *partialsum_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *attenuation, int *attenuation_size, float background, float background_attenuation, int GPU)
+{
+	int status = 0;
+        int n_cameras;
+        int n_cameras_axis;
+        int no_psf = 0;
+        int no_attenuation = 0;
+        int no_activity = 0;
+        float *cameras_array;
+
+        n_cameras = cameras_size[0];
+        n_cameras_axis = cameras_size[1];
+
+        //activity or not? 
+        if (activity_size[0] == 0 && activity_size[1] == 0 && activity_size[2] == 0) 
+            {
+            no_activity = 1;
+            activity_size[0] = attenuation_size[0]; activity_size[1] = attenuation_size[1]; activity_size[2] = attenuation_size[2];
+            }
+
+        //PSF or not?
+        if (psf_size[0] == 0 && psf_size[1] == 0 && psf_size[2] == 0)
+            no_psf = 1;
+
+        //attenuation or not?
+        if (attenuation_size[0] == 0 && attenuation_size[1] == 0 && attenuation_size[2] == 0)
+            no_attenuation = 1;
+
+        if (no_attenuation && no_activity) 
+            { 
+            fprintf(stderr,"_et_array_project: Error - define at least one between 'activity' and 'attenuation'. \n"); 
+            return niftyrec_error_parameters; 
+            } 
+
+        /* Check consistency of input */ 
+        // Cameras must specify all 3 axis of rotation (3D array) or can be a 1D array if rotation is only along z axis. 
+        if (!(n_cameras_axis == 1 || n_cameras_axis == 3))
+            {
+            fprintf_verbose("et_array_project: Incorrect size of cameras %d %d. 'Cameras' must be either [n_cameras x 3] or [n_cameras x 1].\n",cameras_size[0],cameras_size[1]);
+            return niftyrec_error_parameters;
+            }
+
+        //Size of psf must be odd and consistent with activity size
+        if (!no_psf)
+            {
+            if (psf_size[0]%2!=1 || psf_size[1]%2!=1 || psf_size[2]!=activity_size[0])
+                {
+                fprintf_verbose("et_array_project: 3D psf must be of size [h,k,N] for activity of size [N,m,N]; h,k odd.\n");
+                return niftyrec_error_parameters;
+                }
+            }
+
+
+        // Allocate array for cameras
+        cameras_array = (float *)malloc(n_cameras*3*sizeof(float)); 
+        if (cameras_array==NULL)
+            return niftyrec_error_alloccpu;
+        if (n_cameras_axis == 3)
+            memcpy((void*) cameras_array, (void*) cameras, n_cameras*3*sizeof(float));
+        if (n_cameras_axis == 1)
+            {
+            memset(cameras_array, 0, n_cameras*3*sizeof(float));
+            for (int cam=0; cam<n_cameras; cam++)
+                cameras_array[0*n_cameras+cam] = cameras[cam];
+            }
+
+	// Allocate nifti images
+        int dim[8];
+	dim[0]    = 3;
+	dim[1]    = activity_size[0];
+	dim[2]    = activity_size[1];
+	dim[3]    = activity_size[2];
+	dim[4]    = 1;
+	dim[5]    = 1;
+	dim[6]    = 1;
+	dim[7]    = 1;
+
+	// Allocate activity nifti images
+	nifti_image *activityImage = NULL;
+        if(!no_activity)
+            {
+            activityImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+            activityImage->data = (float *)(activity);
+            }
+
+        // Allocate attenuation nifti image
+        nifti_image *attenuationImage = NULL;
+        if(!no_attenuation)
+            {
+            attenuationImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+            attenuationImage->data = (float *)(attenuation);        
+            }
+
+	// Allocate the result nifti image
+	//fprintf_verbose( "\nN CAMERAS: %d ",n_cameras);
+
+        dim[1] = activity_size[0];
+        dim[2] = activity_size[1];
+        dim[3] = n_cameras;	   
+
+        nifti_image *sinogramImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+        sinogramImage->data = (float *)(sinogram);
+
+	//Allocate Point Spread Function nifti image
+        nifti_image *psfImage = NULL;
+        if (!no_psf)
+            {
+            dim[1] = psf_size[0];
+            dim[2] = psf_size[1];
+            dim[3] = psf_size[2];
+            psfImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+            psfImage->data = (float *)(psf);
+            }
+
+	// Allocate the nifti image for the partial sum
+        dim[0] = 4;
+        dim[1] = partialsum_size[0];
+        dim[2] = partialsum_size[1];
+        dim[3] = partialsum_size[2];
+        dim[4] = partialsum_size[3];
+
+        nifti_image *partialsumImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+        partialsumImage->data = (float *)(partialsum);
+
+        //Do projection
+        #ifdef _USE_CUDA
+        if (GPU)
+            status = et_project_partial_gpu(activityImage, sinogramImage, partialsumImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation);
+        else
+            status = et_project_partial(activityImage, sinogramImage, partialsumImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation);
+        #else
+            if (GPU)
+                fprintf_verbose( "et_array_project: No GPU support. In order to activate GPU acceleration please configure with GPU flag and compile.");
+            status = et_project_partial(activityImage, sinogramImage, partialsumImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation);
+        #endif
+
+	//Free
+        if(!no_activity)
+            {
+            if( activityImage->fname != NULL ) free(activityImage->fname) ;
+            if( activityImage->iname != NULL ) free(activityImage->iname) ;
+            (void)nifti_free_extensions( activityImage ) ;
+            free(activityImage) ;
+            }
+
+        if(!no_attenuation)
+            {
+            if( attenuationImage->fname != NULL ) free(attenuationImage->fname) ;
+            if( attenuationImage->iname != NULL ) free(attenuationImage->iname) ;
+            (void)nifti_free_extensions( attenuationImage ) ;
+            free(attenuationImage) ;
+            }
+	
+	if( sinogramImage->fname != NULL ) free(sinogramImage->fname) ;
+	if( sinogramImage->iname != NULL ) free(sinogramImage->iname) ;
+	(void)nifti_free_extensions( sinogramImage ) ;
+	free(sinogramImage) ;
+
+	if( partialsumImage->fname != NULL ) free(partialsumImage->fname) ;
+	if( partialsumImage->iname != NULL ) free(partialsumImage->iname) ;
+	(void)nifti_free_extensions( partialsumImage ) ;
+	free(partialsumImage) ;
+
+        if (!no_psf)
+            {
+            if( psfImage->fname != NULL ) free(psfImage->fname) ;
+            if( psfImage->iname != NULL ) free(psfImage->iname) ;
+            (void)nifti_free_extensions( psfImage ) ;
+            free(psfImage) ;
+            }
+
+        free(cameras_array);
+
+	return status;
+}
 
 

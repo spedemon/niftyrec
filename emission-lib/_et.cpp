@@ -768,7 +768,10 @@ int et_convolve(nifti_image *inImage, nifti_image *outImage, nifti_image *kernel
 }
 
 
-
+int et_project_partial(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *partialsumImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation)
+{
+return 1;
+}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////   GPU   ///////////////////////////////////////////////////////////////////////////////////
@@ -1078,22 +1081,31 @@ int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_ima
                     et_line_integral_attenuated_gpu(	rotatedArray_d,
 						rotatedAttenuationArray_d, 
 						sinoArray_d,
+                                                NULL,
 						cam,
 						referenceImage,
                                                 background);
-                else if (attenuationImage==NULL)
-		    et_line_integral_gpu(	rotatedArray_d,
+                else if ((activityImage!=NULL) && (attenuationImage == NULL))
+		    et_line_integral_attenuated_gpu(	rotatedArray_d,
+                                                NULL,
 						sinoArray_d,
+                                                NULL,
+						cam,
+						referenceImage,
+                                                background);
+                else if ((activityImage==NULL) && (attenuationImage != NULL))
+                    et_line_integral_attenuated_gpu(NULL,
+						rotatedAttenuationArray_d, 
+						sinoArray_d,
+                                                NULL,
 						cam,
 						referenceImage,
                                                 background);
                 else 
-                    et_line_integral_attenuated_gpu(NULL,
-						rotatedAttenuationArray_d, 
-						sinoArray_d,
-						cam,
-						referenceImage,
-                                                background);
+                    {
+                    alloc_record_destroy(memory_record);
+                    return niftyrec_error_parameters;
+                    }
 	}
 
 	/* Transfer result back to host */
@@ -2033,6 +2045,262 @@ int et_joint_histogram_gpu(nifti_image *matrix_A_Image, nifti_image *matrix_B_Im
 	return 0;
 }
 */
+
+
+
+//! Projection for Emission Imaging, on GPU
+/*!
+  \param *activityImage the activity (or its estimate). NULL for attenuation and background activity only. 
+  \param *sinoImage the photon counts in projection space. 
+  \param *psfImage the depth-dependent point spread function, NULL for no PSF. 
+  \param *attenuationImage the attenuation map, NULL for no attenuation. 
+  \param *cameras [n_camerasx3] array of camera orientations in radians. 
+  \param n_cameras number of projections (camera positions). 
+  \param background the activity background (used when activity is rotated and resampled). 
+  \param background_attenuation the attenuation background (used when the attenuation map is rotated and resampled). 
+*/
+int et_project_partial_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *partialsumImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation)
+{
+	/* initialise the cuda arrays */
+	cudaArray *activityArray_d=NULL;               //stores input activity, makes use of fetch unit
+        cudaArray *attenuationArray_d=NULL;            //stores input attenuation coefficients, makes use of fetch unit
+	float     *sinoArray_d=NULL;                   //stores sinogram (output)
+	float     *partialsumArray_d=NULL;             //stores sinogram (output)
+	float     *rotatedArray_d=NULL;                //stores activity aligned with current camera
+        float     *rotatedAttenuationArray_d=NULL;     //stores attenuation coefficients aligned with current camera
+	float4    *positionFieldImageArray_d=NULL;     //stores position field for rotation of activity and attenuation
+	int       *mask_d=NULL;                        //binary mask that defines active voxels (typically all active)
+        float     *psfArray_d=NULL;                    //stores point spread function
+        float     *psfSeparatedArray_d=NULL;           //stores point spread function
+        int       psf_size[3];
+        int       image_size[3];
+        int       separable_psf=0;
+
+        /* Check consistency of input */
+        nifti_image *referenceImage;              // this image holds information about image size and voxel size (activity or attenuation might not be defined (NULL pointers) ) 
+        if (activityImage==NULL && attenuationImage==NULL)
+            {
+            fprintf(stderr, "et_project_partial_gpu: Error - define at least one between activityImage and attenuationImage. \n");
+            return niftyrec_error_parameters; 
+            }
+        else if (attenuationImage==NULL)
+            referenceImage=activityImage;
+        else
+            referenceImage=attenuationImage; 
+	
+	/* Allocate arrays on the device and transfer data to the device */
+
+        alloc_record *memory_record = alloc_record_create(RECORD_MAXELEMENTS);         
+        // Activity
+        if (activityImage != NULL)
+            {
+            if(cudaCommon_allocateArrayToDevice<float>(&activityArray_d, activityImage->dim)) {
+                alloc_record_destroy(memory_record); 
+                return niftyrec_error_allocgpu;} 
+            alloc_record_add(memory_record,(void*)activityArray_d,ALLOCTYPE_CUDA_ARRAY);
+            if(cudaCommon_allocateArrayToDevice<float>(&rotatedArray_d, activityImage->dim)) {
+                alloc_record_destroy(memory_record); 
+                return niftyrec_error_allocgpu;}  
+            alloc_record_add(memory_record,(void*)rotatedArray_d,ALLOCTYPE_CUDA);  
+            if(cudaCommon_transferNiftiToArrayOnDevice<float>(&activityArray_d,activityImage)) {
+                alloc_record_destroy(memory_record); 
+                return niftyrec_error_transfergpu;} 
+            }
+        // Partial sum
+        if(cudaCommon_allocateArrayToDevice<float>(&partialsumArray_d, referenceImage->dim)) {
+            alloc_record_destroy(memory_record); 
+            return niftyrec_error_allocgpu;} 
+        alloc_record_add(memory_record,(void*)partialsumArray_d,ALLOCTYPE_CUDA);
+
+        // Singoram 
+	if(cudaCommon_allocateArrayToDevice<float>(&sinoArray_d, sinoImage->dim)) {
+            alloc_record_destroy(memory_record); 
+            return niftyrec_error_allocgpu;} 
+        alloc_record_add(memory_record,(void*)sinoArray_d,ALLOCTYPE_CUDA);
+	if(cudaCommon_allocateArrayToDevice<float4>(&positionFieldImageArray_d, referenceImage->dim)) {
+            alloc_record_destroy(memory_record); 
+            return niftyrec_error_allocgpu;} 
+        alloc_record_add(memory_record,(void*)positionFieldImageArray_d,ALLOCTYPE_CUDA);
+	if(cudaCommon_allocateArrayToDevice<int>(&mask_d, referenceImage->dim)) {
+            alloc_record_destroy(memory_record); 
+            return niftyrec_error_transfergpu;} 
+        alloc_record_add(memory_record,(void*)mask_d,ALLOCTYPE_CUDA);
+
+	// Mask 
+	int *mask_h=(int *)malloc(referenceImage->nvox*sizeof(int));
+	for(int i=0; i<referenceImage->nvox; i++) mask_h[i]=i;
+	cudaMemcpy(mask_d, mask_h, referenceImage->nvox*sizeof(int), cudaMemcpyHostToDevice);
+	free(mask_h);
+	
+	/* Define centers of rotation */
+	float center_x = ((float)(referenceImage->nx - 1)) / 2.0;
+	float center_y = ((float)(referenceImage->ny - 1)) / 2.0;
+	float center_z = ((float)(referenceImage->nz - 1)) / 2.0;
+		
+	/* Alloc transformation matrix */
+	mat44 *affineTransformation = (mat44 *)calloc(1,sizeof(mat44));
+        alloc_record_add(memory_record,(void*)affineTransformation,ALLOCTYPE_GUEST);
+
+        /* Allocate and initialize kernel for DDPSF */
+        if (psfImage != NULL)
+            {
+            if(cudaCommon_allocateArrayToDevice<float>(&psfArray_d, psfImage->dim)) {
+                alloc_record_destroy(memory_record); 
+                return niftyrec_error_allocgpu;} 
+            alloc_record_add(memory_record,(void*)psfArray_d,ALLOCTYPE_CUDA);
+            if(cudaCommon_transferNiftiToArrayOnDevice<float>(&psfArray_d, psfImage)) {
+                alloc_record_destroy(memory_record); 
+                return niftyrec_error_transfergpu;} 
+            psf_size[0] = psfImage->dim[1];
+            psf_size[1] = psfImage->dim[2];
+            psf_size[2] = psfImage->dim[3];
+            image_size[0] = referenceImage->dim[1];
+            image_size[1] = referenceImage->dim[2];
+            image_size[2] = referenceImage->dim[3];
+
+            if (psf_size[0]<= (MAX_SEPARABLE_KERNEL_RADIUS*2)+1)
+                separable_psf=1;
+            }
+
+        if (separable_psf)
+            {
+            if(cudaMalloc((void **)&psfSeparatedArray_d, (psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float)) != cudaSuccess) {
+                alloc_record_destroy(memory_record); 
+                return niftyrec_error_allocgpu;}
+            alloc_record_add(memory_record,(void*)psfSeparatedArray_d,ALLOCTYPE_CUDA);
+
+            float *psfSeparatedArray_h = (float*) malloc((psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float));
+            float psf_norm;
+            for (int n=0; n<psf_size[2];n++) {
+                psf_norm = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 * psf_size[0] + (psf_size[0]-1)/2];
+                for (int i=0;i<psf_size[0];i++) {
+                    psfSeparatedArray_h[(psf_size[0]+psf_size[1])*n + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 * psf_size[0] + i];
+                    psfSeparatedArray_h[(psf_size[0]+psf_size[1])*n + psf_size[0] + i] = ((float*)psfImage->data)[psf_size[0]*psf_size[1]*n + (psf_size[0]-1)/2 + i * psf_size[0]] / psf_norm;
+                    }
+                }
+            cudaMemcpy(psfSeparatedArray_d, psfSeparatedArray_h, (psf_size[0]+psf_size[1])*psf_size[2]*sizeof(float), cudaMemcpyHostToDevice);
+            free(psfSeparatedArray_h);
+            }
+
+        if (attenuationImage != NULL)
+            {
+            if(cudaCommon_allocateArrayToDevice<float>(&attenuationArray_d, attenuationImage->dim)) {
+                 alloc_record_destroy(memory_record); 
+                 return niftyrec_error_transfergpu;} 
+            alloc_record_add(memory_record,(void*)attenuationArray_d,ALLOCTYPE_CUDA_ARRAY);
+            if(cudaCommon_allocateArrayToDevice<float>(&rotatedAttenuationArray_d, attenuationImage->dim)) {
+                 alloc_record_destroy(memory_record); 
+                 return niftyrec_error_allocgpu;}
+            alloc_record_add(memory_record,(void*)rotatedAttenuationArray_d,ALLOCTYPE_CUDA);
+            if(cudaCommon_transferNiftiToArrayOnDevice<float>(&attenuationArray_d,attenuationImage)) {
+                 alloc_record_destroy(memory_record);
+                 return niftyrec_error_transfergpu;}
+            }
+
+	for(unsigned int cam=0; cam<n_cameras; cam++){
+                fprintf_verbose( "et_project: Rotation: %f  %f  %f  \n",cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam]);
+		// Apply affine //
+		et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], center_x, center_y, center_z);
+		reg_affine_positionField_gpu(	affineTransformation,
+						referenceImage,
+						&positionFieldImageArray_d);
+
+		// Resample the activity image //
+                if (activityImage != NULL)
+		    reg_resampleSourceImage_gpu(activityImage,
+						activityImage,
+						&rotatedArray_d,
+						&activityArray_d,
+						&positionFieldImageArray_d,
+						&mask_d,
+						activityImage->nvox,
+						background);
+
+                // Resample the attenuation map //
+                if (attenuationImage != NULL)
+		    reg_resampleSourceImage_gpu(attenuationImage,
+						attenuationImage,
+						&rotatedAttenuationArray_d,
+						&attenuationArray_d,
+						&positionFieldImageArray_d,
+						&mask_d,
+						attenuationImage->nvox,
+						background_attenuation);
+
+                // Apply Depth Dependent Point Spread Function //
+                if ((psfImage != NULL) && (activityImage!=NULL))
+                    {
+                    if (separable_psf)
+                        {
+                        int status = et_convolveSeparable2D_gpu(
+                                                &rotatedArray_d, 
+                                                image_size,
+                                                &psfSeparatedArray_d,
+                                                psf_size,
+                                                &rotatedArray_d);
+                        if (status)
+                            {
+                            alloc_record_destroy(memory_record);
+                            return niftyrec_error_kernel;
+                            }
+                        }
+                    else
+                        et_convolveFFT2D_gpu(   &rotatedArray_d, 
+                                                image_size,
+                                                &psfArray_d,
+                                                psf_size,
+                                                &rotatedArray_d);
+                    }
+
+		// Integrate along lines //
+                if ((activityImage!=NULL) && (attenuationImage != NULL))
+                    et_line_integral_attenuated_gpu(	rotatedArray_d,
+						rotatedAttenuationArray_d, 
+						sinoArray_d,
+                                                partialsumArray_d,
+						cam,
+						referenceImage,
+                                                background);
+                else if ((activityImage!=NULL) && (attenuationImage == NULL))
+		    et_line_integral_attenuated_gpu(	rotatedArray_d,
+                                                NULL,
+						sinoArray_d,
+                                                partialsumArray_d,
+						cam,
+						referenceImage,
+                                                background);
+                else if ((activityImage==NULL) && (attenuationImage != NULL))
+                    et_line_integral_attenuated_gpu(NULL,
+						rotatedAttenuationArray_d, 
+						sinoArray_d,
+                                                partialsumArray_d,
+						cam,
+						referenceImage,
+                                                background);
+                else 
+                    {
+                    alloc_record_destroy(memory_record);
+                    return niftyrec_error_parameters;
+                    }
+                if (cudaMemcpy(((float*) partialsumImage->data)+referenceImage->nx*referenceImage->ny*referenceImage->nz*cam, partialsumArray_d, referenceImage->nx*referenceImage->ny*referenceImage->nz*sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) {
+                    alloc_record_destroy(memory_record); 
+                    return niftyrec_error_transfergpu;}
+	}
+
+	/* Transfer result back to host */
+	if(cudaCommon_transferFromDeviceToNifti(sinoImage, &sinoArray_d)) {
+            alloc_record_destroy(memory_record); 
+            return niftyrec_error_transfergpu;}
+
+        /* Truncate negative values: small negative values may be found due to FFT and IFFT */
+        float* sino_data = (float*) sinoImage->data;
+        for (int i=0; i<sinoImage->nvox; i++)
+            if (sino_data[i] < 0)
+                sino_data[i] = 0;
+
+	/*Free*/
+        return alloc_record_destroy(memory_record); 
+}
 
 #endif
 
