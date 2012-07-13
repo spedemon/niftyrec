@@ -18,7 +18,6 @@
 
 int et_convolveSeparable2D_gpu(float **d_data, int *data_size, float **d_kernel_separated, int *kernel_size, float **d_result)
 {
-fprintf(stderr,"size: %d %d %d\n",data_size[0],data_size[1],data_size[2]);
     int status = 0;
     const int dataH = data_size[1];
     const int dataW = data_size[2];
