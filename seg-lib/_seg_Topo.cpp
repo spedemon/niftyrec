@@ -609,13 +609,13 @@ void Dillate_const(bool * Image,
                    int direction){
   int xyzpos[3];
   int shiftdir=0;
-  if(fabs(direction)==1){
+  if(direction==1){
       shiftdir=1;
     }
-  if(fabs(direction)==2){
+  if(direction==2){
       shiftdir=dimensions[0];
     }
-  if(fabs(direction)==3){
+  if(direction==3){
       shiftdir=dimensions[1]*dimensions[0];
     }
 
@@ -628,7 +628,7 @@ void Dillate_const(bool * Image,
           for(xyzpos[0]=0;xyzpos[0]<dimensions[0];xyzpos[0]++){
               tmpvalue=false;
               if(direction>0){
-                  for(int shift=0; shift<=((xyzpos[(int)fabs(direction)]>=(dimensions[(int)fabs(direction)]-kernel))?(int)dimensions[(int)fabs(direction)]-xyzpos[(int)fabs(direction)]-1:kernel);shift++){
+                  for(int shift=0; shift<=((xyzpos[(int)direction]>=(dimensions[(int)direction]-kernel))?(int)dimensions[(int)direction]-xyzpos[(int)direction]-1:kernel);shift++){
                       if(Image[index+shift*shiftdir]){
                           tmpvalue=true;
                           shift=10000;
@@ -636,7 +636,7 @@ void Dillate_const(bool * Image,
                     }
                 }
               if(direction>0){
-                  for(int shift=((xyzpos[(int)fabs(direction)]<kernel)?-xyzpos[(int)fabs(direction)]:-kernel); shift<=0;shift++){
+                  for(int shift=((xyzpos[(int)direction]<kernel)?-xyzpos[(int)direction]:-kernel); shift<=0;shift++){
                       if(Image[index+shift*shiftdir]){
                           tmpvalue=true;
                           shift=10000;
@@ -658,7 +658,7 @@ void Dillate_const(bool * Image,
               if(Image[index]>0){
                   tmpvalue=true;
                   if(direction>0){
-                      for(int shift=0; shift<=((xyzpos[(int)fabs(direction)]>=(dimensions[(int)fabs(direction)]-kernel))?(int)dimensions[(int)fabs(direction)]-xyzpos[(int)fabs(direction)]-1:kernel);shift++){
+                      for(int shift=0; shift<=((xyzpos[(int)direction]>=(dimensions[(int)direction]-kernel))?(int)dimensions[(int)direction]-xyzpos[(int)direction]-1:kernel);shift++){
                           if(Image[index+shift*shiftdir]==0 && Const[index+shift*shiftdir]==0){
                               tmpvalue=false;
                               shift=10000;
@@ -666,7 +666,7 @@ void Dillate_const(bool * Image,
                         }
                     }
                   if(direction>0){
-                      for(int shift=((xyzpos[(int)fabs(direction)]<kernel)?-xyzpos[(int)fabs(direction)]:-kernel); shift<=0;shift++){
+                      for(int shift=((xyzpos[(int)direction]<kernel)?-xyzpos[(int)direction]:-kernel); shift<=0;shift++){
                           if(Image[index+shift*shiftdir]==0 && Const[index+shift*shiftdir]==0){
                               tmpvalue=false;
                               shift=10000;

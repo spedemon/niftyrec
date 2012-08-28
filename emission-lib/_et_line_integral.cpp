@@ -9,9 +9,9 @@
  */
 
 #include "_et_line_integral.h"
-#include <pthread.h>
+//#include <pthread.h>
 //#include <time.h>
-#define N_THREADS 4
+#define N_THREADS 1
 
 //long int timespecDiff(struct timespec *timeA_p, struct timespec *timeB_p)
 //{
@@ -26,7 +26,7 @@ typedef struct {
  float *input_data; 
 } thread_param;
 
-void *line_integral_thread(void *arg)
+void line_integral_thread(void *arg)
 {
     thread_param *p=(thread_param *)arg;
     float *sino_data=p->sino_data;
@@ -41,7 +41,7 @@ void et_line_integral(nifti_image *inputImage, nifti_image *sinoImage, int cam, 
 {
 //    struct timespec start, end;
 //    clock_gettime(CLOCK_MONOTONIC, &start);
-    int threaded=1;
+    int threaded=0;
 
     float *sino_data = (float *) (sinoImage->data) + cam*inputImage->nx*inputImage->ny ;
     float *input_data = (float *) (inputImage->data);
@@ -49,9 +49,9 @@ void et_line_integral(nifti_image *inputImage, nifti_image *sinoImage, int cam, 
     int nx = inputImage->nx;
     int ny = inputImage->ny;
     int nz = inputImage->nz;
-    pthread_t *threads=(pthread_t *)malloc(N_THREADS*sizeof(*threads)); 
+//    pthread_t *threads=(pthread_t *)malloc(N_THREADS*sizeof(*threads)); 
     thread_param *p=(thread_param *)malloc(sizeof(thread_param)*N_THREADS); 
-    int n_lines_per_thread = ceil(nx/N_THREADS);
+    int n_lines_per_thread = ceil((double)nx/N_THREADS);
     for (int i=0; i<N_THREADS; i++) 
         {
         p[i].nx = nx; 
@@ -62,16 +62,16 @@ void et_line_integral(nifti_image *inputImage, nifti_image *sinoImage, int cam, 
         if (p[i].end_x>=nx) p[i].end_x=nx; 
         p[i].sino_data = sino_data;
         p[i].input_data = input_data;  
-        if (threaded)
-            pthread_create(&threads[i],NULL,line_integral_thread,(void *)(p+i));
-        else
+ //       if (threaded)
+ //           pthread_create(&threads[i],NULL,line_integral_thread,(void *)(p+i));
+ //       else
             line_integral_thread((void *)(p+i));
         }
         //wait for all threads 
-        if (threaded)
-            for (int i=0; i<N_THREADS; i++) 
-                pthread_join(threads[i],NULL);
-    free(threads);
+ //       if (threaded)
+ //           for (int i=0; i<N_THREADS; i++) 
+ //               pthread_join(threads[i],NULL);
+ //   free(threads);
     free(p);  
 
 //    clock_gettime(CLOCK_MONOTONIC, &end);

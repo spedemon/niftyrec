@@ -1,7 +1,19 @@
 #include "_seg_tools.h"
+#include <math.h>
+#include <cmath>
 #ifdef _OPENMP
 #include "omp.h"
 #endif
+
+#ifndef M_PI
+#define M_PI 3.1415
+#endif
+bool custom_isnan(double var)
+{
+    volatile double d = var;
+    return d != d;
+}
+
 
 int Create_diagonal_GH_Nclass(SegPrecisionTYPE * G,
                               SegPrecisionTYPE * H,
@@ -1569,7 +1581,7 @@ int calcM_mask(nifti_image * T1,
                     }
 
                 }
-              if( (tempsum/SumPriors>0) & (!isnan(tempsum/SumPriors))){
+			  if( (tempsum/SumPriors>0) & (!custom_isnan((double)tempsum/SumPriors))){
                   V[cl*CurrSizes->usize*CurrSizes->usize+Multispec+Multispec2*CurrSizes->usize]=tempsum/SumPriors;
                   if(Multispec2!=Multispec){
                       V[cl*CurrSizes->usize*CurrSizes->usize+Multispec2+Multispec*CurrSizes->usize]=V[cl*CurrSizes->usize*CurrSizes->usize+Multispec+Multispec2*CurrSizes->usize];
@@ -3494,7 +3506,7 @@ char * seg_norm4MLLNCC(nifti_image * BaseImage, nifti_image * LNCC,float distanc
         }
 
 
-        float distance_level=distance*pow(2,(curlevel-1));
+        float distance_level=distance*pow(2.0f,(curlevel-1));
         int numbordered_level=(curlevel*numberordered)<=LNCC->nt?(curlevel*numberordered):LNCC->nt;
 
 
@@ -3813,7 +3825,7 @@ int seg_changeDatatype1(nifti_image *image)
     image->data = (void *)calloc(image->nvox,sizeof(NewTYPE));
     NewTYPE *dataPtr = static_cast<NewTYPE *>(image->data);
     if(sizeof(NewTYPE)==sizeof(unsigned char)){
-        for(unsigned int i=0; i<image->nvox; i++) dataPtr[i] = (unsigned char)(round(initialValue[i]));
+        for(unsigned int i=0; i<image->nvox; i++) dataPtr[i] = (unsigned char)(int(initialValue[i]+0.5));
     }
     else{
         for(unsigned int i=0; i<image->nvox; i++) dataPtr[i] = (NewTYPE)(initialValue[i]);
@@ -3988,7 +4000,7 @@ void Resample_NN_with_weights(  nifti_image *sourceImage,
 template void Resample_NN_with_weights<unsigned char,float>(nifti_image *sourceImage,nifti_image *deformationField,nifti_image *resultImage,nifti_image *resultImageWeights,int *mask,float bgValue);
 
 
-int get_all_files_and_folders_in_dir (string dir, vector<string> &files , vector<string> &folders)
+/*int get_all_files_and_folders_in_dir (string dir, vector<string> &files , vector<string> &folders)
 {
   DIR *dp;
   struct dirent *dirp;
@@ -4010,7 +4022,8 @@ int get_all_files_and_folders_in_dir (string dir, vector<string> &files , vector
   closedir(dp);
   return 0;
 }
-int get_all_files_that_match_string (string dir, vector<string> &files , string string_to_match)
+*/
+/*int get_all_files_that_match_string (string dir, vector<string> &files , string string_to_match)
 {
   DIR *dp;
   struct dirent *dirp;
@@ -4034,8 +4047,8 @@ int get_all_files_that_match_string (string dir, vector<string> &files , string 
     }
   closedir(dp);
   return 0;
-}
-int get_all_files_that_match_2_strings(string dir, vector<string> &files , string string_to_match, string string_to_match2)
+}*/
+/*int get_all_files_that_match_2_strings(string dir, vector<string> &files , string string_to_match, string string_to_match2)
 {
   DIR *dp;
   struct dirent *dirp;
@@ -4058,8 +4071,8 @@ int get_all_files_that_match_2_strings(string dir, vector<string> &files , strin
     }
   closedir(dp);
   return 0;
-}
-int get_all_files_in_dir_without_extension(string dir, vector<string> &files)
+}*/
+/*int get_all_files_in_dir_without_extension(string dir, vector<string> &files)
 {
   DIR *dp;
   struct dirent *dirp;
@@ -4078,7 +4091,7 @@ int get_all_files_in_dir_without_extension(string dir, vector<string> &files)
     }
   closedir(dp);
   return 0;
-}
+}*/
 float * getHeatWij(float * DistanceMatrix,int size_matrix, float temperature){
   float * UpdatedDistanceMatrix= new float [size_matrix*size_matrix];
 

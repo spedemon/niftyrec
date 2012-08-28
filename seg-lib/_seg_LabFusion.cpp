@@ -1,6 +1,10 @@
 #include "_seg_LabFusion.h"
 
-
+bool local_isnan(double var)
+{
+    volatile double d = var;
+    return d != d;
+}
 
 
 seg_LabFusion::seg_LabFusion(int _numb_classif, int numbclasses, int _Numb_Neigh)
@@ -1788,7 +1792,7 @@ int  seg_LabFusion::Run_STAPLE()
 
       // EXIT CHECKS
       // Check convergence
-      if( (((this->loglik-this->oldloglik)/this->oldloglik)<=this->Conv && this->iter>3) || iter>=this->maxIteration || isnan(this->loglik) )out=false;
+      if( (((this->loglik-this->oldloglik)/this->oldloglik)<=this->Conv && this->iter>3) || iter>=this->maxIteration || local_isnan((double)this->loglik) )out=false;
       // Exit if this->Numb_Neigh==1
       if(this->Numb_Neigh==1)out=false;
 
