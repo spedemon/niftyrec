@@ -101,7 +101,7 @@ if not(exist('background_attenuation','var'))
     background_attenuation = 0;
 end
 if not(exist('espilon','var'))
-    epsilon = 1e-6;
+    epsilon = 1e-8;
 end
 if not(exist('psf','var'))
     psf = 0;
@@ -146,12 +146,12 @@ normalization = et_backproject(ones(N1,N2,N_cameras_sub), cameras_sub, attenuati
 
 %project and backproject
 projection = et_project(activity_old, cameras_sub, attenuation, psf, GPU, background, background_attenuation);
-projection(projection<epsilon) = epsilon ;
-update = et_backproject(sinogram(:,:,cameras_indexes) ./ projection, cameras_sub, attenuation, psf, GPU, background, background_attenuation);
-activity_new = activity_old .* update;
+projection(projection<0) = 0 ;
+update = et_backproject((sinogram(:,:,cameras_indexes)+epsilon) ./ (projection+epsilon), cameras_sub, attenuation, psf, GPU, background, background_attenuation);
+activity_new = activity_old .* (update+epsilon);
 normalization = (normalization - beta * gradient_prior);
-normalization(normalization<epsilon) = epsilon;
-activity_new = activity_new ./ (normalization);
+normalization(normalization<0) = 0;
+activity_new = activity_new ./ (normalization+epsilon);
 
 return
 

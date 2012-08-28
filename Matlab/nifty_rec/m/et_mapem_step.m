@@ -99,7 +99,7 @@ if not(exist('background_attenuation','var'))
     background_attenuation = 0;
 end
 if not(exist('espilon','var'))
-    epsilon = 1e-6;
+    epsilon = 1e-8;
 end
 if not(exist('psf','var'))
     psf = 0;
