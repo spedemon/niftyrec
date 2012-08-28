@@ -2,8 +2,8 @@
 
 nifti_image * LoAd_Segment(nifti_image * T1, nifti_image * Mask, nifti_image * Priors, SEG_PARAM * segment_param){
 
-  time_t start,end;
-  time(&start);
+//  time_t start,end;
+//  time(&start);
   if((int)(segment_param->verbose_level)>(int)(0)){
       int verboselevel=segment_param->verbose_level;
       cout << "LoAd: Verbose level " << verboselevel << endl;
@@ -199,11 +199,11 @@ nifti_image * LoAd_Segment(nifti_image * T1, nifti_image * Mask, nifti_image * P
   delete [] CurrSizes;
   delete [] flags;
 
-  time(&end);
+ // time(&end);
 
-  if(segment_param->verbose_level>0){
-      cout << "Finished in "<<difftime(end,start)<<"sec"<< endl;
-    }
+ // if(segment_param->verbose_level>0){
+ //     cout << "Finished in "<<difftime(end,start)<<"sec"<< endl;
+ //   }
   return Result;
 }
 

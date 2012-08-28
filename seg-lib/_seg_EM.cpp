@@ -2,6 +2,14 @@
 #define _SEG_EM_CPP
 #include "_seg_EM.h"
 
+bool custom_isinf(double value)
+{
+return std::numeric_limits<double>::has_infinity &&
+value == std::numeric_limits<double>::infinity();
+}
+
+
+
 seg_EM::seg_EM(int _numb_classes, int _nu,int _nt)
 {
 
@@ -235,6 +243,7 @@ int seg_EM::SetMaskImage(nifti_image *f)
 int seg_EM::FreeInputImage()
 {
     nifti_image_free(this->inputImage);
+	return 0;
 }
 
 int seg_EM::FreePriorImage()
@@ -242,16 +251,19 @@ int seg_EM::FreePriorImage()
     if (this->Priors_status == true)
         nifti_image_free(this->Priors);
     this->Priors_status = false;
+	return 0;
 }
 
 int seg_EM::FreeMaskImage()
 {
     nifti_image_free(this->Mask);
+	return 0;
 }
 
 int seg_EM::FreeBiasImage()
 {
     free(this->BiasField);
+	return 0;
 }
 
 /* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
@@ -939,8 +951,8 @@ nifti_image * seg_EM::GetOutlierness(char * filename)
 
 int  seg_EM::Run_EM()
 {
-    time_t start,end;
-    time(&start);
+ //   time_t start,end;
+ //   time(&start);
     if((int)(this->verbose_level)>(int)(0)){
         cout << "EM: Verbose level " << this->verbose_level << endl;
     }
@@ -989,7 +1001,7 @@ int  seg_EM::Run_EM()
             printloglik(iter,this->loglik,this->oldloglik);
         }
         // Preform MRF reset or Exit
-        if((((this->loglik-this->oldloglik)/fabs(this->oldloglik))<(SegPrecisionTYPE)(0.0005) && this->iter>3 && this->iter>this->checkpoint_iter) || iter>=this->maxIteration || (isinf(this->loglik) && this->iter>3)){
+        if((((this->loglik-this->oldloglik)/fabs(this->oldloglik))<(SegPrecisionTYPE)(0.0005) && this->iter>3 && this->iter>this->checkpoint_iter) || iter>=this->maxIteration || (custom_isinf((double)this->loglik) && this->iter>3)){
             out=false;
         }
         this->ratio=((this->loglik-this->oldloglik)/fabs(this->oldloglik));
@@ -998,13 +1010,13 @@ int  seg_EM::Run_EM()
         iter++;
     }
 
-    time(&end);
+ //   time(&end);
 
-    if(this->verbose_level>0){
-        int minutes = (int)floorf(float(end-start)/60.0f);
-        int seconds = (int)(end-start - 60*minutes);
-        cout << "Finished in "<<minutes<<"min "<<seconds<<"sec"<< endl;
-    }
+ //   if(this->verbose_level>0){
+ //       int minutes = (int)floorf(float(end-start)/60.0f);
+ //       int seconds = (int)(end-start - 60*minutes);
+ //       cout << "Finished in "<<minutes<<"min "<<seconds<<"sec"<< endl;
+//    }
     return 0;
 }
 
@@ -1045,7 +1057,7 @@ int  seg_EM::Step_EM(int n)
             printloglik(iter,this->loglik,this->oldloglik);
         }
         // Preform MRF reset or Exit
-        if((((this->loglik-this->oldloglik)/fabs(this->oldloglik))<(SegPrecisionTYPE)(0.0005) && this->iter>3 && this->iter>this->checkpoint_iter) || iter>=this->maxIteration || (isinf(this->loglik) && this->iter>3)){
+        if((((this->loglik-this->oldloglik)/fabs(this->oldloglik))<(SegPrecisionTYPE)(0.0005) && this->iter>3 && this->iter>this->checkpoint_iter) || iter>=this->maxIteration || (custom_isinf((double)this->loglik) && this->iter>3)){
 //            out=false;
         }
         this->ratio=((this->loglik-this->oldloglik)/fabs(this->oldloglik));

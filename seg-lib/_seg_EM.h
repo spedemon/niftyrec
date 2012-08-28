@@ -6,7 +6,7 @@
 #include "_seg_MRF.h"
 #include "_seg_FMM.h"
 #include "_seg_Topo.h"
-
+#include <cmath>
 
 
 class seg_EM

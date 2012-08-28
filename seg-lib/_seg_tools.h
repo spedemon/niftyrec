@@ -5,6 +5,7 @@
 #include "_seg_FMM.h"
 #include "_seg_Topo.h"
 #include "_seg_BiasCorrection.h"
+#include <cmath>
 
 
 int printloglik(int iter,
