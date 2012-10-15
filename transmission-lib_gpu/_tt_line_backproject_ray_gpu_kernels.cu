@@ -36,7 +36,7 @@ struct Ray {
 // http://www.siggraph.org/education/materials/HyperGraph/raytrace/rtinter3.htm
 
 __device__
-int intersectBox(Ray r, float3 boxmin, float3 boxmax, float *tnear, float *tfar)
+int intersectBox_(Ray r, float3 boxmin, float3 boxmax, float *tnear, float *tfar)
 {
     // compute intersection of ray with all six bbox planes
     float3 invR = make_float3(1.0f) / r.d;
@@ -57,9 +57,20 @@ int intersectBox(Ray r, float3 boxmin, float3 boxmax, float *tnear, float *tfar)
     return smallest_tmax > largest_tmin;
 }
 
+// transform vector by matrix (no translation)
+__device__
+float3 mul_(const float3x4 &M, const float3 &v)
+{
+    float3 r;
+    r.x = dot(v, make_float3(M.m[0]));
+    r.y = dot(v, make_float3(M.m[1]));
+    r.z = dot(v, make_float3(M.m[2]));
+    return r;
+}
+
 // transform vector by matrix with translation
 __device__
-float4 mul4(const float3x4 &M, const float4 &v)
+float4 mul_(const float3x4 &M, const float4 &v)
 {
     float4 r;
     r.x = dot(v, M.m[0]);
@@ -97,10 +108,10 @@ d_tt_line_backproject_ray_gpu(float *d_projection, float *d_output, uint3 volume
     Ray eyeRay;
     eyeRay.o = source_position;
     //transform and normalize direction vector
-    eyeRay.d = normalize(make_float3(mul4(c_invViewMatrix_bk, make_float4(u,v,0.0f,1.0f)))-eyeRay.o); 
+    eyeRay.d = normalize(make_float3(mul_(c_invViewMatrix_bk, make_float4(u,v,0.0f,1.0f)))-eyeRay.o); 
     // find intersection with box
     float tnear, tfar;
-    int hit = intersectBox(eyeRay, boxMin, boxMax, &tnear, &tfar);
+    int hit = intersectBox_(eyeRay, boxMin, boxMax, &tnear, &tfar);
     if (!hit) return;
 	if (tnear < 0.0f) tnear = 0.0f;     // clamp to near plane
     int index; 
