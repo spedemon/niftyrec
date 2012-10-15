@@ -2,7 +2,7 @@
  *  _et.cpp
  *  
  *  NiftyRec
- *  Stefano Pedemonte, May 2012.
+ *  Stefano Pedemonte, Oct. 2012.
  *  CMIC - Centre for Medical Image Computing 
  *  UCL - University College London. 
  *  Released under BSD licence, see LICENSE.txt 
@@ -116,7 +116,7 @@ int et_rotate(nifti_image *sourceImage, nifti_image *resultImage, float theta_x,
   \param background the activity background (used when activity is rotated and resampled). 
   \param background_attenuation the attenuation background (used when the attenuation map is rotated and resampled). 
 */
-int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation)
+int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values)
 {
         int separable_psf = 0;
         int psf_size[3];
@@ -272,10 +272,13 @@ int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *
 
         /* Truncate negative values: small negative values may be found due to FFT and IFFT */
         float* sino_data = (float*) sinoImage->data;
-        for (int i=0; i<sinoImage->nvox; i++)
+        if (truncate_negative_values)
             {
-            if (sino_data[i] < 0)
-                sino_data[i] = 0;
+            for (int i=0; i<sinoImage->nvox; i++)
+                {
+                if (sino_data[i] < 0)
+                    sino_data[i] = 0;
+                }
             }
 
 	/* Deallocate memory */
@@ -295,7 +298,7 @@ int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *
   \param background the activity background (used when activity is rotated and resampled). 
   \param background_attenuation the attenuation background (used when the attenuation map is rotated and resampled). 
 */
-int et_backproject(nifti_image *sinogramImage, nifti_image *backprojectionImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation)
+int et_backproject(nifti_image *sinogramImage, nifti_image *backprojectionImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values)
 {
 
         int separable_psf = 0;
@@ -487,13 +490,14 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *backprojectionImage,
 
         /* Truncate negative values: small negative values may be found due to FFT and IFFT */
         float* accumulator_data = (float*) backprojectionImage->data;
-
-        for (int i=0; i<backprojectionImage->nvox; i++)
+        if (truncate_negative_values)
             {
-            if (accumulator_data[i] < 0)
-               accumulator_data[i] = 0;
+            for (int i=0; i<backprojectionImage->nvox; i++)
+                {
+                if (accumulator_data[i] < 0)
+                   accumulator_data[i] = 0;
+                }
             }
-
 	/*Free*/
         return alloc_record_destroy(memory_record); 
 }
@@ -541,7 +545,7 @@ int et_fisher_grid(int from_projection, nifti_image *inputImage, nifti_image *gr
         {
         invsinogram = (float*) malloc(dim[1]*dim[2]*dim[3]*sizeof(float));
         invsinogramImage->data = (float *)(invsinogram);
-        status = et_project(inputImage, invsinogramImage, psfImage, attenuationImage, cameras, n_cameras, background, background_attenuation);
+        status = et_project(inputImage, invsinogramImage, psfImage, attenuationImage, cameras, n_cameras, background, background_attenuation, 1);
         if (status)
             {
             fprintf(stderr,"'et_fisher_grid': error while calculating projection\n");
@@ -748,7 +752,7 @@ int et_fisher_grid(int from_projection, nifti_image *inputImage, nifti_image *gr
   \param background the activity background (used when activity is rotated and resampled). 
   \param background the attenuation background (used when the attenuation map is rotated and resampled). 
 */
-int et_gradient_attenuation(nifti_image *gradientImage, nifti_image *sinoImage, nifti_image *activityImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation) 
+int et_gradient_attenuation(nifti_image *gradientImage, nifti_image *sinoImage, nifti_image *activityImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values) 
 {
     return 1;
 }
@@ -768,7 +772,7 @@ int et_convolve(nifti_image *inImage, nifti_image *outImage, nifti_image *kernel
 }
 
 
-int et_project_partial(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *partialsumImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation)
+int et_project_partial(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *partialsumImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values)
 {
 return 1;
 }
@@ -889,7 +893,7 @@ int et_rotate_gpu(nifti_image *sourceImage, nifti_image *resultImage, float thet
   \param background the activity background (used when activity is rotated and resampled). 
   \param background_attenuation the attenuation background (used when the attenuation map is rotated and resampled). 
 */
-int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation)
+int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values)
 {
 	/* initialise the cuda arrays */
 	cudaArray *activityArray_d=NULL;               //stores input activity, makes use of fetch unit
@@ -1115,9 +1119,12 @@ int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_ima
 
         /* Truncate negative values: small negative values may be found due to FFT and IFFT */
         float* sino_data = (float*) sinoImage->data;
-        for (int i=0; i<sinoImage->nvox; i++)
-            if (sino_data[i] < 0)
-                sino_data[i] = 0;
+        if (truncate_negative_values)
+            {
+            for (int i=0; i<sinoImage->nvox; i++)
+                if (sino_data[i] < 0)
+                    sino_data[i] = 0;
+            }
 
 	/*Free*/
         return alloc_record_destroy(memory_record); 
@@ -1136,7 +1143,7 @@ int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_ima
   \param background the activity background (used when activity is rotated and resampled). 
   \param background_attenuation the attenuation background (used when the attenuation map is rotated and resampled). 
 */
-int et_backproject_gpu(nifti_image *sinoImage, nifti_image *backprojectionImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation)
+int et_backproject_gpu(nifti_image *sinoImage, nifti_image *backprojectionImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values)
 {
 	/* initialise the cuda arrays */
 	cudaArray *backprojectionArray_d;
@@ -1384,9 +1391,12 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *backprojectionImage,
 
         /* Truncate negative values: small negative values may be found due to FFT and IFFT */
         float* accumulator_data = (float*) backprojectionImage->data;
-        for (int i=0; i<backprojectionImage->nvox; i++)
-            if (accumulator_data[i] < 0)
-                accumulator_data[i] = 0;
+        if (truncate_negative_values)
+            {
+            for (int i=0; i<backprojectionImage->nvox; i++)
+                if (accumulator_data[i] < 0)
+                    accumulator_data[i] = 0;
+            }
 
 	/*Free*/
         return alloc_record_destroy(memory_record); 
@@ -1435,7 +1445,7 @@ int et_fisher_grid_gpu(int from_projection, nifti_image *inputImage, nifti_image
         {
         invsinogram = (float*) malloc(dim[1]*dim[2]*dim[3]*sizeof(float));
         invsinogramImage->data = (float *)(invsinogram);
-        status = et_project_gpu(inputImage, invsinogramImage, psfImage, attenuationImage, cameras, n_cameras, background, background_attenuation);
+        status = et_project_gpu(inputImage, invsinogramImage, psfImage, attenuationImage, cameras, n_cameras, background, background_attenuation, 1);
         if (status)
             {
             fprintf_verbose("'et_fisher_grid': error while calculating projection\n");
@@ -1643,7 +1653,7 @@ int et_fisher_grid_gpu(int from_projection, nifti_image *inputImage, nifti_image
   \param background the activity background (used when activity is rotated and resampled). 
   \param background the attenuation background (used when the attenuation map is rotated and resampled). 
 */
-int et_gradient_attenuation_gpu(nifti_image *gradientImage, nifti_image *sinoImage, nifti_image *activityImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation) 
+int et_gradient_attenuation_gpu(nifti_image *gradientImage, nifti_image *sinoImage, nifti_image *activityImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values) 
 {
 	/* initialise the cuda arrays */
 	cudaArray *activityArray_d;               //stores input activity, makes use of fetch unit
@@ -1851,9 +1861,12 @@ int et_gradient_attenuation_gpu(nifti_image *gradientImage, nifti_image *sinoIma
 
         /* Truncate negative values: small negative values may be found due to FFT and IFFT */
         float* gradient_data = (float*) gradientImage->data;
-        for (int i=0; i<gradientImage->nvox; i++)
-            if (gradient_data[i] < 0)
-                gradient_data[i] = 0;
+        if (truncate_negative_values)
+            {
+            for (int i=0; i<gradientImage->nvox; i++)
+                if (gradient_data[i] < 0)
+                    gradient_data[i] = 0;
+            }
 
 	/*Free*/
 	cudaCommon_free(&activityArray_d);
@@ -2059,7 +2072,7 @@ int et_joint_histogram_gpu(nifti_image *matrix_A_Image, nifti_image *matrix_B_Im
   \param background the activity background (used when activity is rotated and resampled). 
   \param background_attenuation the attenuation background (used when the attenuation map is rotated and resampled). 
 */
-int et_project_partial_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *partialsumImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation)
+int et_project_partial_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *partialsumImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values)
 {
 	/* initialise the cuda arrays */
 	cudaArray *activityArray_d=NULL;               //stores input activity, makes use of fetch unit
@@ -2294,9 +2307,12 @@ int et_project_partial_gpu(nifti_image *activityImage, nifti_image *sinoImage, n
 
         /* Truncate negative values: small negative values may be found due to FFT and IFFT */
         float* sino_data = (float*) sinoImage->data;
-        for (int i=0; i<sinoImage->nvox; i++)
-            if (sino_data[i] < 0)
-                sino_data[i] = 0;
+        if (truncate_negative_values)
+            {
+            for (int i=0; i<sinoImage->nvox; i++)
+                if (sino_data[i] < 0)
+                    sino_data[i] = 0;
+            }
 
 	/*Free*/
         return alloc_record_destroy(memory_record); 

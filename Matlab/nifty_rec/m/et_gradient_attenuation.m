@@ -1,4 +1,4 @@
-function gradient = et_gradient_attenuation(activity, sinogram, cameras, attenuation, psf, use_gpu, background, background_attenuation)
+function gradient = et_gradient_attenuation(activity, sinogram, cameras, attenuation, psf, use_gpu, background, background_attenuation, truncate_negative_values)
 
 %ET_GRADIENT_ATTENUATION
 %    Computes gradient of the attenuation map. 
@@ -6,7 +6,7 @@ function gradient = et_gradient_attenuation(activity, sinogram, cameras, attenua
 %Description
 %    Computes gradient of the atteunation map. 
 %
-%    IMAGE = ET_GRADIENT_ATTENUATION(ACTIVITY, SINOGRAM, CAMERAS, ATTENUATION, PSF, USE_GPU, BACKGROUND, BACKGROUND_ATTENUATION)
+%    IMAGE = ET_GRADIENT_ATTENUATION(ACTIVITY, SINOGRAM, CAMERAS, ATTENUATION, PSF, USE_GPU, BACKGROUND, BACKGROUND_ATTENUATION, TRUNCATE_NEGATIVE_VALUES)
 %
 %    ACTIVITY is 2D or 3D activity (estimate)
 %
@@ -30,6 +30,9 @@ function gradient = et_gradient_attenuation(activity, sinogram, cameras, attenua
 %
 %    BACKGROUND_ATTENUATION is the value the attenuation background is set 
 %    to when performing rotation. It defaults to 0.
+%
+%    TRUNCATE_NEGATIVE_VALUES defaults to 1. If 1 then negative results are truncated to 0. 
+%    If 0 there is no truncati
 %
 %GPU acceleration
 %    If a CUDA compatible Grahpics Processing Unit (GPU) is installed, 
@@ -76,5 +79,9 @@ if not(exist('background_attenuation'))
     background_attenuation = 0;
 end
 
-gradient = et_gradient_attenuation_mex(activity, sinogram, cameras, attenuation, psf, use_gpu, background, background_attenuation); 
+if not(exist('truncate_negative_values'))
+    truncate_negative_values = 1;
+end
+
+gradient = et_gradient_attenuation_mex(activity, sinogram, cameras, attenuation, psf, use_gpu, background, background_attenuation, truncate_negative_values); 
 

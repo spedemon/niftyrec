@@ -26,7 +26,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
    /* Check for proper number of arguments. */
    if (!(nrhs==5 || nrhs==6 || nrhs==7 || nrhs==8)){
-      mexErrMsgTxt("5,6 or 7 inputs required: Activity, Sinogram, Cameras, Attenuation, PointSpreadFunction, [EnableGpu], [Background], [BackgroundAttenuation]");
+      mexErrMsgTxt("5,6,7 or 8 inputs required: Activity, Sinogram, Cameras, Attenuation, [PointSpreadFunction], [EnableGpu], [Background], [BackgroundAttenuation], [TruncateNegativeValues]");
    }
 
    mxClassID cid_activity = mxGetClassID(prhs[0]);
@@ -53,6 +53,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    float background = 0; // Background (for rotation in the backprojection)
    float background_attenuation=0; // Attenuation background (when rotating attenuation)
    int no_psf = 0;       // Flag for psf: if 1 it means that no PSF was specified
+   int truncate_negative_values = 1; // Set this flag to 1 in order to truncate the results to 0 if negative. Set it to 0 to disable truncation. 
 
    int status = 1;       // Return status: 0 if succesful
 
@@ -185,6 +186,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    if (nrhs>=8)
        background_attenuation = (mxGetScalar(prhs[7]));
 
+   /* Check if 'truncate negative values' flag has been specified */ 
+   if (nrhs>=9)
+       truncate_negative_values = (mxGetScalar(prhs[8])); 
+
    /* Extract pointers to input matrices */
    float *sinogram_ptr;
    if (mxGetClassID(prhs[1]) == mxSINGLE_CLASS)
@@ -261,7 +266,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    float *gradient_ptr = (float *)(mxGetData(plhs[0]));
 
    /* Calculate gradient */
-   status = et_array_gradient_attenuation(sinogram_ptr, sino_size, activity_ptr, activity_size, gradient_ptr, gradient_size, cameras_ptr, cameras_size, psf_ptr, psf_size, attenuation_ptr, attenuation_size, background, background_attenuation, enable_gpu);
+   status = et_array_gradient_attenuation(sinogram_ptr, sino_size, activity_ptr, activity_size, gradient_ptr, gradient_size, cameras_ptr, cameras_size, psf_ptr, psf_size, attenuation_ptr, attenuation_size, background, background_attenuation, enable_gpu, truncate_negative_values);
 
    /* Shutdown */
    if (mxGetClassID(prhs[0]) != mxSINGLE_CLASS) free(activity_ptr); 

@@ -1,4 +1,4 @@
-function image = et_backproject(sinogram, cameras, attenuation, psf, use_gpu, background, background_attenuation)
+function image = et_backproject(sinogram, cameras, attenuation, psf, use_gpu, background, background_attenuation, truncate_negative_values)
 
 %ET_BACKPROJECT
 %    Backprojection function for Emission Tomographic reconstruction
@@ -6,7 +6,7 @@ function image = et_backproject(sinogram, cameras, attenuation, psf, use_gpu, ba
 %Description
 %    Function for backprojection of activity from detector space.
 %
-%    IMAGE = ET_BACKPROJECT(SINOGRAM, CAMERAS, ATTENUATION, PSF, USE_GPU, BACKGROUND, BACKGROUND_ATTENUATION)
+%    IMAGE = ET_BACKPROJECT(SINOGRAM, CAMERAS, ATTENUATION, PSF, USE_GPU, BACKGROUND, BACKGROUND_ATTENUATION, TRUNCATE_NEGATIVE_VALUES)
 %
 %    SINOGRAM is a 2D or 3D sinogram.
 %
@@ -28,6 +28,9 @@ function image = et_backproject(sinogram, cameras, attenuation, psf, use_gpu, ba
 %
 %    BACKGROUND_ATTENUATION is the value the attenuation background is set 
 %    to when performing rotation. It defaults to 0.
+%
+%    TRUNCATE_NEGATIVE_VALUES defaults to 1. If 1 then negative results are truncated to 0. 
+%    If 0 there is no truncation. 
 %
 %GPU acceleration
 %    If a CUDA compatible Grahpics Processing Unit (GPU) is installed, 
@@ -85,5 +88,10 @@ if not(exist('background_attenuation'))
     background_attenuation = 0;
 end
 
-image = et_backproject_mex(sinogram, cameras, attenuation, psf, use_gpu, background, background_attenuation);
+if not(exist('truncate_negative_values'))
+    truncate_negative_values = 1;
+end
+
+
+image = et_backproject_mex(sinogram, cameras, attenuation, psf, use_gpu, background, background_attenuation, truncate_negative_values);
 
