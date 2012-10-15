@@ -2,7 +2,7 @@
  *  _et.h
  *  
  *  NiftyRec
- *  Stefano Pedemonte, May 2012.
+ *  Stefano Pedemonte, Oct. 2012.
  *  CMIC - Centre for Medical Image Computing
  *  UCL - University College London 
  *  Released under BSD licence, see LICENSE.txt 
@@ -55,30 +55,30 @@
 //#include "_et_joint_histogram_gpu.h"
 
 int et_rotate_gpu(nifti_image *sourceImage, nifti_image *resultImage, float alpha, float beta, float gamma, float center_x, float center_y, float center_z, float background);
-int et_project_gpu(nifti_image *activity, nifti_image *sinoImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float backgroundAttenuation);
-int et_backproject_gpu(nifti_image *sinogram, nifti_image *accumulator, nifti_image *psf, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation);
+int et_project_gpu(nifti_image *activity, nifti_image *sinoImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float backgroundAttenuation, int truncate_negative_values);
+int et_backproject_gpu(nifti_image *sinogram, nifti_image *accumulator, nifti_image *psf, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values);
 int et_joint_histogram_gpu(nifti_image *matrix_A_Image, nifti_image *matrix_B_Image, nifti_image *joint_histogram_Image, float min_A, float max_A, float min_B, float max_B);
-int et_project_backproject_gpu(nifti_image *activity, nifti_image *sino, nifti_image *psf, int n_cameras, float *cameras_alpha, float *cameras_beta, float *cameras_gamma);
+int et_project_backproject_gpu(nifti_image *activity, nifti_image *sino, nifti_image *psf, int n_cameras, float *cameras_alpha, float *cameras_beta, float *cameras_gamma, int truncate_negative_values);
 int et_affine_gpu(nifti_image *sourceImage, nifti_image *resultImage, mat44 *affineTransformation, float background);
 int et_convolve_gpu(nifti_image *inImage, nifti_image *outImage, nifti_image *psfImage);
 int et_fisher_grid_gpu(int from_projection, nifti_image *inputImage, nifti_image *gridImage, nifti_image *fisherImage, nifti_image *priorfisherImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras_array, int n_cameras, float background, float background_attenuation); 
-int et_gradient_attenuation_gpu(nifti_image *gradientImage, nifti_image *sinoImage, nifti_image *activityImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation); 
+int et_gradient_attenuation_gpu(nifti_image *gradientImage, nifti_image *sinoImage, nifti_image *activityImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values); 
 int et_list_gpus(int *device_count_out, int *devices);
 int et_set_gpu(int id);
-int et_project_partial_gpu(nifti_image *activity, nifti_image *sinoImage, nifti_image *partialsumImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float backgroundAttenuation);
+int et_project_partial_gpu(nifti_image *activity, nifti_image *sinoImage, nifti_image *partialsumImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float backgroundAttenuation, int truncate_negative_values);
 #endif
 
 int et_is_block_multiple(int size);
 int et_get_block_size(void);
 int et_rotate(nifti_image *sourceImage, nifti_image *resultImage, float alpha, float beta, float gamma, float center_x, float center_y, float center_z, float background);
-int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation);
-int et_backproject(nifti_image *sinogram, nifti_image *accumulator, nifti_image *psf, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation);
+int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values);
+int et_backproject(nifti_image *sinogram, nifti_image *accumulator, nifti_image *psf, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values);
 int et_joint_histogram(nifti_image *matrix_A_Image, nifti_image *matrix_B_Image, nifti_image *joint_histogram_Image, float min_A, float max_A, float min_B, float max_B);
 int et_project_backproject(nifti_image *activity, nifti_image *sino, nifti_image *psf, int n_cameras, float *cameras_alpha, float *cameras_beta, float *cameras_gamma);
 int et_affine(nifti_image *sourceImage, nifti_image *transformedImage, mat44 *affineTransformation, float background);
 int et_convolve(nifti_image *inImage, nifti_image *outImage, nifti_image *psfImage);
 int et_fisher_grid(int from_projection, nifti_image *inputImage, nifti_image *gridImage, nifti_image *fisherImage, nifti_image *priorfisherImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation); 
-int et_gradient_attenuation(nifti_image *gradientImage, nifti_image *sinoImage, nifti_image *activityImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation); 
-int et_project_partial(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *partialsumImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation);
+int et_gradient_attenuation(nifti_image *gradientImage, nifti_image *sinoImage, nifti_image *activityImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values); 
+int et_project_partial(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *partialsumImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values);
 
 

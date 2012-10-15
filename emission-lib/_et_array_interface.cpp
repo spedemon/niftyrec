@@ -2,7 +2,7 @@
  *  _et_array_interface.cpp
  *  
  *  NiftyRec
- *  Stefano Pedemonte, May 2012.
+ *  Stefano Pedemonte, Oct. 2012.
  *  CMIC - Centre for Medical Image Computing 
  *  UCL - University College London. 
  *  Released under BSD licence, see LICENSE.txt 
@@ -114,7 +114,7 @@ extern "C" int et_array_rotate(float *image, int *size, float *rotated_image, fl
 
 
 
-extern "C" int et_array_project(float *activity, int *activity_size, float *sinogram, int *sinogram_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *attenuation, int *attenuation_size, float background, float background_attenuation, int GPU)
+extern "C" int et_array_project(float *activity, int *activity_size, float *sinogram, int *sinogram_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *attenuation, int *attenuation_size, float background, float background_attenuation, int GPU, int truncate_negative_values)
 {
 	int status = 0;
         int n_cameras;
@@ -231,13 +231,13 @@ extern "C" int et_array_project(float *activity, int *activity_size, float *sino
         //Do projection
         #ifdef _USE_CUDA
         if (GPU)
-            status = et_project_gpu(activityImage, sinogramImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation);
+            status = et_project_gpu(activityImage, sinogramImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values);
         else
-            status = et_project(activityImage, sinogramImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation);
+            status = et_project(activityImage, sinogramImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values);
         #else
             if (GPU)
                 fprintf_verbose( "et_array_project: No GPU support. In order to activate GPU acceleration please configure with GPU flag and compile.");
-            status = et_project(activityImage, sinogramImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation);
+            status = et_project(activityImage, sinogramImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values);
         #endif
 
 	//Free
@@ -279,7 +279,7 @@ extern "C" int et_array_project(float *activity, int *activity_size, float *sino
 
 
 
-extern "C" int et_array_backproject(float *sino, int *sino_size, float *bkpr, int *bkpr_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *attenuation, int *attenuation_size, float background, float background_attenuation, int GPU)
+extern "C" int et_array_backproject(float *sino, int *sino_size, float *bkpr, int *bkpr_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *attenuation, int *attenuation_size, float background, float background_attenuation, int GPU, int truncate_negative_values)
 {
 	int status;
         int n_cameras;
@@ -377,11 +377,11 @@ extern "C" int et_array_backproject(float *sino, int *sino_size, float *bkpr, in
 	//Backproject
 	#ifdef _USE_CUDA
 	if(GPU)
-	    status = et_backproject_gpu(sinoImage, bkprImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation);
+	    status = et_backproject_gpu(sinoImage, bkprImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values);
 	else
-	    status = et_backproject(sinoImage, bkprImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation);	    
+	    status = et_backproject(sinoImage, bkprImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values);	    
 	#else
-	    status = et_backproject(sinoImage, bkprImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation);	    
+	    status = et_backproject(sinoImage, bkprImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values);	    
 	#endif
 	
 	//Free (free nifti images but not their data arrays)
@@ -418,7 +418,7 @@ extern "C" int et_array_backproject(float *sino, int *sino_size, float *bkpr, in
 
 
 
-extern "C" int et_array_gradient_attenuation(float *sino, int *sino_size, float *activity, int *activity_size, float *gradient, int *gradient_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *attenuation, int *attenuation_size, float background, float background_attenuation, int GPU)
+extern "C" int et_array_gradient_attenuation(float *sino, int *sino_size, float *activity, int *activity_size, float *gradient, int *gradient_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *attenuation, int *attenuation_size, float background, float background_attenuation, int GPU, int truncate_negative_values)
 {
 	int status;
 	int dims;
@@ -538,11 +538,11 @@ extern "C" int et_array_gradient_attenuation(float *sino, int *sino_size, float 
 	//Backproject
 	#ifdef _USE_CUDA
 	if(GPU)
-	    status = et_gradient_attenuation_gpu(gradientImage, sinoImage, activityImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation);
+	    status = et_gradient_attenuation_gpu(gradientImage, sinoImage, activityImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values);
 	else
-	    status = et_gradient_attenuation(gradientImage, sinoImage, activityImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation);
+	    status = et_gradient_attenuation(gradientImage, sinoImage, activityImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values);
 	#else
-	    status = et_gradient_attenuation(gradientImage, sinoImage, activityImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation);
+	    status = et_gradient_attenuation(gradientImage, sinoImage, activityImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values);
 	#endif
 	
 	//Free (free nifti images but not their data arrays)
@@ -700,7 +700,7 @@ extern "C" int et_array_osem_step(float *activity_data, int size_x, int size_y, 
             sinogram_sub_data[cam*sinogram_size[0]*sinogram_size[1]+i]=sinogram_data[cameras_indexes[cam]*sinogram_size[0]*sinogram_size[1]+i];
         }
 
-    partial_status = et_array_project(activity_data, activity_size, projection_sub_data, sinogram_sub_size, cameras_sub_data, cameras_sub_size, psf_data, psf_size, attenuation_data, attenuation_size, background, background_attenuation, use_gpu);     
+    partial_status = et_array_project(activity_data, activity_size, projection_sub_data, sinogram_sub_size, cameras_sub_data, cameras_sub_size, psf_data, psf_size, attenuation_data, attenuation_size, background, background_attenuation, use_gpu, 1);     
     status = status + partial_status; 
     if (partial_status)
         fprintf(stderr, "et_array_osem_step: error while performing projection \n");
@@ -712,12 +712,12 @@ extern "C" int et_array_osem_step(float *activity_data, int size_x, int size_y, 
             projection_sub_data[i]=sinogram_sub_data[i]/projection_sub_data[i];
         }
 
-    partial_status = et_array_backproject(projection_sub_data, sinogram_sub_size, poisson_gradient_data, activity_size, cameras_sub_data, cameras_sub_size, psf_data, psf_size, attenuation_data, attenuation_size, background, background_attenuation, use_gpu); 
+    partial_status = et_array_backproject(projection_sub_data, sinogram_sub_size, poisson_gradient_data, activity_size, cameras_sub_data, cameras_sub_size, psf_data, psf_size, attenuation_data, attenuation_size, background, background_attenuation, use_gpu, 1); 
     status = status + partial_status; 
     if (partial_status)
         fprintf(stderr, "et_array_osem_step: error while performing back-projection \n");
 
-    partial_status = et_array_backproject(sinogram_sub_ones_data, sinogram_sub_size, normalisation_data, activity_size, cameras_sub_data, cameras_sub_size, psf_data, psf_size, attenuation_data, attenuation_size, background, background_attenuation, use_gpu); 
+    partial_status = et_array_backproject(sinogram_sub_ones_data, sinogram_sub_size, normalisation_data, activity_size, cameras_sub_data, cameras_sub_size, psf_data, psf_size, attenuation_data, attenuation_size, background, background_attenuation, use_gpu, 1); 
     status = status + partial_status; 
     if (partial_status)
         fprintf(stderr, "et_array_osem_step: error while computing normalisation \n");
@@ -776,7 +776,7 @@ extern "C" int et_array_mlem_step(float *activity_data, int size_x, int size_y, 
     for (int i=0; i<sinogram_size[0]*sinogram_size[1]*sinogram_size[2]; i++) 
         sinogram_ones_data[i]=1.0f; 
     
-    partial_status = et_array_project(activity_data, activity_size, projection_data, sinogram_size, cameras_data, cameras_size, psf_data, psf_size, attenuation_data, attenuation_size, background, background_attenuation, use_gpu);     
+    partial_status = et_array_project(activity_data, activity_size, projection_data, sinogram_size, cameras_data, cameras_size, psf_data, psf_size, attenuation_data, attenuation_size, background, background_attenuation, use_gpu, 1);     
     status = status + partial_status; 
     if (partial_status)
         fprintf(stderr, "et_array_mlem_step: error while performing projection \n");
@@ -788,12 +788,12 @@ extern "C" int et_array_mlem_step(float *activity_data, int size_x, int size_y, 
             projection_data[i]=sinogram_data[i]/projection_data[i];
         }
 
-    partial_status = et_array_backproject(projection_data, sinogram_size, poisson_gradient_data, activity_size, cameras_data, cameras_size, psf_data, psf_size, attenuation_data, attenuation_size, background, background_attenuation, use_gpu); 
+    partial_status = et_array_backproject(projection_data, sinogram_size, poisson_gradient_data, activity_size, cameras_data, cameras_size, psf_data, psf_size, attenuation_data, attenuation_size, background, background_attenuation, use_gpu, 1); 
     status = status + partial_status; 
     if (partial_status)
         fprintf(stderr, "et_array_mlem_step: error while performing back-projection \n");
 
-    partial_status = et_array_backproject(sinogram_ones_data, sinogram_size, normalisation_data, activity_size, cameras_data, cameras_size, psf_data, psf_size, attenuation_data, attenuation_size, background, background_attenuation, use_gpu); 
+    partial_status = et_array_backproject(sinogram_ones_data, sinogram_size, normalisation_data, activity_size, cameras_data, cameras_size, psf_data, psf_size, attenuation_data, attenuation_size, background, background_attenuation, use_gpu, 1); 
     status = status + partial_status; 
     if (partial_status)
         fprintf(stderr, "et_array_mlem_step: error while computing normalisation \n");
@@ -1345,7 +1345,7 @@ extern "C" int et_array_joint_histogram(float *matrix_A, float *matrix_B, int *j
 
 
 
-extern "C" int et_array_project_partial(float *activity, int *activity_size, float *sinogram, int *sinogram_size, float *partialsum, int *partialsum_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *attenuation, int *attenuation_size, float background, float background_attenuation, int GPU)
+extern "C" int et_array_project_partial(float *activity, int *activity_size, float *sinogram, int *sinogram_size, float *partialsum, int *partialsum_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *attenuation, int *attenuation_size, float background, float background_attenuation, int GPU, int truncate_negative_values)
 {
 	int status = 0;
         int n_cameras;
@@ -1472,13 +1472,13 @@ extern "C" int et_array_project_partial(float *activity, int *activity_size, flo
         //Do projection
         #ifdef _USE_CUDA
         if (GPU)
-            status = et_project_partial_gpu(activityImage, sinogramImage, partialsumImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation);
+            status = et_project_partial_gpu(activityImage, sinogramImage, partialsumImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values);
         else
-            status = et_project_partial(activityImage, sinogramImage, partialsumImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation);
+            status = et_project_partial(activityImage, sinogramImage, partialsumImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values);
         #else
             if (GPU)
                 fprintf_verbose( "et_array_project: No GPU support. In order to activate GPU acceleration please configure with GPU flag and compile.");
-            status = et_project_partial(activityImage, sinogramImage, partialsumImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation);
+            status = et_project_partial(activityImage, sinogramImage, partialsumImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values);
         #endif
 
 	//Free
@@ -1521,4 +1521,9 @@ extern "C" int et_array_project_partial(float *activity, int *activity_size, flo
 	return status;
 }
 
+
+extern "C" int et_array_isinstalled()
+{
+    return 0;
+}
 

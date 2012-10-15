@@ -30,7 +30,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
    /* Check for proper number of arguments. */
    if (!(nrhs==2 || nrhs==3 || nrhs==4 || nrhs==5 || nrhs==6 || nrhs==7)){
-      mexErrMsgTxt("2, 3, 4, 5, 6 or 7 inputs required: Activity, Cameras, Attenuation, PointSpreadFunction, EnableGPU, Background, BackgroundAttenuation");
+      mexErrMsgTxt("2, 3, 4, 5, 6 or 7 inputs required: Activity, Cameras, [Attenuation], [PointSpreadFunction], [EnableGPU], [Background], [BackgroundAttenuation], [TruncateNegativeValues]");
    }
 
    mxClassID cid_activity  = mxGetClassID(prhs[0]);
@@ -57,6 +57,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    int no_psf = 0;         // This flag goes high if psf input parameter from the Matlab function is a scalar -> no psf
    int no_attenuation = 0; // This flag goes high if an attenuation image is given and it is not a scalar. 
    int no_activity = 0;    // This flag goes high if an activity image is given and it is not a scalar. 
+   int truncate_negative_values = 1; // Set this flag to 1 in order to truncate the results to 0 if negative. Set it to 0 to disable truncation. 
 
    int N;                  // Size of activity: [N,N,m].
    int m;                  // Size of activity: [N,N,m].
@@ -205,6 +206,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    if (nrhs>=7)
        background_attenuation = (mxGetScalar(prhs[6])); 
 
+   /* Check if 'truncate negative values' flag has been specified */
+   if (nrhs>=8)
+       truncate_negative_values = (mxGetScalar(prhs[7])); 
+
+
    /* Extract pointers to input matrices (and eventually convert double to float)*/
    float *attenuation_ptr=NULL;
    if(no_attenuation)
@@ -293,7 +299,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
 
    /* Perform projection */
-   status = et_array_project_partial(activity_ptr, activity_size, sinogram_ptr, sino_size, partialsum_ptr, partialsum_size, cameras_ptr, cameras_size, psf_ptr, psf_size, attenuation_ptr, attenuation_size, background, background_attenuation, enable_gpu);
+   status = et_array_project_partial(activity_ptr, activity_size, sinogram_ptr, sino_size, partialsum_ptr, partialsum_size, cameras_ptr, cameras_size, psf_ptr, psf_size, attenuation_ptr, attenuation_size, background, background_attenuation, enable_gpu, truncate_negative_values);
 
    /* Shutdown */
    if (mxGetClassID(prhs[1]) != mxSINGLE_CLASS) free(cameras_ptr);

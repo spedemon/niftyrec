@@ -2,7 +2,7 @@
  *  _et_array_interface.h
  *  
  *  NiftyRec
- *  Stefano Pedemonte, May 2012.
+ *  Stefano Pedemonte, Oct. 2012.
  *  CMIC - Centre for Medical Image Computing 
  *  UCL - University College London. 
  *  Released under BSD licence, see LICENSE.txt 
@@ -17,8 +17,8 @@
 
 extern "C" int et_array_affine(float *image_ptr, int *image_size, float *transformed_image_ptr, int *transformed_image_size, float *affine_ptr, int *affine_size, float background, int GPU);
 extern "C" int et_array_rotate(float *image_ptr, int *size_ptr, float *rotated_image_ptr, float *angles_ptr, float *centers_ptr, float background, int GPU);
-extern "C" int et_array_project(float *activity, int *activity_size, float *sinogram, int *sinogram_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *attenuation, int *attenuation_size, float background, float background_attenuation, int GPU);
-extern "C" int et_array_backproject(float *sino, int *sino_size, float *bkpr, int *bkpr_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *attenuation, int *attenuation_size, float background, float background_attenuation, int GPU); 
+extern "C" int et_array_project(float *activity, int *activity_size, float *sinogram, int *sinogram_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *attenuation, int *attenuation_size, float background, float background_attenuation, int GPU, int truncate_negative_values);
+extern "C" int et_array_backproject(float *sino, int *sino_size, float *bkpr, int *bkpr_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *attenuation, int *attenuation_size, float background, float background_attenuation, int GPU, int truncate_negative_values); 
 extern "C" int et_array_calculate_size_psf(unsigned int *psf_size_x, unsigned int *psf_size_y, float fwhm_pixels_dist0, float sensitivity0, float dist0, float fwhm_pixels_dist1, float sensitivity1, float dist1); 
 extern "C" int et_array_make_psf(float *psf_data, unsigned int psf_size_x, unsigned int psf_size_y, float fwhm_pixels_dist0, float sensitivity0, float dist0, float fwhm_pixels_dist1, float sensitivity1, float dist1, unsigned int N_psf_planes); 
 extern "C" int et_array_make_cameras(float *cameras_data, float firstcamera_deg, float lastcamera_deg, unsigned int n_cameras, unsigned int rotation_axis);
@@ -32,6 +32,7 @@ extern "C" int et_array_list_gpus(int *gpu_count, int *gpus_info_array);
 extern "C" int et_array_set_gpu(int id);
 extern "C" int et_array_fisher_grid(float *activity_ptr, int *activity_size, float *cameras_ptr, int *cameras_size, float *psf_ptr, int *psf_size, float *grid_ptr, float *fisher_ptr, float *fisher_prior_ptr, int *fisher_size, float *attenuation_ptr, int *attenuation_size, float epsilon, float background, float background_attenuation, int enable_gpu);
 extern "C" int et_array_fisher_grid_projection(float *sinogram_ptr, int *sinogram_size, int *bkpr_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *grid_ptr, float *fisher_ptr, float *fisher_prior_ptr, int *fisher_size, float *attenuation, int *attenuation_size, float epsilon, float background, float background_attenuation, int GPU);
-extern "C" int et_array_gradient_attenuation(float *sino, int *sino_size, float *activity, int *activity_size, float *gradient, int *gradient_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *attenuation, int *attenuation_size, float background, float background_attenuation, int GPU);
-extern "C" int et_array_project_partial(float *activity, int *activity_size, float *sinogram, int *sinogram_size, float *partialsum, int *partialsum_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *attenuation, int *attenuation_size, float background, float background_attenuation, int GPU);
+extern "C" int et_array_gradient_attenuation(float *sino, int *sino_size, float *activity, int *activity_size, float *gradient, int *gradient_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *attenuation, int *attenuation_size, float background, float background_attenuation, int GPU, int truncate_negative_values);
+extern "C" int et_array_project_partial(float *activity, int *activity_size, float *sinogram, int *sinogram_size, float *partialsum, int *partialsum_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *attenuation, int *attenuation_size, float background, float background_attenuation, int GPU, int truncate_negative_values);
+extern "C" int et_array_isinstalled();
 

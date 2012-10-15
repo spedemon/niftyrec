@@ -75,8 +75,6 @@ void Merge_Priors(nifti_image * Priors, nifti_image ** Priors_temp, SEG_PARAM * 
 
 extern "C" int seg_array_initialise_fromfile(int numb_classes, char* filename, char *mask_filename)
 {
-    GlobSegmentation().initialised=1;
-
     /* default parameters */
     GlobSegmentation().segment_param = new SEG_PARAM [1]();
     GlobSegmentation().segment_param->maxIteration=100;
@@ -178,6 +176,8 @@ extern "C" int seg_array_initialise_fromfile(int numb_classes, char* filename, c
 
     GlobSegmentation().SEG->Init_EM();
 
+    GlobSegmentation().initialised=1;
+    fprintf(stderr,"NiftySeg Initialised.\n");
     return 0;
 }
 
@@ -582,7 +582,7 @@ extern "C" int seg_array_set_priors_fromfiles(int n_classes, char **filenames)
 
     if (GlobSegmentation().segment_param->numb_classes != n_classes)
         {
-        fprintf(stderr,"Inconsistent number of classes \n");
+        fprintf(stderr,"Inconsistent number of classes: init %d, input %d\n",GlobSegmentation().segment_param->numb_classes,n_classes);
         return 1;
         }
     nifti_image ** Priors_temp=new nifti_image * [GlobSegmentation().segment_param->numb_classes];

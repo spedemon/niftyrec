@@ -2,7 +2,7 @@
  *  _et_backprojection_mex.cpp
  *  
  *  NiftyRec
- *  Stefano Pedemonte, May 2012.
+ *  Stefano Pedemonte, Oct. 2012.
  *  CMIC - Centre for Medical Image Computing
  *  UCL - University College London 
  *  Released under BSD licence, see LICENSE.txt 
@@ -26,8 +26,8 @@
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
    /* Check for proper number of arguments. */
-   if (!(nrhs==4 || nrhs==5 || nrhs==6 || nrhs==7)){
-      mexErrMsgTxt("4,5,6 or 7 inputs required: Sinogram, Cameras, Attenuation, PointSpreadFunction, [EnableGpu], [Background], [BackgroundAttenuation]");
+   if (!(nrhs==4 || nrhs==5 || nrhs==6 || nrhs==7 || nrhs==8)){
+      mexErrMsgTxt("2,3,4,5,6,7 or 8 inputs required: Sinogram, Cameras, [Attenuation], [PointSpreadFunction], [EnableGpu], [Background], [BackgroundAttenuation], [TruncateNegativeValues]");
    }
 
    mxClassID cid_sino  = mxGetClassID(prhs[0]);
@@ -51,6 +51,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    float background_attenuation=0; // Attenuation background (when rotating attenuation)
    int no_psf = 0;       // Flag for psf: if 1 it means that no PSF was specified
    int no_attenuation = 0;// This flag goes high if an attenuation image is given and it is not a scalar. 
+   int truncate_negative_values = 1; // Set this flag to 1 in order to truncate the results to 0 if negative. Set it to 0 to disable truncation. 
 
    int status = 1;       // Return status: 0 if succesful
 
@@ -170,6 +171,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    if (nrhs>=7)
        background_attenuation = (mxGetScalar(prhs[6]));
 
+   /* Check if 'truncate negative values' flag has been specified */
+   if (nrhs>=8)
+       truncate_negative_values = (mxGetScalar(prhs[7])); 
+
    /* Extract pointers to input matrices */
    float *sinogram_ptr;
    if (mxGetClassID(prhs[0]) == mxSINGLE_CLASS)
@@ -242,7 +247,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    float *bkpr_ptr = (float *)(mxGetData(plhs[0]));
 
    /* Perform backprojection */
-   status = et_array_backproject(sinogram_ptr, sino_size, bkpr_ptr, bkpr_size, cameras_ptr, cameras_size, psf_ptr, psf_size, attenuation_ptr, attenuation_size, background, background_attenuation, enable_gpu);
+   status = et_array_backproject(sinogram_ptr, sino_size, bkpr_ptr, bkpr_size, cameras_ptr, cameras_size, psf_ptr, psf_size, attenuation_ptr, attenuation_size, background, background_attenuation, enable_gpu, truncate_negative_values);
 
    /* Shutdown */
    if (mxGetClassID(prhs[0]) != mxSINGLE_CLASS) free(sinogram_ptr);
