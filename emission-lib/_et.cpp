@@ -12,6 +12,7 @@
 #include "_et.h"
 #include "_et_common.h"
 #include <stdio.h>
+#include <time.h>
 
 #define max(a,b)	(((a) > (b)) ? (a) : (b))
 #define min(a,b)	(((a) < (b)) ? (a) : (b))
@@ -20,6 +21,12 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////   CPU   ///////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+int64_t timespecDiff(struct timespec *timeA_p, struct timespec *timeB_p)
+{
+  return ((timeA_p->tv_sec * 1000000000) + timeA_p->tv_nsec) -
+           ((timeB_p->tv_sec * 1000000000) + timeB_p->tv_nsec);
+}
 
 
 int et_is_block_multiple(int size)
@@ -1127,7 +1134,8 @@ int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_ima
             }
 
 	/*Free*/
-        return alloc_record_destroy(memory_record); 
+        int status = alloc_record_destroy(memory_record); 
+        return status; 
 }
 
 
@@ -1399,7 +1407,8 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *backprojectionImage,
             }
 
 	/*Free*/
-        return alloc_record_destroy(memory_record); 
+        int status = alloc_record_destroy(memory_record); 
+        return status; 
 }
 
 
@@ -2316,6 +2325,15 @@ int et_project_partial_gpu(nifti_image *activityImage, nifti_image *sinoImage, n
 
 	/*Free*/
         return alloc_record_destroy(memory_record); 
+}
+
+
+
+//! Reset GPU
+int et_reset_gpu()
+{
+    cudaDeviceReset();
+    return niftyrec_success; 
 }
 
 #endif

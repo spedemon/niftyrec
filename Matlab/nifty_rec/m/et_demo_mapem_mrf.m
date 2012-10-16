@@ -60,3 +60,7 @@ end
 
 disp('Done');
 
+if GPU
+    et_reset_gpu();
+end
+

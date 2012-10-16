@@ -83,3 +83,7 @@ for i=1:iter_mlem
 end
 disp('Done');
 
+if GPU
+    et_reset_gpu();
+end
+

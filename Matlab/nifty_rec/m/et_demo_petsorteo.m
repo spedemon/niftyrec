@@ -54,5 +54,8 @@ for iter = 1:N_iter_osem
     imagesc(d); axis tight equal off; colormap gray; pause(0.1); 
 end
 
+if GPU
+    et_reset_gpu();
+end
 
 
