@@ -57,4 +57,5 @@ for i=1:(size(fisher,1))^(1/3)
     image(10000*var(:,:,i)); axis square off; 
 end
 
+et_reset_gpu();
 

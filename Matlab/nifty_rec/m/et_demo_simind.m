@@ -44,5 +44,7 @@ for iter = 1:N_iter_osem
     subplot(1,3,3); imagesc(reshape(activity(:,:,X/2),X,Y)); axis tight equal off; colormap gray; pause(0.1);
 end
 
-
+if USE_GPU
+    et_reset_gpu();
+end
 

@@ -1527,3 +1527,14 @@ extern "C" int et_array_isinstalled()
     return 0;
 }
 
+
+extern "C" int et_array_reset_gpu()
+{
+    #ifdef _USE_CUDA
+        return et_reset_gpu();
+    #else
+      	return niftyrec_error_nogpubuilt;
+    #endif
+}
+
+

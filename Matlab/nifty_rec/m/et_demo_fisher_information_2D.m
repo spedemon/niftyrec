@@ -226,4 +226,6 @@ cov = inv(fisher+regularisation*eye(size(fisher,1)));
 var9 = reshape(diag(cov),sqrt(size(fisher,1)),sqrt(size(fisher,1))); 
 subplot(3,3,9); image(sqrt(2)*25000*var9); axis square off; pause(0.5)
 
+et_reset_gpu();
+
 

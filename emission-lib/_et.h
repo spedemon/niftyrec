@@ -66,6 +66,7 @@ int et_gradient_attenuation_gpu(nifti_image *gradientImage, nifti_image *sinoIma
 int et_list_gpus(int *device_count_out, int *devices);
 int et_set_gpu(int id);
 int et_project_partial_gpu(nifti_image *activity, nifti_image *sinoImage, nifti_image *partialsumImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float backgroundAttenuation, int truncate_negative_values);
+int et_reset_gpu(); 
 #endif
 
 int et_is_block_multiple(int size);

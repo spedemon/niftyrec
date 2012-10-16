@@ -71,4 +71,8 @@ for iter = 1:N_iter
     subplot(1,2,2); imagesc(reshape(activity_irt(:,floor(N_z/2),:),N_x,N_y)); colormap gray; axis equal tight off; title('IRT'); pause(0.1)
 end
 
+if use_gpu
+    et_reset_gpu();
+end
+
 

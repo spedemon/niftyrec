@@ -48,3 +48,7 @@ for i=1:iter_osem
 end
 disp('Done');
 
+if GPU
+    et_reset_gpu();
+end
+

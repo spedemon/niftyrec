@@ -86,4 +86,7 @@ for repetition=1:N_repetitions
     end 
 end
 
+if GPU
+    et_reset_gpu();
+end
 
