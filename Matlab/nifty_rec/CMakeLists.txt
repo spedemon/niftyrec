@@ -82,9 +82,11 @@ FOREACH(MEX_NAME ${NIFTY_REC_ET_MEX})
         BUILD_INSTALL_ET_MEX(${MEX_NAME} ${NiftyRec_USE_CUDA})
 ENDFOREACH(MEX_NAME)
 
-FOREACH(MEX_NAME ${NIFTY_REC_TT_MEX})
-        BUILD_INSTALL_TT_MEX(${MEX_NAME} ${NiftyRec_USE_CUDA})
-ENDFOREACH(MEX_NAME)
+IF(NiftyRec_USE_CUDA)
+    FOREACH(MEX_NAME ${NIFTY_REC_TT_MEX})
+            BUILD_INSTALL_TT_MEX(${MEX_NAME} ${NiftyRec_USE_CUDA})
+    ENDFOREACH(MEX_NAME)
+ENDIF(NiftyRec_USE_CUDA)
 
 #-----------------------------------------------------------------------------
 
