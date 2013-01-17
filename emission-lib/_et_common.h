@@ -22,7 +22,15 @@
 //#define _VERBOSE
 
 extern "C" int fprintf_verbose (const char *__restrict __format, ...);
-int et_create_rotation_matrix(mat44 *transformationMatrix, float theta_x, float theta_y, float theta_z, float center_x, float center_y, float center_z);
+
+#define XYZ_ROTATION 0
+#define XZY_ROTATION 1
+#define YXZ_ROTATION 2
+#define YZX_ROTATION 3
+#define ZXY_ROTATION 4
+#define ZYX_ROTATION 5
+
+int et_create_rotation_matrix(mat44 *transformationMatrix, float theta_x, float theta_y, float theta_z, float center_x, float center_y, float center_z, int axis_order);
 
 
 static char _niftyrec_msg[2048]; 
