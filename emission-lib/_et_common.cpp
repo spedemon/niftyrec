@@ -32,13 +32,14 @@ extern "C" int fprintf_verbose (const char *__restrict __format, ...)
 
 
 
-int et_create_rotation_matrix(mat44 *transformationMatrix, float theta_x, float theta_y, float theta_z, float center_x, float center_y, float center_z)
+int et_create_rotation_matrix(mat44 *transformationMatrix, float theta_x, float theta_y, float theta_z, float center_x, float center_y, float center_z, int axis_order)
 {
 	int status = 0;
 	float s_theta_x, c_theta_x, s_theta_y, c_theta_y, s_theta_z, c_theta_z;
 	mat44 *rotation_x = (mat44 *)calloc(1,sizeof(mat44));
 	mat44 *rotation_y = (mat44 *)calloc(1,sizeof(mat44));
 	mat44 *rotation_z = (mat44 *)calloc(1,sizeof(mat44));
+	mat44 *translation = (mat44 *)calloc(1,sizeof(mat44));
 	
 	// Initialize affine transform matrix
 	s_theta_x = sin(theta_x);
@@ -47,15 +48,15 @@ int et_create_rotation_matrix(mat44 *transformationMatrix, float theta_x, float 
 	c_theta_y  = cos(theta_y);
 	s_theta_z = sin(theta_z);
 	c_theta_z = cos(theta_z);
-	 
+	
 	rotation_z->m[0][0] = c_theta_z;
 	rotation_z->m[0][1] = -s_theta_z;
 	rotation_z->m[0][2] = 0.0;
-	rotation_z->m[0][3] = - center_x*c_theta_z + center_y*s_theta_z + center_x;
+	rotation_z->m[0][3] = 0.0; 
 	rotation_z->m[1][0] = s_theta_z;
 	rotation_z->m[1][1] = c_theta_z;
 	rotation_z->m[1][2] = 0.0;
-	rotation_z->m[1][3] = - center_x*s_theta_z - center_y*c_theta_z + center_y;
+	rotation_z->m[1][3] = 0.0;
 	rotation_z->m[2][0] = 0.0;
 	rotation_z->m[2][1] = 0.0;
 	rotation_z->m[2][2] = 1.0;
@@ -64,11 +65,11 @@ int et_create_rotation_matrix(mat44 *transformationMatrix, float theta_x, float 
 	rotation_z->m[3][1] = 0.0;
 	rotation_z->m[3][2] = 0.0;
 	rotation_z->m[3][3] = 1.0;	
-
+	
 	rotation_y->m[0][0] = c_theta_y;
 	rotation_y->m[0][1] = 0.0;
 	rotation_y->m[0][2] = s_theta_y;
-	rotation_y->m[0][3] = - c_theta_y*center_x - s_theta_y*center_z + center_x;
+	rotation_y->m[0][3] = 0.0;
 	rotation_y->m[1][0] = 0.0;
 	rotation_y->m[1][1] = 1.0;
 	rotation_y->m[1][2] = 0.0;
@@ -76,7 +77,7 @@ int et_create_rotation_matrix(mat44 *transformationMatrix, float theta_x, float 
 	rotation_y->m[2][0] = -s_theta_y;
 	rotation_y->m[2][1] = 0.0;
 	rotation_y->m[2][2] = c_theta_y;
-	rotation_y->m[2][3] = s_theta_y*center_x - c_theta_y*center_z + center_z;
+	rotation_y->m[2][3] = 0.0; 
 	rotation_y->m[3][0] = 0.0;
 	rotation_y->m[3][1] = 0.0;
 	rotation_y->m[3][2] = 0.0;
@@ -89,26 +90,85 @@ int et_create_rotation_matrix(mat44 *transformationMatrix, float theta_x, float 
 	rotation_x->m[1][0] = 0.0;
 	rotation_x->m[1][1] = c_theta_x;
 	rotation_x->m[1][2] = -s_theta_x;
-	rotation_x->m[1][3] = -c_theta_x*center_y + s_theta_x*center_z + center_y;
+	rotation_x->m[1][3] = 0.0; 
 	rotation_x->m[2][0] = 0.0;
 	rotation_x->m[2][1] = s_theta_x;
 	rotation_x->m[2][2] = c_theta_x;
-	rotation_x->m[2][3] = -s_theta_x*center_y - c_theta_x*center_z + center_z;
+	rotation_x->m[2][3] = 0.0; 
 	rotation_x->m[3][0] = 0.0;
 	rotation_x->m[3][1] = 0.0;
 	rotation_x->m[3][2] = 0.0;
 	rotation_x->m[3][3] = 1.0;	
 	
-	*transformationMatrix = reg_mat44_mul(rotation_y, rotation_x);
-	*transformationMatrix = reg_mat44_mul(rotation_z, transformationMatrix);
+	translation->m[0][0] = 0.0; 
+	translation->m[0][1] = 0.0;
+	translation->m[0][2] = 0.0;
+	translation->m[0][3] = center_x;
+	translation->m[1][0] = 0.0; 
+	translation->m[1][1] = 0.0;
+	translation->m[1][2] = 0.0;
+	translation->m[1][3] = center_y;
+	translation->m[2][0] = 0.0; 
+	translation->m[2][1] = 0.0;
+	translation->m[2][2] = 0.0;
+	translation->m[2][3] = center_z;
+	translation->m[3][0] = 0.0; 
+	translation->m[3][1] = 0.0;
+	translation->m[3][2] = 0.0;
+	translation->m[3][3] = 1;
+	
+	switch (axis_order) {
+		case XYZ_ROTATION:
+			*transformationMatrix = reg_mat44_mul(rotation_y, rotation_x);
+			*transformationMatrix = reg_mat44_mul(rotation_z, transformationMatrix);			
+			break;
+		case XZY_ROTATION:
+			*transformationMatrix = reg_mat44_mul(rotation_z, rotation_x);
+			*transformationMatrix = reg_mat44_mul(rotation_y, transformationMatrix);			
+			break;
+		case YXZ_ROTATION:
+			*transformationMatrix = reg_mat44_mul(rotation_x, rotation_y);
+			*transformationMatrix = reg_mat44_mul(rotation_z, transformationMatrix);			
+			break;
+		case YZX_ROTATION:
+			*transformationMatrix = reg_mat44_mul(rotation_z, rotation_y);
+			*transformationMatrix = reg_mat44_mul(rotation_x, transformationMatrix);			
+			break;
+		case ZXY_ROTATION:
+			*transformationMatrix = reg_mat44_mul(rotation_x, rotation_z);
+			*transformationMatrix = reg_mat44_mul(rotation_y, transformationMatrix);			
+			break;
+		case ZYX_ROTATION:
+			*transformationMatrix = reg_mat44_mul(rotation_y, rotation_z);
+			*transformationMatrix = reg_mat44_mul(rotation_x, transformationMatrix);			
+			break;
+		default: //default: XYZ_ROTATION
+			*transformationMatrix = reg_mat44_mul(rotation_y, rotation_x);
+			*transformationMatrix = reg_mat44_mul(rotation_z, transformationMatrix);
+			break;
+	}
+	
+	
+	*translation = reg_mat44_mul(transformationMatrix, translation);
+	
+	transformationMatrix->m[0][3] = center_x - translation->m[0][3];
+	transformationMatrix->m[1][3] = center_y - translation->m[1][3];
+	transformationMatrix->m[2][3] = center_z - translation->m[2][3];
 	
 	free(rotation_x);
 	free(rotation_y);
 	free(rotation_z);
+    free(translation); 
 
+/*	fprintf(stderr,"=============== Input: ==============\n");	
+	fprintf(stderr,"Cx: %3.3f  Cy: %3.3f  Cz: %3.3f  \n",center_x, center_y, center_z); 
+	fprintf(stderr,"Rx: %3.3f  Ry: %3.3f  Rz: %3.3f  \n",theta_x, theta_y, theta_z); 	
+	fprintf(stderr,"======= Transformation matrix: ======\n");
+	for (int i=0; i<4; i++)
+			fprintf(stderr,"[%3.3f  %3.3f  %3.3f  %3.3f]\n",transformationMatrix->m[i][0],transformationMatrix->m[i][1],transformationMatrix->m[i][2],transformationMatrix->m[i][3]);
+    fprintf(stderr,"=====================================\n"); */
 	return status;
 }
-
 
 
 

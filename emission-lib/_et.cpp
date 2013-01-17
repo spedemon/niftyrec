@@ -99,7 +99,7 @@ int et_rotate(nifti_image *sourceImage, nifti_image *resultImage, float theta_x,
         int status; 
 	//Create transformation matrix
 	mat44 *affineTransformation = (mat44 *)calloc(1,sizeof(mat44));
-	et_create_rotation_matrix(affineTransformation, theta_x, theta_y, theta_z, center_x, center_y, center_z);
+	et_create_rotation_matrix(affineTransformation, theta_x, theta_y, theta_z, center_x, center_y, center_z, XYZ_ROTATION);
 	
 	//Apply affine transformation
 	status = et_affine(sourceImage, resultImage, affineTransformation, background);
@@ -226,7 +226,7 @@ int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *
 	for(int cam=0; cam<n_cameras; cam++){
 		// Apply affine //
                 fprintf_verbose( "et_project: Rotation: %f  %f  %f  \n",cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam]);
-		et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], center_x, center_y, center_z);
+		et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], center_x, center_y, center_z, XYZ_ROTATION);
 		reg_affine_positionField(	affineTransformation,
 						referenceImage,
 						positionFieldImage );
@@ -424,7 +424,8 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *backprojectionImage,
 						cameras[2*n_cameras+cam],
 						center_x,
 						center_y, 
-						center_z);
+						center_z,
+						XYZ_ROTATION);
                     reg_affine_positionField(	affineTransformation,
 						attenuationImage,
 						positionFieldImage);
@@ -476,7 +477,8 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *backprojectionImage,
 						-cameras[2*n_cameras+cam],
 						center_x,
 						center_y, 
-						center_z);
+						center_z,
+						ZYX_ROTATION);
 						
 		reg_affine_positionField(	affineTransformation,
 						backprojectionImage,
@@ -615,7 +617,7 @@ int et_fisher_grid(int from_projection, nifti_image *inputImage, nifti_image *gr
         {
         float *invsino_data = (float *) (invsinogramImage->data) + cam*gridImage->nx*gridImage->nz ;
         // 3a) rotate the grid coordinates
-        et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], center_x, center_y, center_z);
+        et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], center_x, center_y, center_z, XYZ_ROTATION);
         for (int n=0; n<n_grid_elements; n++)
             {
             position[0]=grid_coords[3*n]; position[1]=grid_coords[3*n+1]; position[2]=grid_coords[3*n+2]; 
@@ -877,7 +879,7 @@ int et_rotate_gpu(nifti_image *sourceImage, nifti_image *resultImage, float thet
 	
 	//Create transformation matrix
 	mat44 *affineTransformation = (mat44 *)calloc(1,sizeof(mat44));
-	et_create_rotation_matrix(affineTransformation, theta_x, theta_y, theta_z, center_x, center_y, center_z);
+	et_create_rotation_matrix(affineTransformation, theta_x, theta_y, theta_z, center_x, center_y, center_z, XYZ_ROTATION);
 	
 	//Apply affine transformation
 	status = et_affine_gpu(sourceImage, resultImage, affineTransformation, background);
@@ -1035,7 +1037,7 @@ int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_ima
 	for(unsigned int cam=0; cam<n_cameras; cam++){
                 fprintf_verbose( "et_project: Rotation: %f  %f  %f  \n",cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam]);
 		// Apply affine //
-		et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], center_x, center_y, center_z);
+		et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], center_x, center_y, center_z, XYZ_ROTATION);
 		reg_affine_positionField_gpu(	affineTransformation,
 						referenceImage,
 						&positionFieldImageArray_d);
@@ -1306,7 +1308,8 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *backprojectionImage,
 						cameras[2*n_cameras+cam],
 						center_x,
 						center_y, 
-						center_z);
+						center_z,
+						XYZ_ROTATION);
                     reg_affine_positionField_gpu(affineTransformation,
 						attenuationImage,
 						&positionFieldImageArray_d);
@@ -1375,7 +1378,8 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *backprojectionImage,
 						-cameras[2*n_cameras+cam],
 						center_x,
 						center_y, 
-						center_z);
+						center_z,
+						ZYX_ROTATION);
 		reg_affine_positionField_gpu(	affineTransformation,
 						backprojectionImage,
 						&positionFieldImageArray_d);
@@ -1516,7 +1520,7 @@ int et_fisher_grid_gpu(int from_projection, nifti_image *inputImage, nifti_image
         {
         float *invsino_data = (float *) (invsinogramImage->data) + cam*gridImage->nx*gridImage->nz ;
         // 3a) rotate the grid coordinates
-        et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], center_x, center_y, center_z);
+        et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], center_x, center_y, center_z, XYZ_ROTATION);
         for (int n=0; n<n_grid_elements; n++)
             {
             position[0]=grid_coords[3*n]; position[1]=grid_coords[3*n+1]; position[2]=grid_coords[3*n+2]; 
@@ -1777,7 +1781,8 @@ int et_gradient_attenuation_gpu(nifti_image *gradientImage, nifti_image *sinoIma
 						cameras[2*n_cameras+cam],
 						center_x,
 						center_y, 
-						center_z);
+						center_z,
+						XYZ_ROTATION);
                 reg_affine_positionField_gpu(   affineTransformation,
 						attenuationImage,
 						&positionFieldImageArray_d);
@@ -1846,7 +1851,8 @@ int et_gradient_attenuation_gpu(nifti_image *gradientImage, nifti_image *sinoIma
 						-cameras[2*n_cameras+cam],
 						center_x,
 						center_y, 
-						center_z);
+						center_z,
+						ZYX_ROTATION);
 		reg_affine_positionField_gpu(	affineTransformation,
 						gradientImage,
 						&positionFieldImageArray_d);
@@ -2222,7 +2228,7 @@ int et_project_partial_gpu(nifti_image *activityImage, nifti_image *sinoImage, n
 	for(unsigned int cam=0; cam<n_cameras; cam++){
                 fprintf_verbose( "et_project: Rotation: %f  %f  %f  \n",cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam]);
 		// Apply affine //
-		et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], center_x, center_y, center_z);
+		et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], center_x, center_y, center_z, XYZ_ROTATION);
 		reg_affine_positionField_gpu(	affineTransformation,
 						referenceImage,
 						&positionFieldImageArray_d);
