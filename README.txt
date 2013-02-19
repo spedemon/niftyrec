@@ -63,6 +63,13 @@ of the GPU accelerated algorithms, while maintaining the full speed.
     * NiftySeg bindings 
     * Barebone NiftyReg bindings 
 
+-- NiftyRec 1.6.5 (Rel. Jan 2013) --
+    * Fixed bug with multiple rotation angles in emission tomography
+
+-- NiftyRec 1.6.6 (Rel. Feb 2013) --
+    * Compatible with CUDA 5.0
+
+
 ######################################################################################
 
 -----------------------------------
