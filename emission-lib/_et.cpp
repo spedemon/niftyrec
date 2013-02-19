@@ -1372,12 +1372,11 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *backprojectionImage,
                 copyparms.kind = cudaMemcpyDeviceToDevice; 
                 copyparms.srcPtr = temp_backprojection_pitched;
                 cuda_status = cudaMemcpy3D(&copyparms);
-
-		        if (cuda_status != cudaSuccess)
-		        {
-				    fprintf(stderr, "Error copying to texture bound memory: %s\n",cudaGetErrorString(cuda_status));
-				    return 1;
-                }
+                if (cuda_status != cudaSuccess)
+                        {
+                        fprintf(stderr, "Error copying to texture bound memory: %s\n",cudaGetErrorString(cuda_status));
+                        return 1;
+                        }
 		
 		// Rotate backprojection //
 		et_create_rotation_matrix(	affineTransformation,
@@ -1718,7 +1717,13 @@ int et_gradient_attenuation_gpu(nifti_image *gradientImage, nifti_image *sinoIma
         cudaError_t cuda_status1 = cudaMalloc3DArray(&backprojectionArray_d, &backprojectionArray_d_chdesc, backprojectionArray_d_extent);
 
 	if(cudaCommon_allocateArrayToDevice<float>(&activityArray_d, activityImage->dim)) return 1;
-        if(cudaCommon_allocateArrayToDevice<float>(&temp_backprojection_d, gradientImage->dim)) return 1;
+
+        cudaPitchedPtr temp_backprojection_pitched; 
+        cudaExtent temp_backprojection_extent = make_cudaExtent(sizeof(float)*gradientImage->nx,gradientImage->ny,gradientImage->nz); 	
+        cudaError_t cuda_error = cudaMalloc3D(&temp_backprojection_pitched, temp_backprojection_extent); 	
+        if(cuda_error != cudaSuccess) {
+            return niftyrec_error_allocgpu;}
+        temp_backprojection_d = (float*) temp_backprojection_pitched.ptr;
 
         if(cudaCommon_allocateArrayToDevice<float>(&attenuationArray_d, attenuationImage->dim)) return 1;
         if(cudaCommon_allocateArrayToDevice<float>(&rotatedAttenuationArray_d, attenuationImage->dim)) return 1;	
@@ -1839,23 +1844,20 @@ int et_gradient_attenuation_gpu(nifti_image *gradientImage, nifti_image *sinoIma
 
                 // Copy to texture bound memory (for rotation) //
                 cudaError_t cuda_status;
-                cudaMemcpy3DParms p = {0};
-              
-                p.srcPtr.ptr        = temp_backprojection_d;
-                p.srcPtr.pitch      = 0;
-                p.srcPtr.xsize      = gradientImage->nx;
-                p.srcPtr.ysize      = gradientImage->ny;
-                p.dstArray          = backprojectionArray_d;
-                p.extent.width      = gradientImage->nx;
-                p.extent.height     = gradientImage->ny;
-                p.extent.depth      = gradientImage->nz;
-                p.kind              = cudaMemcpyDeviceToDevice;
-                cuda_status         = cudaMemcpy3D(&p);
-		        if (cuda_status != cudaSuccess)
-				    {
-			        fprintf(stderr, "Error copying to texture bound memory: %s\n",cudaGetErrorString(cuda_status));
-			        return 1;
-		            }
+                cudaExtent volumeSize = make_cudaExtent(gradientImage->nx, gradientImage->ny, gradientImage->nz);
+                cudaMemcpy3DParms copyparms={0};
+
+                copyparms.extent = volumeSize;
+                copyparms.dstArray = backprojectionArray_d;
+                copyparms.kind = cudaMemcpyDeviceToDevice; 
+                copyparms.srcPtr = temp_backprojection_pitched;
+                cuda_status = cudaMemcpy3D(&copyparms);
+                if (cuda_status != cudaSuccess)
+                        {
+                        fprintf(stderr, "Error copying to texture bound memory: %s\n",cudaGetErrorString(cuda_status));
+                        return 1;
+                        }
+
 		// Rotate backprojection //
 		et_create_rotation_matrix(	affineTransformation,
 						-cameras[0*n_cameras+cam],
