@@ -2338,8 +2338,12 @@ int et_project_partial_gpu(nifti_image *activityImage, nifti_image *sinoImage, n
 //! Reset GPU
 int et_reset_gpu()
 {
+//    #ifdef _CUDA_4
     cudaDeviceReset();
-    return niftyrec_success; 
+    return niftyrec_success;
+//    #else
+//    return niftyrec_error_nogpubuilt;  
+//    #endif
 }
 
 #endif

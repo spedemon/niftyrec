@@ -1,9 +1,17 @@
 
+#  CMakeLists.txt
+#  
+#  NiftyRec
+#  Stefano Pedemonte, Oct. 2012.
+#  CMIC - Centre for Medical Image Computing 
+#  UCL - University College London. 
+#  Released under BSD licence, see LICENSE.txt 
+
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/seg-lib)
 #-----------------------------------------------------------------------------
 
     SET(NAME _seg_tools)
-    ADD_LIBRARY(${NAME} ${LIBRARY_TYPE} ${NAME}.h ${NAME}.cpp _seg_matrix.h)
+    ADD_LIBRARY(${NAME} ${LIB_TYPE} ${NAME}.h ${NAME}.cpp _seg_matrix.h)
     TARGET_LINK_LIBRARIES(${NAME} _seg_FMM _seg_Topo ${NIFTY_REG_LIBRARIES} _seg_BiasCorrection)
     INSTALL(TARGETS ${NAME}
         RUNTIME DESTINATION ${BIN_INSTALL_DIR}
@@ -15,7 +23,7 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/seg-lib)
     INSTALL(FILES _seg_matrix.h DESTINATION ${INC_INSTALL_DIR})
 
     SET(NAME _seg_MRF)
-    ADD_LIBRARY(${NAME} ${LIBRARY_TYPE} ${NAME}.h ${NAME}.cpp _seg_common.h )
+    ADD_LIBRARY(${NAME} ${LIB_TYPE} ${NAME}.h ${NAME}.cpp _seg_common.h )
     INSTALL(TARGETS ${NAME}
             RUNTIME DESTINATION ${BIN_INSTALL_DIR}
             LIBRARY DESTINATION ${LIB_INSTALL_DIR}
@@ -24,7 +32,7 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/seg-lib)
     INSTALL(FILES ${NAME}.h DESTINATION ${INC_INSTALL_DIR})
 
     SET(NAME _seg_BiasCorrection)
-    ADD_LIBRARY(${NAME} ${LIBRARY_TYPE} ${NAME}.h ${NAME}.cpp)
+    ADD_LIBRARY(${NAME} ${LIB_TYPE} ${NAME}.h ${NAME}.cpp)
     INSTALL(TARGETS ${NAME}
             RUNTIME DESTINATION ${BIN_INSTALL_DIR}
             LIBRARY DESTINATION ${LIB_INSTALL_DIR}
@@ -33,7 +41,7 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/seg-lib)
     INSTALL(FILES ${NAME}.h DESTINATION ${INC_INSTALL_DIR})
 
     SET(NAME _seg_FMM)
-    ADD_LIBRARY(${NAME} ${LIBRARY_TYPE} ${NAME}.h ${NAME}.cpp)
+    ADD_LIBRARY(${NAME} ${LIB_TYPE} ${NAME}.h ${NAME}.cpp)
     INSTALL(TARGETS ${NAME}
             RUNTIME DESTINATION ${BIN_INSTALL_DIR}
             LIBRARY DESTINATION ${LIB_INSTALL_DIR}
@@ -42,7 +50,7 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/seg-lib)
     INSTALL(FILES ${NAME}.h DESTINATION ${INC_INSTALL_DIR})
 
     SET(NAME _seg_LoAd)
-    ADD_LIBRARY(${NAME} ${LIBRARY_TYPE} ${NAME}.h ${NAME}.cpp)
+    ADD_LIBRARY(${NAME} ${LIB_TYPE} ${NAME}.h ${NAME}.cpp)
     TARGET_LINK_LIBRARIES(${NAME} ${NIFTY_REG_LIBRARIES} _seg_tools _seg_FMM _seg_Topo _seg_MRF)
     INSTALL(TARGETS ${NAME}
             RUNTIME DESTINATION ${BIN_INSTALL_DIR}
@@ -52,7 +60,7 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/seg-lib)
     INSTALL(FILES ${NAME}.h DESTINATION ${INC_INSTALL_DIR})
 
     SET(NAME _seg_EM)
-    ADD_LIBRARY(${NAME} ${LIBRARY_TYPE} ${NAME}.h ${NAME}.cpp)
+    ADD_LIBRARY(${NAME} ${LIB_TYPE} ${NAME}.h ${NAME}.cpp)
     TARGET_LINK_LIBRARIES(${NAME} ${NIFTY_REG_LIBRARIES} _seg_tools _seg_FMM _seg_Topo _seg_MRF)
     INSTALL(TARGETS ${NAME}
             RUNTIME DESTINATION ${BIN_INSTALL_DIR}
@@ -62,7 +70,7 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/seg-lib)
     INSTALL(FILES ${NAME}.h DESTINATION ${INC_INSTALL_DIR})
 
     SET(NAME _seg_LabFusion)
-    ADD_LIBRARY(${NAME} ${LIBRARY_TYPE} ${NAME}.h ${NAME}.cpp _seg_tools)
+    ADD_LIBRARY(${NAME} ${LIB_TYPE} ${NAME}.h ${NAME}.cpp _seg_tools)
     TARGET_LINK_LIBRARIES(${NAME} ${NIFTY_REG_LIBRARIES} _seg_tools _seg_FMM _seg_Topo)
     INSTALL(TARGETS ${NAME}
             RUNTIME DESTINATION ${BIN_INSTALL_DIR}
@@ -72,7 +80,7 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/seg-lib)
     INSTALL(FILES ${NAME}.h DESTINATION ${INC_INSTALL_DIR})
 
     SET(NAME _seg_Topo)
-    ADD_LIBRARY(${NAME} ${LIBRARY_TYPE} ${NAME}.h ${NAME}.cpp)
+    ADD_LIBRARY(${NAME} ${LIB_TYPE} ${NAME}.h ${NAME}.cpp)
     INSTALL(TARGETS ${NAME}
             RUNTIME DESTINATION ${BIN_INSTALL_DIR}
             LIBRARY DESTINATION ${LIB_INSTALL_DIR}
@@ -81,7 +89,7 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/seg-lib)
     INSTALL(FILES ${NAME}.h DESTINATION ${INC_INSTALL_DIR})
 
     SET(NAME _seg_array_interface)
-    ADD_LIBRARY(${NAME} ${LIBRARY_TYPE} ${NAME}.h ${NAME}.cpp)
+    ADD_LIBRARY(${NAME} ${LIB_TYPE} ${NAME}.h ${NAME}.cpp)
     TARGET_LINK_LIBRARIES(${NAME} ${NIFTY_REG_LIBRARIES} _seg_EM _seg_tools _seg_FMM _seg_Topo _seg_MRF)
     INSTALL(TARGETS ${NAME}
         RUNTIME DESTINATION ${BIN_INSTALL_DIR}

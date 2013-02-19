@@ -1,8 +1,18 @@
 
+#  CMakeLists.txt
+#  
+#  NiftyRec
+#  Stefano Pedemonte, Oct. 2012.
+#  CMIC - Centre for Medical Image Computing 
+#  UCL - University College London. 
+#  Released under BSD licence, see LICENSE.txt 
+
+#-----------------------------------------------------------------------------
+
 SUBDIRS(doc)
 SUBDIRS(m)
 
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/seg-lib)
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/lib)
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/mex)
 
 SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake/matlab")
