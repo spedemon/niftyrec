@@ -1187,11 +1187,18 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *backprojectionImage,
             return niftyrec_error_allocgpu;}
         alloc_record_add(memory_record,(void*)backprojectionArray_d,ALLOCTYPE_CUDA_ARRAY);
 
-        if(cudaCommon_allocateArrayToDevice<float>(&temp_backprojection_d, backprojectionImage->dim) != cudaSuccess) {
+        
+        //allocate backprojection
+        cudaPitchedPtr temp_backprojection_pitched; 
+        cudaExtent temp_backprojection_extent = make_cudaExtent(sizeof(float)*backprojectionImage->nx,backprojectionImage->ny,backprojectionImage->nz); 	
+        cudaError_t cuda_error = cudaMalloc3D(&temp_backprojection_pitched, temp_backprojection_extent); 	
+        if(cuda_error != cudaSuccess) {
             alloc_record_destroy(memory_record);
             return niftyrec_error_allocgpu;}
+        temp_backprojection_d = (float*) temp_backprojection_pitched.ptr;
         alloc_record_add(memory_record,(void*)temp_backprojection_d,ALLOCTYPE_CUDA);
 
+        
         if (attenuationImage != NULL)
             {
             if(cudaCommon_allocateArrayToDevice<float>(&attenuationArray_d, attenuationImage->dim) != cudaSuccess) {
@@ -1253,8 +1260,8 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *backprojectionImage,
         alloc_record_add(memory_record,(void*)affineTransformation,ALLOCTYPE_GUEST);
 
 	/* Clear accumulator */
-	et_clear_accumulator_gpu(		&accumulatorArray_d,
-						backprojectionImage );
+	et_clear_accumulator_gpu(&accumulatorArray_d,backprojectionImage );
+
         /* Allocate and initialize kernel for DDPSF */
         if (psfImage != NULL)
             {
@@ -1358,19 +1365,20 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *backprojectionImage,
 
                 // Copy to texture bound memory (for rotation) //
                 cudaError_t cuda_status;
-                cudaMemcpy3DParms p = {0};
-              
-                p.srcPtr.ptr        = temp_backprojection_d;
-                p.srcPtr.pitch      = 0;
-                p.srcPtr.xsize      = backprojectionImage->nx;
-                p.srcPtr.ysize      = backprojectionImage->ny;
-                p.dstArray          = backprojectionArray_d;
-                p.extent.width      = backprojectionImage->nx;
-                p.extent.height     = backprojectionImage->ny;
-                p.extent.depth      = backprojectionImage->nz;
-                p.kind              = cudaMemcpyDeviceToDevice;
-                cuda_status         = cudaMemcpy3D(&p);
+                cudaExtent volumeSize = make_cudaExtent(backprojectionImage->nx, backprojectionImage->ny, backprojectionImage->nz);
+                cudaMemcpy3DParms copyparms={0};
+                copyparms.extent = volumeSize;
+                copyparms.dstArray = backprojectionArray_d;
+                copyparms.kind = cudaMemcpyDeviceToDevice; 
+                copyparms.srcPtr = temp_backprojection_pitched;
+                cuda_status = cudaMemcpy3D(&copyparms);
 
+		        if (cuda_status != cudaSuccess)
+		        {
+				    fprintf(stderr, "Error copying to texture bound memory: %s\n",cudaGetErrorString(cuda_status));
+				    return 1;
+                }
+		
 		// Rotate backprojection //
 		et_create_rotation_matrix(	affineTransformation,
 						-cameras[0*n_cameras+cam],
@@ -1393,7 +1401,7 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *backprojectionImage,
 						background);
 
 		// Accumulate //
-		et_accumulate_gpu(		&rotatedArray_d,
+		et_accumulate_gpu(&rotatedArray_d,
 						&accumulatorArray_d,
 						backprojectionImage );
 	}
@@ -1843,7 +1851,11 @@ int et_gradient_attenuation_gpu(nifti_image *gradientImage, nifti_image *sinoIma
                 p.extent.depth      = gradientImage->nz;
                 p.kind              = cudaMemcpyDeviceToDevice;
                 cuda_status         = cudaMemcpy3D(&p);
-
+		        if (cuda_status != cudaSuccess)
+				    {
+			        fprintf(stderr, "Error copying to texture bound memory: %s\n",cudaGetErrorString(cuda_status));
+			        return 1;
+		            }
 		// Rotate backprojection //
 		et_create_rotation_matrix(	affineTransformation,
 						-cameras[0*n_cameras+cam],
