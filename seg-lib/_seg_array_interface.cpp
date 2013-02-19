@@ -156,29 +156,29 @@ extern "C" int seg_array_initialise_fromfile(int numb_classes, char* filename, c
 
     if(GlobSegmentation().segment_param->flag_Outlierness){
         GlobSegmentation().SEG->OutliernessON(GlobSegmentation().segment_param->OutliernessThreshold,OutliernessRatio);
-    }
+    } 
 
-    GlobSegmentation().SEG->SetVerbose(GlobSegmentation().segment_param->verbose_level);
-    GlobSegmentation().SEG->SetFilenameOut(GlobSegmentation().segment_param->filename_out);
+    GlobSegmentation().SEG->SetVerbose(GlobSegmentation().segment_param->verbose_level); 
+    GlobSegmentation().SEG->SetFilenameOut(GlobSegmentation().segment_param->filename_out); 
 
-    if(GlobSegmentation().segment_param->flag_Bias)
-        GlobSegmentation().SEG->Turn_BiasField_ON(GlobSegmentation().segment_param->bias_order,GlobSegmentation().segment_param->Bias_threshold);
-    if(GlobSegmentation().segment_param->flag_MRF)
-        GlobSegmentation().SEG->Turn_MRF_ON(GlobSegmentation().segment_param->MRF_strength);
-    if(GlobSegmentation().segment_param->relax_factor>0)
-        GlobSegmentation().SEG->Turn_Relaxation_ON(GlobSegmentation().segment_param->relax_factor,GlobSegmentation().segment_param->relax_gauss_kernel);
-    if(GlobSegmentation().segment_param->flag_MAP)
-        GlobSegmentation().SEG->SetMAP(GlobSegmentation().segment_param->MAP_M,GlobSegmentation().segment_param->MAP_V);
-    GlobSegmentation().SEG->SetAprox(GlobSegmentation().segment_param->aprox);
-    GlobSegmentation().SEG->SetMaximalIterationNumber(GlobSegmentation().segment_param->maxIteration);
+    if(GlobSegmentation().segment_param->flag_Bias) 
+        GlobSegmentation().SEG->Turn_BiasField_ON(GlobSegmentation().segment_param->bias_order,GlobSegmentation().segment_param->Bias_threshold); 
+    if(GlobSegmentation().segment_param->flag_MRF) 
+        GlobSegmentation().SEG->Turn_MRF_ON(GlobSegmentation().segment_param->MRF_strength); 
+    if(GlobSegmentation().segment_param->relax_factor>0) 
+        GlobSegmentation().SEG->Turn_Relaxation_ON(GlobSegmentation().segment_param->relax_factor,GlobSegmentation().segment_param->relax_gauss_kernel); 
+    if(GlobSegmentation().segment_param->flag_MAP) 
+        GlobSegmentation().SEG->SetMAP(GlobSegmentation().segment_param->MAP_M,GlobSegmentation().segment_param->MAP_V); 
+    GlobSegmentation().SEG->SetAprox(GlobSegmentation().segment_param->aprox); 
+    GlobSegmentation().SEG->SetMaximalIterationNumber(GlobSegmentation().segment_param->maxIteration); 
 
     GlobSegmentation().segment_param->filename_priors= (char **) calloc(GlobSegmentation().segment_param->numb_classes,sizeof(char *)); 
 
-    GlobSegmentation().SEG->Init_EM();
+    GlobSegmentation().SEG->Init_EM(); 
 
-    GlobSegmentation().initialised=1;
-    fprintf(stderr,"NiftySeg Initialised.\n");
-    return 0;
+    GlobSegmentation().initialised=1; 
+    fprintf(stderr,"NiftySeg Initialised.\n"); 
+    return 0; 
 }
 
 

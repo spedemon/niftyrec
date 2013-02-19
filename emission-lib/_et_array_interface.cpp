@@ -1538,3 +1538,34 @@ extern "C" int et_array_reset_gpu()
 }
 
 
+extern "C" int et_array_histogram_weighted(float *inputdata, float *weights, float *histogram, int N, int N_classes, int N_bins, double min_value, double max_value)
+{
+    int status = 1;
+    float epsilon = 1e-8;
+    int inputdata_int; 
+    float sum  = (-min_value+5*epsilon); 
+    float mult = (N_bins-10*epsilon)/(max_value-min_value); 
+    float inputdata_scaled; 
+
+    // clear histogram
+    memset((void*) histogram, 0, N_bins*sizeof(float));
+
+    // discretise and fill histogram 
+    for (int i=0; i<N; i++)
+        {
+        inputdata_scaled = (inputdata[i]+sum)*mult; 
+        if (inputdata_scaled<=epsilon) inputdata_scaled=epsilon;
+        if (inputdata_scaled>=(N_bins-5*epsilon)) inputdata_scaled=N_bins-5*epsilon; 
+        inputdata_int = floor(inputdata_scaled); 
+        for (int k=0; k<N_classes; k++)
+            {      
+            //fprintf(stderr,"i:%d       k:%d     val:%f(%f-%d)     hist:%d       weight:%d\n",i,k,inputdata[i],inputdata_scaled,inputdata_int,k*N_bins+inputdata_int,k*N+i);
+            histogram[k*N_bins+inputdata_int] = histogram[k*N_bins+inputdata_int] + weights[k*N+i]; 
+            }
+        }
+
+    status = 0;
+    return status; 
+}
+
+
