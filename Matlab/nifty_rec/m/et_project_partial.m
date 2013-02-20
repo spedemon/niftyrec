@@ -1,12 +1,12 @@
 function [sinogram,partial] = et_project_partial(activity, cameras, attenuation, psf, use_gpu, background, background_attenuation, truncate_negative_values)
 %ET_PROJECT
-%    Experimental - Projector for Emission Tomographic reconstruction. Returns
+%    Experimental - Projector for Emission Tomographic reconstruction. Returns projection and
 %    partial line integrals. 
 %
 %Description
 %    Function for projection of activity into detector space.
 %
-%    [SINOGRAM,PARTIAL] = ET_PROJECT(ACTIVITY, CAMERAS, ATTENUATION, PSF, USE_GPU, BACKGROUND, BACKGROUND_ATTENUATION, TRUNCATE_NEGATIVE_VALUES)
+%    [SINOGRAM,PARTIAL] = ET_PROJECT_PARTIAL(ACTIVITY, CAMERAS, ATTENUATION, PSF, USE_GPU, BACKGROUND, BACKGROUND_ATTENUATION, TRUNCATE_NEGATIVE_VALUES)
 %
 %    SINOGRAM is the projection 
 %
@@ -77,10 +77,6 @@ if not(exist('attenuation'))
     attenuation = 0;
 end
 
-if not(exist('background_attenuation'))
-    background_attenuation = 0;
-end
-
 if not(exist('psf'))
     psf = 0;
 end
@@ -91,6 +87,10 @@ end
     
 if not(exist('background'))
     background = 0;
+end
+
+if not(exist('background_attenuation'))
+    background_attenuation = 0;
 end
 
 if not(exist('truncate_negative_values'))

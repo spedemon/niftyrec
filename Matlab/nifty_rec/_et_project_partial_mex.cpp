@@ -29,8 +29,8 @@
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
    /* Check for proper number of arguments. */
-   if (!(nrhs==2 || nrhs==3 || nrhs==4 || nrhs==5 || nrhs==6 || nrhs==7)){
-      mexErrMsgTxt("2, 3, 4, 5, 6 or 7 inputs required: Activity, Cameras, [Attenuation], [PointSpreadFunction], [EnableGPU], [Background], [BackgroundAttenuation], [TruncateNegativeValues]");
+   if (!(nrhs==2 || nrhs==3 || nrhs==4 || nrhs==5 || nrhs==6 || nrhs==7 || nrhs==8)){
+      mexErrMsgTxt("2, 3, 4, 5, 6, 7 or 8 inputs required: Activity, Cameras, [Attenuation], [PointSpreadFunction], [EnableGPU], [Background], [BackgroundAttenuation], [TruncateNegativeValues]");
    }
 
    mxClassID cid_activity  = mxGetClassID(prhs[0]);
