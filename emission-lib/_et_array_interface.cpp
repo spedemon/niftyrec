@@ -1345,7 +1345,7 @@ extern "C" int et_array_joint_histogram(float *matrix_A, float *matrix_B, int *j
 
 
 
-extern "C" int et_array_project_partial(float *activity, int *activity_size, float *sinogram, int *sinogram_size, float *partialsum, int *partialsum_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *attenuation, int *attenuation_size, float background, float background_attenuation, int GPU, int truncate_negative_values)
+extern "C" int et_array_project_partial(float *activity, int *activity_size, float *sinogram, int *sinogram_size, float *partialsum, int *partialsum_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *attenuation, int *attenuation_size, float background, float background_attenuation, int GPU, int truncate_negative_values, int do_rotate_partial)
 {
 	int status = 0;
         int n_cameras;
@@ -1472,13 +1472,13 @@ extern "C" int et_array_project_partial(float *activity, int *activity_size, flo
         //Do projection
         #ifdef _USE_CUDA
         if (GPU)
-            status = et_project_partial_gpu(activityImage, sinogramImage, partialsumImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values);
+            status = et_project_partial_gpu(activityImage, sinogramImage, partialsumImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values, do_rotate_partial);
         else
-            status = et_project_partial(activityImage, sinogramImage, partialsumImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values);
+            status = et_project_partial(activityImage, sinogramImage, partialsumImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values, do_rotate_partial);
         #else
             if (GPU)
                 fprintf_verbose( "et_array_project: No GPU support. In order to activate GPU acceleration please configure with GPU flag and compile.");
-            status = et_project_partial(activityImage, sinogramImage, partialsumImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values);
+            status = et_project_partial(activityImage, sinogramImage, partialsumImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values, do_rotate_partial);
         #endif
 
 	//Free

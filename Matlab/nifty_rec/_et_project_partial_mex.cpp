@@ -29,8 +29,8 @@
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
    /* Check for proper number of arguments. */
-   if (!(nrhs==2 || nrhs==3 || nrhs==4 || nrhs==5 || nrhs==6 || nrhs==7 || nrhs==8)){
-      mexErrMsgTxt("2, 3, 4, 5, 6, 7 or 8 inputs required: Activity, Cameras, [Attenuation], [PointSpreadFunction], [EnableGPU], [Background], [BackgroundAttenuation], [TruncateNegativeValues]");
+   if (!(nrhs==2 || nrhs==3 || nrhs==4 || nrhs==5 || nrhs==6 || nrhs==7 || nrhs==8 || nrhs==9)){
+      mexErrMsgTxt("2, 3, 4, 5, 6, 7, 8 or 9 inputs required: Activity, Cameras, [Attenuation], [PointSpreadFunction], [EnableGPU], [InverseRotatePartialIntegrals], [Background], [BackgroundAttenuation], [TruncateNegativeValues]");
    }
 
    mxClassID cid_activity  = mxGetClassID(prhs[0]);
@@ -53,6 +53,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    int cameras_size[2];    //size of input cameras matrix.
    float background;       // Background value, defaults to 0. (It is used to fill empty areas when images are rotated)
    float background_attenuation; // Attenuation background value, defaults to 0.
+   int do_rotate_partial_integrals = 0; // Wheter to rotate the partial integrals back to the image frame or not. 
    int enable_gpu;         // Flag for GPU Acceleration: 1 to enable, 0 to disable.
    int no_psf = 0;         // This flag goes high if psf input parameter from the Matlab function is a scalar -> no psf
    int no_attenuation = 0; // This flag goes high if an attenuation image is given and it is not a scalar. 
@@ -196,19 +197,24 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
            }
        }
 
+   /* Check if parameter: inverse rotate partial integral is specified */
+   do_rotate_partial_integrals = 0;
+   if (nrhs>=6)
+       do_rotate_partial_integrals = (int) (mxGetScalar(prhs[5]));
+
    /* Check if Background is specified */
    background = 0.0f;
-   if (nrhs>=6)
-       background = (mxGetScalar(prhs[5])); 
+   if (nrhs>=7)
+       background = (mxGetScalar(prhs[6])); 
 
    /* Check if attenuation background is specified */
    background_attenuation = 0.0f;
-   if (nrhs>=7)
-       background_attenuation = (mxGetScalar(prhs[6])); 
+   if (nrhs>=8)
+       background_attenuation = (mxGetScalar(prhs[7])); 
 
    /* Check if 'truncate negative values' flag has been specified */
-   if (nrhs>=8)
-       truncate_negative_values = (mxGetScalar(prhs[7])); 
+   if (nrhs>=9)
+       truncate_negative_values = (mxGetScalar(prhs[8])); 
 
 
    /* Extract pointers to input matrices (and eventually convert double to float)*/
@@ -299,7 +305,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
 
    /* Perform projection */
-   status = et_array_project_partial(activity_ptr, activity_size, sinogram_ptr, sino_size, partialsum_ptr, partialsum_size, cameras_ptr, cameras_size, psf_ptr, psf_size, attenuation_ptr, attenuation_size, background, background_attenuation, enable_gpu, truncate_negative_values);
+   status = et_array_project_partial(activity_ptr, activity_size, sinogram_ptr, sino_size, partialsum_ptr, partialsum_size, cameras_ptr, cameras_size, psf_ptr, psf_size, attenuation_ptr, attenuation_size, background, background_attenuation, enable_gpu, truncate_negative_values, do_rotate_partial_integrals);
 
    /* Shutdown */
    if (mxGetClassID(prhs[1]) != mxSINGLE_CLASS) free(cameras_ptr);

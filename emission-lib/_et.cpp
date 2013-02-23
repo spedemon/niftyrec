@@ -781,7 +781,7 @@ int et_convolve(nifti_image *inImage, nifti_image *outImage, nifti_image *kernel
 }
 
 
-int et_project_partial(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *partialsumImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values)
+int et_project_partial(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *partialsumImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values, int do_rotate_partial)
 {
 return 1;
 }
@@ -2101,13 +2101,12 @@ int et_joint_histogram_gpu(nifti_image *matrix_A_Image, nifti_image *matrix_B_Im
   \param background the activity background (used when activity is rotated and resampled). 
   \param background_attenuation the attenuation background (used when the attenuation map is rotated and resampled). 
 */
-int et_project_partial_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *partialsumImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values)
+int et_project_partial_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *partialsumImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values, int do_rotate_partial)
 {
 	/* initialise the cuda arrays */
 	cudaArray *activityArray_d=NULL;               //stores input activity, makes use of fetch unit
         cudaArray *attenuationArray_d=NULL;            //stores input attenuation coefficients, makes use of fetch unit
 	float     *sinoArray_d=NULL;                   //stores sinogram (output)
-	float     *partialsumArray_d=NULL;             //stores sinogram (output)
 	float     *rotatedArray_d=NULL;                //stores activity aligned with current camera
         float     *rotatedAttenuationArray_d=NULL;     //stores attenuation coefficients aligned with current camera
 	float4    *positionFieldImageArray_d=NULL;     //stores position field for rotation of activity and attenuation
@@ -2149,10 +2148,35 @@ int et_project_partial_gpu(nifti_image *activityImage, nifti_image *sinoImage, n
                 return niftyrec_error_transfergpu;} 
             }
         // Partial sum
-        if(cudaCommon_allocateArrayToDevice<float>(&partialsumArray_d, referenceImage->dim)) {
-            alloc_record_destroy(memory_record); 
-            return niftyrec_error_allocgpu;} 
+        //partialsumArray_d: stores the partial integrals. Pitched as it is then transfered to CUDA Array for fast rotation
+	float     *partialsumArray_d=NULL;             
+        cudaPitchedPtr partialsumArray_pitched; 
+        cudaExtent partialsumArray_extent = make_cudaExtent(sizeof(float)*referenceImage->nx,referenceImage->ny,referenceImage->nz); 	
+        cudaError_t cuda_error = cudaMalloc3D(&partialsumArray_pitched, partialsumArray_extent); 	
+        if(cuda_error != cudaSuccess) {
+            alloc_record_destroy(memory_record);
+            return niftyrec_error_allocgpu;}
+        partialsumArray_d = (float*) partialsumArray_pitched.ptr;
         alloc_record_add(memory_record,(void*)partialsumArray_d,ALLOCTYPE_CUDA);
+
+        //temp_partialsumArray_d: CUDA array, temporary for fast rotation 
+	cudaArray *temp_partialsumArray_d=NULL;
+        cudaChannelFormatDesc temp_partialsumArray_d_chdesc = cudaCreateChannelDesc<float>();
+        cudaExtent temp_partialsumArray_d_extent;
+        temp_partialsumArray_d_extent.width  = referenceImage->nx;
+        temp_partialsumArray_d_extent.height = referenceImage->ny;
+        temp_partialsumArray_d_extent.depth  = referenceImage->nz;
+        if (cudaMalloc3DArray(&temp_partialsumArray_d, &temp_partialsumArray_d_chdesc, temp_partialsumArray_d_extent) != cudaSuccess) {
+            alloc_record_destroy(memory_record);
+            return niftyrec_error_allocgpu;}
+        alloc_record_add(memory_record,(void*)temp_partialsumArray_d,ALLOCTYPE_CUDA_ARRAY);
+
+        //partialsumRotatedArray_d: partial sums rotated to the input image frame
+	float     *partialsumRotatedArray_d;  
+        if(cudaCommon_allocateArrayToDevice<float>(&partialsumRotatedArray_d, referenceImage->dim) != cudaSuccess) {
+            alloc_record_destroy(memory_record);
+            return niftyrec_error_allocgpu;}
+        alloc_record_add(memory_record,(void*)partialsumRotatedArray_d,ALLOCTYPE_CUDA);
 
         // Singoram 
 	if(cudaCommon_allocateArrayToDevice<float>(&sinoArray_d, sinoImage->dim)) {
@@ -2324,9 +2348,54 @@ int et_project_partial_gpu(nifti_image *activityImage, nifti_image *sinoImage, n
                     alloc_record_destroy(memory_record);
                     return niftyrec_error_parameters;
                     }
+                if (do_rotate_partial)
+                {
+                //Rotate partial integrals back to image frame
+                cudaError_t cuda_status;
+                cudaExtent volumeSize = make_cudaExtent(referenceImage->nx, referenceImage->ny, referenceImage->nz);
+                cudaMemcpy3DParms copyparms={0};
+                copyparms.extent = volumeSize;
+                copyparms.dstArray = temp_partialsumArray_d; 
+                copyparms.kind = cudaMemcpyDeviceToDevice; 
+                copyparms.srcPtr = partialsumArray_pitched;
+                cuda_status = cudaMemcpy3D(&copyparms);
+                if (cuda_status != cudaSuccess)
+                        {
+                        fprintf(stderr, "Error copying to texture bound memory: %s\n",cudaGetErrorString(cuda_status));
+                        return 1;
+                        }
+
+
+		et_create_rotation_matrix(	affineTransformation,
+						-cameras[0*n_cameras+cam],
+						-cameras[1*n_cameras+cam],
+						-cameras[2*n_cameras+cam],
+						center_x,
+						center_y, 
+						center_z,
+						ZYX_ROTATION);
+		reg_affine_positionField_gpu(	affineTransformation,
+						referenceImage,
+						&positionFieldImageArray_d);
+		reg_resampleSourceImage_gpu(	referenceImage,
+						referenceImage,
+						&partialsumRotatedArray_d,
+						&temp_partialsumArray_d,
+						&positionFieldImageArray_d,
+						&mask_d,
+						referenceImage->nvox,
+						background);
+
+                if (cudaMemcpy(((float*) partialsumImage->data)+referenceImage->nx*referenceImage->ny*referenceImage->nz*cam, partialsumRotatedArray_d, referenceImage->nx*referenceImage->ny*referenceImage->nz*sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) {
+                    alloc_record_destroy(memory_record); 
+                    return niftyrec_error_transfergpu;}
+                }
+                else
+                {
                 if (cudaMemcpy(((float*) partialsumImage->data)+referenceImage->nx*referenceImage->ny*referenceImage->nz*cam, partialsumArray_d, referenceImage->nx*referenceImage->ny*referenceImage->nz*sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) {
                     alloc_record_destroy(memory_record); 
                     return niftyrec_error_transfergpu;}
+                }
 	}
 
 	/* Transfer result back to host */
