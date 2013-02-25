@@ -1,4 +1,4 @@
-function [sinogram,partial] = et_project_partial(activity, cameras, attenuation, psf, use_gpu, background, background_attenuation, truncate_negative_values)
+function [sinogram,partial] = et_project_partial(activity, cameras, attenuation, psf, use_gpu, rotation_of_partial_integrals, background, background_attenuation, truncate_negative_values)
 %ET_PROJECT
 %    Experimental - Projector for Emission Tomographic reconstruction. Returns projection and
 %    partial line integrals. 
@@ -6,7 +6,7 @@ function [sinogram,partial] = et_project_partial(activity, cameras, attenuation,
 %Description
 %    Function for projection of activity into detector space.
 %
-%    [SINOGRAM,PARTIAL] = ET_PROJECT_PARTIAL(ACTIVITY, CAMERAS, ATTENUATION, PSF, USE_GPU, BACKGROUND, BACKGROUND_ATTENUATION, TRUNCATE_NEGATIVE_VALUES)
+%    [SINOGRAM,PARTIAL] = ET_PROJECT_PARTIAL(ACTIVITY, CAMERAS, ATTENUATION, PSF, USE_GPU, ROTATION_OF_PARTIAL_INTEGRALS, BACKGROUND, BACKGROUND_ATTENUATION, TRUNCATE_NEGATIVE_VALUES)
 %
 %    SINOGRAM is the projection 
 %
@@ -30,6 +30,9 @@ function [sinogram,partial] = et_project_partial(activity, cameras, attenuation,
 %
 %    USE_GPU is optional and it enables GPU acceleration if a compatible GPU 
 %    device is installed in the system. By default use_gpu is set to 0 (disabled).
+%
+%    ROTATION_OF_PARTIAL_INTEGRALS if enabled the partial integrals are rotated 
+%    back to the image frame. Defailts to 0 (disabled). 
 %
 %    BACKGROUND is the value the background is set to when performing rotation. 
 %    It defaults to 0. 
@@ -84,7 +87,11 @@ end
 if not(exist('use_gpu'))
     use_gpu = 0;
 end
-    
+   
+if not(exist('rotation_of_partial_integrals'))
+    rotation_of_partial_integrals = 0;
+end
+ 
 if not(exist('background'))
     background = 0;
 end
@@ -97,5 +104,5 @@ if not(exist('truncate_negative_values'))
     truncate_negative_values = 1;
 end
 
-[sinogram,partial] = et_project_partial_mex(activity, cameras, attenuation, psf, use_gpu, background, background_attenuation, truncate_negative_values);
+[sinogram,partial] = et_project_partial_mex(activity, cameras, attenuation, psf, use_gpu, rotation_of_partial_integrals, background, background_attenuation, truncate_negative_values);
 
