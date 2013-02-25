@@ -66,7 +66,7 @@ extern "C" int et_array_affine(float *image_ptr, int *image_size, float *transfo
 
 
 
-extern "C" int et_array_rotate(float *image, int *size, float *rotated_image, float *angles, float *centers, float background, int GPU)
+extern "C" int et_array_rotate(float *image, int *size, float *rotated_image, float *angles, float *centers, float background, int axis_order, int GPU)
 {
 	int status;
 
@@ -91,11 +91,11 @@ extern "C" int et_array_rotate(float *image, int *size, float *rotated_image, fl
         // Rotate
         #ifdef _USE_CUDA
         if(GPU)
-            status = et_rotate_gpu(sourceImage, resultImage, angles[0],angles[1],angles[2], centers[0], centers[1], centers[2], background);
+            status = et_rotate_gpu(sourceImage, resultImage, angles[0],angles[1],angles[2], centers[0], centers[1], centers[2], background, axis_order);
         else
-            status = et_rotate(sourceImage, resultImage, angles[0],angles[1],angles[2], centers[0], centers[1], centers[2], background);
+            status = et_rotate(sourceImage, resultImage, angles[0],angles[1],angles[2], centers[0], centers[1], centers[2], background, axis_order);
       	#else
-      	    status = et_rotate(sourceImage, resultImage, angles[0],angles[1],angles[2], centers[0], centers[1], centers[2], background);
+      	    status = et_rotate(sourceImage, resultImage, angles[0],angles[1],angles[2], centers[0], centers[1], centers[2], background, axis_order);
         #endif
       	
 	//Free

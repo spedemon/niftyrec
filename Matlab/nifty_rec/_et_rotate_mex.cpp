@@ -89,13 +89,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
    /* Check if EnableGPU is specified */
    enable_gpu = 0;
-   if (nrhs>=3)
-       enable_gpu = (int) (mxGetScalar(prhs[2]));
+   if (nrhs>=4)
+       enable_gpu = (int) (mxGetScalar(prhs[3]));
   
    /* Check if Background is specified */
    background = 0.0f;
-   if (nrhs>=4)
-       background = (float) (mxGetScalar(prhs[3]));
+   if (nrhs>=5)
+       background = (float) (mxGetScalar(prhs[4]));
 
    /* Extract pointers to input matrices */
    double *image_ptr = (double *) (mxGetData(prhs[0]));
@@ -130,7 +130,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
        center_float[i] = center_float[i]-1;
 
    /* Perform Affine Transform */
-   status = et_array_rotate(image_float, image_size, out_float, rotation_float, center_float, background, enable_gpu);
+   status = et_array_rotate(image_float, image_size, out_float, rotation_float, center_float, background, XYZ_ROTATION, enable_gpu);
    /* Convert to double */
    for (int i=0; i<image_size[0]*image_size[1]*image_size[2]; i++)
        out_ptr[i] = out_float[i];
