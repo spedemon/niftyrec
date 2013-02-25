@@ -1,9 +1,10 @@
-function out_image = et_rotate(in_image, rotation, center, use_gpu, background)
+function out_image = et_irotate(in_image, rotation, center, use_gpu, background)
 %ET_ROTATE
-%    Rotation of 2D and 3D images. GPU accelerated.
+%    Rotation of 2D and 3D images. GPU accelerated. It performs the inverse rotation of et_rotate()
+%    when given the same input parameters. 
 %
 %Description
-%    OUT_IMAGE = ET_ROTATE(IN_IMAGE, ROTATION, CENTER, USE_GPU, BACKGROUND)
+%    OUT_IMAGE = ET_IROTATE(IN_IMAGE, ROTATION, CENTER, USE_GPU, BACKGROUND)
 %
 %    IN_IMAGE is a 2D or 3D matrix.
 %
@@ -39,7 +40,7 @@ function out_image = et_rotate(in_image, rotation, center, use_gpu, background)
 %   out_image = et_rotate(in_image,rotation,center,use_gpu,background);
 %
 %See also
-%   ET_AFFINE
+%   ET_ROTATE
 %
 % 
 %Stefano Pedemonte
@@ -55,5 +56,5 @@ if not(exist('background'))
     background = 0;
 end
 
-out_image = et_rotate_mex(in_image, rotation, center, use_gpu, background);
+out_image = et_irotate_mex(in_image, rotation, center, use_gpu, background);
 

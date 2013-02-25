@@ -19,6 +19,8 @@
 
 #define ET_BLOCK_SIZE 8
 
+#define ET_ERROR_BADGRID 2
+
 #define eps 0.000000000001f
 
 #include "_niftyrec_memory.h"
@@ -37,7 +39,6 @@
 #include "_et_convolveFFT2D.h"
 //#include "_et_joint_histogram.h"
 
-#define ET_ERROR_BADGRID 2
 
 #ifdef _USE_CUDA
 #include "_reg_cudaCommon.h"
@@ -54,7 +55,7 @@
 #include "_et_convolveSeparable2D_gpu.h"
 //#include "_et_joint_histogram_gpu.h"
 
-int et_rotate_gpu(nifti_image *sourceImage, nifti_image *resultImage, float alpha, float beta, float gamma, float center_x, float center_y, float center_z, float background);
+int et_rotate_gpu(nifti_image *sourceImage, nifti_image *resultImage, float alpha, float beta, float gamma, float center_x, float center_y, float center_z, float background, int axis_order);
 int et_project_gpu(nifti_image *activity, nifti_image *sinoImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float backgroundAttenuation, int truncate_negative_values);
 int et_backproject_gpu(nifti_image *sinogram, nifti_image *accumulator, nifti_image *psf, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values);
 int et_joint_histogram_gpu(nifti_image *matrix_A_Image, nifti_image *matrix_B_Image, nifti_image *joint_histogram_Image, float min_A, float max_A, float min_B, float max_B);
@@ -71,7 +72,7 @@ int et_reset_gpu();
 
 int et_is_block_multiple(int size);
 int et_get_block_size(void);
-int et_rotate(nifti_image *sourceImage, nifti_image *resultImage, float alpha, float beta, float gamma, float center_x, float center_y, float center_z, float background);
+int et_rotate(nifti_image *sourceImage, nifti_image *resultImage, float alpha, float beta, float gamma, float center_x, float center_y, float center_z, float background, int axis_order);
 int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values);
 int et_backproject(nifti_image *sinogram, nifti_image *accumulator, nifti_image *psf, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values);
 int et_joint_histogram(nifti_image *matrix_A_Image, nifti_image *matrix_B_Image, nifti_image *joint_histogram_Image, float min_A, float max_A, float min_B, float max_B);

@@ -94,12 +94,12 @@ int et_affine(nifti_image *sourceImage, nifti_image *transformedImage, mat44 *af
   \param center_z the center of rotation along z. 
   \param background the background value when resampling the transformed image. 
 */
-int et_rotate(nifti_image *sourceImage, nifti_image *resultImage, float theta_x, float theta_y, float theta_z, float center_x, float center_y, float center_z, float background)
+int et_rotate(nifti_image *sourceImage, nifti_image *resultImage, float theta_x, float theta_y, float theta_z, float center_x, float center_y, float center_z, float background, int axis_order)
 {
         int status; 
 	//Create transformation matrix
 	mat44 *affineTransformation = (mat44 *)calloc(1,sizeof(mat44));
-	et_create_rotation_matrix(affineTransformation, theta_x, theta_y, theta_z, center_x, center_y, center_z, XYZ_ROTATION);
+	et_create_rotation_matrix(affineTransformation, theta_x, theta_y, theta_z, center_x, center_y, center_z, axis_order);
 	
 	//Apply affine transformation
 	status = et_affine(sourceImage, resultImage, affineTransformation, background);
@@ -873,13 +873,13 @@ int et_affine_gpu(nifti_image *sourceImage, nifti_image *resultImage, mat44 *aff
   \param center_z the center of rotation along z. 
   \param background the background value when resampling the transformed image. 
 */
-int et_rotate_gpu(nifti_image *sourceImage, nifti_image *resultImage, float theta_x, float theta_y, float theta_z, float center_x, float center_y, float center_z, float background)
+int et_rotate_gpu(nifti_image *sourceImage, nifti_image *resultImage, float theta_x, float theta_y, float theta_z, float center_x, float center_y, float center_z, float background, int axis_order)
 {
 	int status = 1;
 	
 	//Create transformation matrix
 	mat44 *affineTransformation = (mat44 *)calloc(1,sizeof(mat44));
-	et_create_rotation_matrix(affineTransformation, theta_x, theta_y, theta_z, center_x, center_y, center_z, XYZ_ROTATION);
+	et_create_rotation_matrix(affineTransformation, theta_x, theta_y, theta_z, center_x, center_y, center_z, axis_order);
 	
 	//Apply affine transformation
 	status = et_affine_gpu(sourceImage, resultImage, affineTransformation, background);
