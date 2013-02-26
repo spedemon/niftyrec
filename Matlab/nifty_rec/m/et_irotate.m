@@ -37,7 +37,8 @@ function out_image = et_irotate(in_image, rotation, center, use_gpu, background)
 %   in_image = ones(N,N,N);
 %   rotation = [0.0, pi/8, pi/4];
 %   center = [N/2, N/2, N/2];
-%   out_image = et_rotate(in_image,rotation,center,use_gpu,background);
+%   rot_image = et_rotate(in_image,rotation,center,use_gpu,background);
+%   out_image = et_irotate(rot_image,rotation,center,use_gpu,background);
 %
 %See also
 %   ET_ROTATE

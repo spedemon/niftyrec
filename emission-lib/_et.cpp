@@ -2350,6 +2350,7 @@ int et_project_partial_gpu(nifti_image *activityImage, nifti_image *sinoImage, n
                     }
                 if (do_rotate_partial)
                 {
+fprintf(stderr,"Rotating partial!!\n");
                 //Rotate partial integrals back to image frame
                 cudaError_t cuda_status;
                 cudaExtent volumeSize = make_cudaExtent(referenceImage->nx, referenceImage->ny, referenceImage->nz);
