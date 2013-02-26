@@ -51,42 +51,50 @@ __global__ void et_line_integral_attenuated_gpu_kernel(float *g_activity, float 
                         }
                     else
                         return;
+                    sum_activity += background_activity*exp(-sum_attenuation);
+                    g_sinogram[tid]=sum_activity;
                     }
                 else
                     {
-                    if (g_activity==NULL && g_attenuation!=NULL)
+                    if (g_activity==NULL && g_attenuation!=NULL) //OK
                         {
-                        for(unsigned int z=0; z<c_ImageSize.z; z++)
-                            {
-                            sum_attenuation += g_attenuation[index];
-                            g_partialsum[index] = background_activity*exp(-sum_attenuation);
-                            index += pixelNumber;
-                            }
-                        }
-                    else if (g_activity!=NULL && g_attenuation!=NULL)
-                        {
-                        index_inv=tid+pixelNumber*(c_ImageSize.z-1);
+                        index_inv = tid+pixelNumber*(c_ImageSize.z-1);
+                        sum_activity = background_activity; 
 		        for(unsigned int z=0; z<c_ImageSize.z; z++)
                             {
-                            sum_activity = (sum_activity+g_activity[index_inv])*exp(-g_attenuation[index_inv]);
-                            g_partialsum[index_inv] = sum_activity;
+                            g_partialsum[index_inv] = sum_activity; 
+                            sum_activity = sum_activity * exp(-g_attenuation[index_inv]); 
                             index_inv -= pixelNumber;
                             }
+                        g_sinogram[tid]=sum_activity;
                         }
-                    else if (g_activity!=NULL && g_attenuation==NULL)
+                    else if (g_activity!=NULL && g_attenuation!=NULL) // OK
                         {
-                        for(unsigned int z=0; z<c_ImageSize.z; z++)
+                        index_inv = tid+pixelNumber*(c_ImageSize.z-1);
+                        sum_activity = background_activity; 
+		        for(unsigned int z=0; z<c_ImageSize.z; z++)
                             {
-                            sum_activity += g_activity[index];
-                            g_partialsum[index] = sum_activity; 
-                            index += pixelNumber;
+                            g_partialsum[index_inv] = sum_activity; 
+                            sum_activity = (sum_activity+g_activity[index_inv]) * exp(-g_attenuation[index_inv]); 
+                            index_inv -= pixelNumber;
                             }
+                        g_sinogram[tid]=sum_activity;
+                        }
+                    else if (g_activity!=NULL && g_attenuation==NULL) // OK
+                        {
+                        index_inv = tid+pixelNumber*(c_ImageSize.z-1);
+                        sum_activity = background_activity; 
+		        for(unsigned int z=0; z<c_ImageSize.z; z++)
+                            {
+                            g_partialsum[index_inv] = sum_activity; 
+                            sum_activity = (sum_activity+g_activity[index_inv]); 
+                            index_inv -= pixelNumber;
+                            }
+                        g_sinogram[tid]=sum_activity;
                         }
                     else
                         return;
                     }
-                sum_activity += background_activity*exp(-sum_attenuation);
-		g_sinogram[tid]=sum_activity;
 	}
 	return; 	
 }
