@@ -64,7 +64,7 @@ function [sinogram,partial] = et_project_partial(activity, cameras, attenuation,
 %   attenuation = zeros(N,N,N);
 %   PSF = ones(7,7,N);
 %   cameras = [0:pi/100:pi]';
-%   sinogram = et_project(activity,cameras,attenuation,PSF,use_gpu);
+%   [sinogram,partial] = et_project_partial(activity,cameras,attenuation,PSF,use_gpu,1);
 %
 %See also
 %   ET_BACKPROJECT, ET_MAPEM_STEP, ET_MLEM_DEMO
