@@ -246,7 +246,7 @@ _pullIterate(pullContext *pctx, int mode) {
                       AIR_CAST(size_t, 601),
                       AIR_CAST(size_t, 601));
   }
-#endif 0
+#endif 
 
   /* tell all tasks what mode they're in */
   for (ti=0; ti<pctx->threadNum; ti++) {
