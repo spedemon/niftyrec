@@ -69,6 +69,12 @@ of the GPU accelerated algorithms, while maintaining the full speed.
 -- NiftyRec 1.6.6 (Rel. Feb 2013) --
     * Compatible with CUDA 5.0
 
+-- NiftyRec 1.6.7 (Rel. Mar. 2013) --
+    * Comaptible with CUDA compute capability 3.0
+    * Fixed bugs in the Python interface 
+    * Fixed bugs in the Python GUI example 
+    * Added simple python example 
+    * Added sample dataset for the Python GUI example
 
 ######################################################################################
 
