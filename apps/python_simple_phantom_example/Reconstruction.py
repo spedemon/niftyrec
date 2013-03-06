@@ -7,7 +7,6 @@ from scipy.signal import convolve
 import gobject
 
 try:
-	#from NiftyRec.NiftyRec import project, backproject
 	from NiftyRec.NiftyRec import et_project as project
 	from NiftyRec.NiftyRec import et_backproject as backproject
 except:
@@ -173,13 +172,19 @@ class Reconstructor:
                 gobject.idle_add(self.callback_status,"%d"%((100.0*step)/steps)+"% OSEM reconstruction",(1.0*step)/steps)
                 gobject.idle_add(self.callback_updateactivity, self.activity )
 		if verbose:	
-			print '\n----------------------------------\nStep %i of %i' % (step+1,steps)
-                	print 'activity:', self.activity.shape, self.activity.dtype
-                	print 'sinogram:', self.sinogram.shape, self.sinogram.dtype
-                	print 'cameras: ', self.cameras.shape, self.cameras.dtype
-                	print 'psf:     ', self.psf.shape, self.psf.dtype
-                	print 'attenuation:',self.attenuation.shape, self.attenuation.dtype
-                	print 'use gpu: ',self.use_gpu
+		    print '\n----------------------------------\nStep %i of %i' % (step+1,steps)
+                    print 'activity:', self.activity.shape, self.activity.dtype
+                    print 'sinogram:', self.sinogram.shape, self.sinogram.dtype
+                    print 'cameras: ', self.cameras.shape, self.cameras.dtype
+                    if self.psf!=None: 
+                        print 'psf:     ', self.psf.shape, self.psf.dtype
+                    else:
+                        print 'psf: None'
+                    if self.attenuation!=None: 
+                        print 'attenuation:',self.attenuation.shape, self.attenuation.dtype
+                    else:
+                        print 'attenuation: None'
+                    print 'use gpu: ',self.use_gpu
                 beta_osl=0
                 gradient_prior=0
                 self.activity = osmapem_step(subset_order, self.activity, self.sinogram, self.cameras, self.attenuation,\
@@ -195,13 +200,19 @@ class Reconstructor:
                 gobject.idle_add(self.callback_status,"%d"%((100.0*step)/steps)+"% TV OSEM reconstruction",(1.0*step)/steps)
                 gobject.idle_add(self.callback_updateactivity, self.activity )
 		if verbose:
-			print '\n----------------------------------\nStep %i of %i' % (step+1,steps)
-                	print 'activity:', self.activity.shape, self.activity.dtype
-                	print 'sinogram:', self.sinogram.shape, self.sinogram.dtype
-                	print 'cameras: ', self.cameras.shape, self.cameras.dtype
-                	print 'psf:     ', self.psf.shape, self.psf.dtype
-                	print 'attenuation:',self.attenuation.shape, self.attenuation.dtype
-                	print 'use gpu: ',self.use_gpu
+		    print '\n----------------------------------\nStep %i of %i' % (step+1,steps)
+                    print 'activity:', self.activity.shape, self.activity.dtype
+                    print 'sinogram:', self.sinogram.shape, self.sinogram.dtype
+                    print 'cameras: ', self.cameras.shape, self.cameras.dtype
+                    if self.psf!=None: 
+                        print 'psf:     ', self.psf.shape, self.psf.dtype
+                    else:
+                        print 'psf: None'
+                    if self.attenuation!=None: 
+                        print 'attenuation:',self.attenuation.shape, self.attenuation.dtype
+                    else:
+                        print 'attenuation: None'
+                    print 'use gpu: ',self.use_gpu
                 beta_osl=parameters['beta']/1000.0
                 kernel = -1*ones((3,3,3))
                 kernel[1,1,1] = 26

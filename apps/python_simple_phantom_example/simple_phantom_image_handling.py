@@ -9,20 +9,20 @@ import os
 try:
 	import numpy
 except ImportError:
-	print '\nPlease install the NumPy module!'
+	print("\nPlease install the NumPy module!")
 	os._exit(1)	
 
 try:
 	from PIL import Image,ImageDraw
 except ImportError:
-	print '\nPlease install the Python Imaging Library!'
+	print("\nPlease install the Python Imaging Library!")
 	os._exit(1)
 
 # Very simple callback handlers so we can see onscreen what happened
 def callback_status_handler(*kwargs):
 	print 'Status handler callback:', kwargs
 def callback_updateactivity_handler(*kwargs):
-	print 'Updatea-ctivity handler callback:', kwargs
+	print("Updatea-ctivity handler callback:"+str(kwargs))
 
 # Load monochrome image into numpy array using PIL
 def image2array(file):
@@ -48,7 +48,7 @@ def padImg(imAr,newL):
 	dx=(newL-imAr.shape[0])/2
 	dy=(newL-imAr.shape[0])/2
 	if (dx<=0)|(dy<=0):
-		print 'Image would be cropped!'
+		print('Image would be cropped!')
 		return imAr, newL
 	newIm=numpy.zeros((imAr.shape[0]+dx*2,imAr.shape[1]+dy*2))
 	newIm[dx:dx+imAr.shape[0],dy:dy+imAr.shape[1]]=imAr
@@ -87,7 +87,7 @@ def displayImg(imAr,manualContrast=(0,0),resize=1,title=''):
 		draw=ImageDraw.Draw(Im)
 		draw.text((5,5),title,fill=(255))
 
-        print 'displaying frame of size %i x %i' % (h,w)
+        print('displaying frame of size %i x %i' % (h,w))
         Im.show()
         return
 

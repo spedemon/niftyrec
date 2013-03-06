@@ -17,7 +17,7 @@ SIZE_INFO = 5
 ET_BACKGROUND_ACTIVITY = 0.0
 ET_BACKGROUND_ATTENUATION = 0.0
 ET_EPSILON = 0.000001
-NIFTYREC_WEBSITE = "http://niftyrec.sourceforge.net"
+NIFTYREC_WEBSITE = "http://niftyrec.scienceontheweb.net"
 
 
 L = None
@@ -27,8 +27,7 @@ for extension in ['so','dylib','dll']:
     except OSError as e:
         pass
 if not L:
-    raise(ImportError("Cannot find NiftyRec libraries ("+lib_name+")."))
-    print("Please make sure that: ")
+    print("\nPython NiftyRec is installed, however NiftyRec libraries cannot be found. Make sure that: ")
     print(" 1) NiftyRec is installed. If not, download from "+NIFTYREC_WEBSITE+" and install.")
     print(" 2) The path to the NiftyRec libraries is included in the system libraries path: ")
     print("    - LINUX: type the following at the terminal before you launch python: ")
@@ -47,8 +46,8 @@ if not L:
     print("               7) Click on the field next to 'Variable Value' and using the right arrow '--->' on the keyboard, reach to the end of the string. Then type ';C:\pathtoniftyreclibraries\ ' ")
     print("               8) (where '/pathtoniftyreclibraries/' is typically '\Program Files\NiftyRec\NiftyRec\lib\ '.) ")
     print("               9) Click 'OK' then 'OK' again. Then click 'OK' once again to close the 'system properties' window.  ")
-    print("               10) Relaunch Python ")
-
+    print("               10) Relaunch Python \n")
+    raise(ImportError("Cannot find NiftyRec libraries ("+lib_name+")."))
 
 
 def et_project(activity, cameras, psf=None, attenuation=None, gpu=1, background=0.0, background_attenuation=0.0):

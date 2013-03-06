@@ -20,16 +20,26 @@ import os, time, sys
 try:
 	import numpy
 except ImportError:
-	print '\nPlease install the NumPy module!'
+	print("\nPlease install the NumPy module!\n")
 	os._exit(1)	
 
 # NiftyRec Modules
+try:
+        import NiftyRec
+except ImportError:
+        print("\nPlease install Python NiftyRec! ")
+        print("    - LINUX and MAC OSx: ")
+        print("               1) from the command line cd to 'install_directory_of_NiftyRec-x.x.x/niftyrec/python/' ")
+        print("               2) sudo python setup.py build install ")
+        print("    - WINDOWS: ")
+        print("               1) Download the self installer and follow the instructions \n")
+	os._exit(1)	
 try:
 	from NiftyRec.NiftyRec import et_project as project
 	from NiftyRec.NiftyRec import et_list_gpus as list_gpus
 	from NiftyRec.NiftyRec import et_get_block_size as get_block_size
 except ImportError:
-	print '\nPlease install the Python NiftyRec module! It can be found in NiftyRec-x.x.x/Python/NiftyRec'
+        raise
 	os._exit(1)	
 
 # Local Modules
@@ -37,7 +47,7 @@ try:
 	from Reconstruction import Reconstructor
 	from simple_phantom_image_handling import *
 except ImportError:
-	print '\nCan\t find Reconstruction.py and/or simple_phantom_image_handling.py. Please ensure they are in your cwd.'
+	print("\nCan\t find Reconstruction.py and/or simple_phantom_image_handling.py. Please ensure they are in your cwd\n.")
 	os._exit(1)	
 
 ##########################################################################################################################################
@@ -55,13 +65,13 @@ psf_one=numpy.ones((1,1))			# Unity point spread function
 
 ### BEGIN MAIN ###########################################################################################################################
 
-print '\nSimple Phantom Example for NiftyRec\n'
+print("\nSimple Phantom Example for NiftyRec\n")
 
 # Start a timer
 start_time=time.time()
 
 # Load image
-print 'Loading phantom...'
+print("Loading phantom...")
 M=64 					# One image frame loaded (M = no. of slices)
 i,N=image2array(input_phantom)		# Load phantom image (size N*n, N>n)
 i=numpy.true_divide(i,numpy.max(i)) 	# Normalize image
@@ -75,7 +85,7 @@ if n_cameras>N:
 
 # Create Reconstructor
 volume_size = (N,M,N)
-print 'The test phantom volume is of size',volume_size
+print("The test phantom volume is of size"+str(volume_size))
 r=Reconstructor(volume_size)
 
 # Camera angles
@@ -92,23 +102,23 @@ if N>n_cameras:
 psf_mat=numpy.zeros((psf_one.shape[0],psf_one.shape[1],N))
 for k in range(N): psf_mat[:,:,k]=psf_one
 r.set_psf_matrix( psf_mat )
-print 'The point spread function is of size',psf_mat.shape
+print("The point spread function is of size"+str(psf_mat.shape))
 
 # Check if CUDA is to be used , and show some diagnostic info.
 r.set_use_gpu(use_the_GPU)
 if use_the_GPU:	CPUGPU='GPU'
 else:		CPUGPU='CPU'
-print 'Using GPU?',r.use_gpu
+print("Using GPU?"+str(r.use_gpu))
 if use_the_GPU: print 'GPU Info: ',list_gpus()
 
 # Use NiftyRec to make the phantom's sinogram that we will then use to try and reconstruct the phantom.
 # (if M>1, the M slices of the 3D volume are all identical) 
-print 'Making sinogram of phantom on the %s...' % CPUGPU
+print("Making sinogram of phantom on the %s..." % CPUGPU)
 input_phantom_array=numpy.zeros(volume_size)				      	  # Make an empty volume
 for slice_index in range(M):
     input_phantom_array[ 0:i.shape[0], slice_index, 0:i.shape[1] ]=i.astype(numpy.float32)  # Put image array into the volume's slices
 NRsino=project(input_phantom_array, r.cameras, r.psf, r.attenuation, use_the_GPU) # Run et_project
-print 'Size of NiftyRec\'s sinogram:',NRsino.shape
+print("Size of NiftyRec\'s sinogram:"+str(NRsino.shape))
 
 # If we had to add any 'dummy' views to pad the solution, zero out the sinogram for those views.
 # et_project will obviously calculate the true projection at theta=0, and we want to remove that superfluous information.
@@ -120,7 +130,7 @@ r.set_callback_status(callback_status_handler)
 r.set_callback_updateactivity(callback_updateactivity_handler)
 
 # Check if we're ready to go, else quit.
-print 'All paremeters set?',r.has_all_parameters(),'\n\n'
+print("All paremeters set? "+str(r.has_all_parameters())+"\n\n")
 if not r.has_all_parameters(): os._exit(1)
 
 # Begin reconstruction
@@ -143,8 +153,8 @@ slice_output=r.activity[:,display_slice,:]
 
 # Determine sum square error in the reconstruction of the phantom
 reconstruction_sum_sq_err = numpy.true_divide(numpy.sum((slice_input-slice_output)**2),numpy.sum(slice_input**2))
-print 'Fraction error of reconstruction: %f\n' % reconstruction_sum_sq_err
-print 'Time elapsed: %i seconds (on the %s)' % (numpy.ceil(elapsed_time),CPUGPU)
+print("Fraction error of reconstruction: %f\n" % reconstruction_sum_sq_err)
+print("Time elapsed: %i seconds (on the %s)" % (numpy.ceil(elapsed_time),CPUGPU))
 
 # Display sinogram, input & output images using PIL.
 sinogram_slice_imageArray=numpy.transpose(NRsino[:,display_slice,:].reshape(r.N_cameras,N))

@@ -7,9 +7,11 @@ from scipy.signal import convolve
 import gobject
 
 try:
-    from NiftyRec.NiftyRec import project, backproject
+	from NiftyRec.NiftyRec import et_project as project
+	from NiftyRec.NiftyRec import et_backproject as backproject
 except:
-    HAS_NIFTYREC = False
+    print 'Error importing NiftyRec !'
+    HAS_NIFTYREC = Falsec
     project = None
     backproject = None
 else:
@@ -20,14 +22,15 @@ BG_ATTENUATION = 0.0
 EPSILON = 0.001
 
 
-def osmapem_step(subset_order, activity_old, sinogram, cameras, attenuation, psf, beta_osl, gradient_prior, use_gpu, background_activity=BG_ACTIVITY, background_attenuation=BG_ATTENUATION, epsilon=EPSILON):
+def osmapem_step(subset_order, activity_old, sinogram, cameras, attenuation, psf, beta_osl, gradient_prior, use_gpu, background_activity=BG_ACTIVITY, background_attenuation=BG_ATTENUATION, epsilon=EPSILON, verbose=False):
 
     N1 = activity_old.shape[0]
+    N2 = activity_old.shape[1]
     N3 = activity_old.shape[2]
     N_cameras = cameras.shape[1]
     N_cameras_sub = int32(round(N_cameras/subset_order))
     cameras_indexes = int32(round(0.5 + (N_cameras-0.5) * rand(N_cameras_sub))-1)
-#    cameras_sub = cameras[:,cameras_indexes]
+    #cameras_sub = cameras[:,cameras_indexes]
 
     cameras_sub = zeros((3,N_cameras_sub))
     cameras_sub[:,:] = cameras[:,cameras_indexes]
@@ -35,30 +38,28 @@ def osmapem_step(subset_order, activity_old, sinogram, cameras, attenuation, psf
 #    cameras_sub=cameras 
 
     #compute sensitivity for the subset
-    normalization = backproject(ones((N1,N3,N_cameras_sub),dtype=single), cameras_sub, psf, attenuation, use_gpu, background_activity, background_attenuation)
+    normalization = backproject(ones((N1,N2,N_cameras_sub),dtype=single), cameras_sub, psf, attenuation, use_gpu, background_activity, background_attenuation)
     normalization = (normalization - beta_osl * gradient_prior)
     normalization = normalization*(normalization>0) + epsilon
 
     #project and backproject
     proj = project(activity_old, cameras_sub, psf, attenuation, use_gpu, background_activity, background_attenuation)
     proj = proj*(proj>0) + epsilon
-    print proj.shape
-    print sinogram.shape
-    print sinogram[cameras_indexes,:,:].shape
     
-    update = backproject(sinogram[cameras_indexes,:,:].reshape(N1,N3,N_cameras_sub) / proj, cameras_sub, psf, attenuation, use_gpu, background_activity, background_attenuation)
+    update = backproject(sinogram[cameras_indexes,:,:].reshape(N1,N2,N_cameras_sub) / proj, cameras_sub, psf, attenuation, use_gpu, background_activity, background_attenuation)
     update = update*(update>0)
 
-    print "proj max",proj.max()
-    print "proj min",proj.min()
-    print "update max",update.max()
-    print "update min",update.min()
-    print "normalization max",normalization.max()
-    print "normalization min",normalization.min()
-
+    if verbose:
+    	print "proj max",proj.max()
+    	print "proj min",proj.min()
+    	print "update max",update.max()
+    	print "update min",update.min()
+    	print "normalization max",normalization.max()
+    	print "normalization min",normalization.min()
+    	
     activity_new = activity_old * update;
     activity_new = activity_new / (normalization)
-
+    
     return activity_new
 
 class Reconstructor:
@@ -69,7 +70,7 @@ class Reconstructor:
         self.N_cameras   = 0
         self.cameras     = None
         self.psf         = None
-        self.attenuation = zeros(self.volume_size,dtype=single)
+        self.attenuation = None
         self.sinogram    = None
         self.use_gpu     = True
         self.background_activity = single(BG_ACTIVITY)
@@ -94,13 +95,14 @@ class Reconstructor:
         self.attenuation = single(attenuation)
 
     def set_sinogram(self,sinogram):
-        if (sinogram.shape[1] != self.volume_size[0]) or (sinogram.shape[2] != self.volume_size[1]):
+#        if (sinogram.shape[1] != self.volume_size[0]) or (sinogram.shape[2] != self.volume_size[1]):
 #        if (sinogram.shape[0] != self.volume_size[0]) or (sinogram.shape[1] != self.volume_size[1]):
-            print "Sinogram size not consistent with activity eatimate, need reinterpolation"
-            print "Sinogram size: ",sinogram.shape
-            print "Activity size: ",self.volume_size
-            return
+#            print "Sinogram size not consistent with activity estimate, need reinterpolation"
+#            print "Sinogram size: ",sinogram.shape
+#            print "Activity size: ",self.volume_size
+#            return
         self.sinogram = single(sinogram)
+	return
 
     def set_psf_matrix(self,psf):
         self.psf = single(psf)
@@ -149,7 +151,7 @@ class Reconstructor:
         return self._reconstructing
 
 
-    def reconstruct(self, method, parameters):
+    def reconstruct(self, method, parameters,verbose=False):
         if self.is_reconstructing():
             print "Reconstruction running"
             return
@@ -158,10 +160,10 @@ class Reconstructor:
             print "Reconstructor does not have all necessary parameters"
             return 
         self._stop=False
-        start_new_thread(self._reconstruct,(method,parameters))
+        start_new_thread(self._reconstruct,(method,parameters,verbose))
 #        self._reconstruct(method,parameters)
 
-    def _reconstruct(self, method, parameters):
+    def _reconstruct(self, method, parameters,verbose=False):
         if method=="osem":
             steps = parameters['steps']
             subset_order = parameters['subset_order']
@@ -169,16 +171,24 @@ class Reconstructor:
             for step in range(steps):
                 gobject.idle_add(self.callback_status,"%d"%((100.0*step)/steps)+"% OSEM reconstruction",(1.0*step)/steps)
                 gobject.idle_add(self.callback_updateactivity, self.activity )
-                print 'activity:', self.activity.shape, self.activity.dtype
-                print 'sinogram:', self.sinogram.shape, self.sinogram.dtype
-                print 'cameras: ', self.cameras.shape, self.cameras.dtype
-                print 'psf:     ', self.psf.shape, self.psf.dtype
-                print 'attenuation:',self.attenuation.shape, self.attenuation.dtype
-                print 'use gpu: ',self.use_gpu
+		if verbose:	
+		    print '\n----------------------------------\nStep %i of %i' % (step+1,steps)
+                    print 'activity:', self.activity.shape, self.activity.dtype
+                    print 'sinogram:', self.sinogram.shape, self.sinogram.dtype
+                    print 'cameras: ', self.cameras.shape, self.cameras.dtype
+                    if self.psf!=None: 
+                        print 'psf:     ', self.psf.shape, self.psf.dtype
+                    else:
+                        print 'psf: None'
+                    if self.attenuation!=None: 
+                        print 'attenuation:',self.attenuation.shape, self.attenuation.dtype
+                    else:
+                        print 'attenuation: None'
+                    print 'use gpu: ',self.use_gpu
                 beta_osl=0
                 gradient_prior=0
-                self.activity = osmapem_step(subset_order, self.activity, self.sinogram, self.cameras, self.attenuation, 
-                self.psf, beta_osl, gradient_prior, self.use_gpu, self.background_activity, self.background_attenuation, self.epsilon)
+                self.activity = osmapem_step(subset_order, self.activity, self.sinogram, self.cameras, self.attenuation,\
+                			     self.psf, beta_osl, gradient_prior, self.use_gpu, self.background_activity, self.background_attenuation, self.epsilon, verbose)
                 gobject.idle_add(self.callback_updateactivity, self.activity)
                 if self._stop:
                     break
@@ -189,18 +199,26 @@ class Reconstructor:
             for step in range(steps):
                 gobject.idle_add(self.callback_status,"%d"%((100.0*step)/steps)+"% TV OSEM reconstruction",(1.0*step)/steps)
                 gobject.idle_add(self.callback_updateactivity, self.activity )
-                print 'activity:', self.activity.shape, self.activity.dtype
-                print 'sinogram:', self.sinogram.shape, self.sinogram.dtype
-                print 'cameras: ', self.cameras.shape, self.cameras.dtype
-                print 'psf:     ', self.psf.shape, self.psf.dtype
-                print 'attenuation:',self.attenuation.shape, self.attenuation.dtype
-                print 'use gpu: ',self.use_gpu
+		if verbose:
+		    print '\n----------------------------------\nStep %i of %i' % (step+1,steps)
+                    print 'activity:', self.activity.shape, self.activity.dtype
+                    print 'sinogram:', self.sinogram.shape, self.sinogram.dtype
+                    print 'cameras: ', self.cameras.shape, self.cameras.dtype
+                    if self.psf!=None: 
+                        print 'psf:     ', self.psf.shape, self.psf.dtype
+                    else:
+                        print 'psf: None'
+                    if self.attenuation!=None: 
+                        print 'attenuation:',self.attenuation.shape, self.attenuation.dtype
+                    else:
+                        print 'attenuation: None'
+                    print 'use gpu: ',self.use_gpu
                 beta_osl=parameters['beta']/1000.0
                 kernel = -1*ones((3,3,3))
                 kernel[1,1,1] = 26
                 gradient_prior=convolve(self.activity,kernel,'same')
-                self.activity = osmapem_step(subset_order, self.activity, self.sinogram, self.cameras, self.attenuation, 
-                self.psf, beta_osl, gradient_prior, self.use_gpu, self.background_activity, self.background_attenuation, self.epsilon)
+                self.activity = osmapem_step(subset_order, self.activity, self.sinogram, self.cameras, self.attenuation,\
+					     self.psf, beta_osl, gradient_prior, self.use_gpu, self.background_activity, self.background_attenuation, self.epsilon, verbose)
                 gobject.idle_add(self.callback_updateactivity, self.activity)
                 if self._stop:
                     break
@@ -209,6 +227,7 @@ class Reconstructor:
             subset_order = parameters['subset_order']
             self._reconstructing = True
             for step in range(steps):
+		if verbose: print '\n----------------------------------\nStep %i of %i' % (step+1,steps)
                 gobject.idle_add(self.callback_status,"OSEM reconstruction",(1.0*step)/steps)
                 gobject.idle_add(self.callback_updateactivity, self.activity )
                 sleep(0.1)
@@ -219,6 +238,7 @@ class Reconstructor:
             subset_order = parameters['subset_order']
             self._reconstructing = True
             for step in range(steps):
+		if verbose: print '\n----------------------------------\nStep %i of %i' % (step+1,steps)
                 gobject.idle_add(self.callback_status,"OSEM reconstruction",(1.0*step)/steps)
                 gobject.idle_add(self.callback_updateactivity, self.activity )
                 sleep(0.1)
