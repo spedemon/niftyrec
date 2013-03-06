@@ -189,9 +189,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   
    /* Check if activity is multiple of ET_BLOCK_SIZE */
    if (enable_gpu) {
-       if (!et_is_block_multiple(activity_size[0]) || !et_is_block_multiple(activity_size[1])) {
+       if (!et_array_is_block_multiple(activity_size[0]) || !et_array_is_block_multiple(activity_size[1])) {
            char msg[100];
-           sprintf(msg,"With GPU enabled, size of activity must be a multiple of %d",et_get_block_size());
+           sprintf(msg,"With GPU enabled, size of activity must be a multiple of %d",et_array_get_block_size());
            mexErrMsgTxt(msg);
            }
        }

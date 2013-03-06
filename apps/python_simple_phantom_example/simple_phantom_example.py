@@ -27,6 +27,7 @@ except ImportError:
 try:
 	from NiftyRec.NiftyRec import et_project as project
 	from NiftyRec.NiftyRec import et_list_gpus as list_gpus
+	from NiftyRec.NiftyRec import et_get_block_size as get_block_size
 except ImportError:
 	print '\nPlease install the Python NiftyRec module! It can be found in NiftyRec-x.x.x/Python/NiftyRec'
 	os._exit(1)	
@@ -43,7 +44,7 @@ except ImportError:
 # Configure the settings below appropriately for your system.
 
 verbose=True					# Show additional output while processing.
-use_the_GPU=False				# Set to TRUE if you have a CUDA-enabled card and have build NiftyRec to use it.
+use_the_GPU=True				# Set to TRUE if you have a CUDA-enabled card and have build NiftyRec to use it.
 input_phantom="phantom.tif"			# Source phantom image.
 theta0=0. ; theta1=360.; n_cameras=100		# Number of equispaced virtual projections of the phantom
 method='osem'  					# Methods available in Python are osem, tv, je, ccje.
@@ -61,11 +62,11 @@ start_time=time.time()
 
 # Load image
 print 'Loading phantom...'
+M=64 					# One image frame loaded (M = no. of slices)
 i,N=image2array(input_phantom)		# Load phantom image (size N*n, N>n)
-M=1 					# One image frame loaded (M = no. of slices)
 i=numpy.true_divide(i,numpy.max(i)) 	# Normalize image
 i=makeSquareImg(i)			# Square off the image to N*N
-i,N=padImg(i,int(N*padFactor)) 		# Additionally pad image by some ratio of N.
+i,N=padImg(i,int(numpy.ceil(N/float(get_block_size())))*get_block_size())    # Additionally pad image to a multiple of the GPU block size
 
 # Scale-up image if number of camera angles is larger
 if n_cameras>N:
@@ -101,9 +102,11 @@ print 'Using GPU?',r.use_gpu
 if use_the_GPU: print 'GPU Info: ',list_gpus()
 
 # Use NiftyRec to make the phantom's sinogram that we will then use to try and reconstruct the phantom.
+# (if M>1, the M slices of the 3D volume are all identical) 
 print 'Making sinogram of phantom on the %s...' % CPUGPU
 input_phantom_array=numpy.zeros(volume_size)				      	  # Make an empty volume
-input_phantom_array[ 0:i.shape[0], 0, 0:i.shape[1] ]=i.astype(numpy.float32)  	  # Put image array into volume's first slice
+for slice_index in range(M):
+    input_phantom_array[ 0:i.shape[0], slice_index, 0:i.shape[1] ]=i.astype(numpy.float32)  # Put image array into the volume's slices
 NRsino=project(input_phantom_array, r.cameras, r.psf, r.attenuation, use_the_GPU) # Run et_project
 print 'Size of NiftyRec\'s sinogram:',NRsino.shape
 
@@ -134,8 +137,9 @@ while r._reconstructing:
 elapsed_time = time.time() - start_time
 
 # Make NumPy arrays of the first slice of the volume for the input phantom & reconstruction.
-slice_input=input_phantom_array[:,0,:]
-slice_output=r.activity[:,0,:]
+display_slice = numpy.floor(M/2)
+slice_input=input_phantom_array[:,display_slice,:]
+slice_output=r.activity[:,display_slice,:]
 
 # Determine sum square error in the reconstruction of the phantom
 reconstruction_sum_sq_err = numpy.true_divide(numpy.sum((slice_input-slice_output)**2),numpy.sum(slice_input**2))
@@ -143,7 +147,9 @@ print 'Fraction error of reconstruction: %f\n' % reconstruction_sum_sq_err
 print 'Time elapsed: %i seconds (on the %s)' % (numpy.ceil(elapsed_time),CPUGPU)
 
 # Display sinogram, input & output images using PIL.
-sinogram_slice_imageArray=numpy.transpose(NRsino.reshape(r.N_cameras,N))
+sinogram_slice_imageArray=numpy.transpose(NRsino[:,display_slice,:].reshape(r.N_cameras,N))
 displayImg(sinogram_slice_imageArray,resize=resize_display,title='NiftyRec sinogram')
 displayImg(slice_output,resize=resize_display,title='NiftyRec reconstruction')
 displayImg(slice_input,resize=resize_display,title='Original data')
+
+
