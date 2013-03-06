@@ -2,7 +2,7 @@
 #  CMakeLists.txt
 #  
 #  NiftyRec
-#  Stefano Pedemonte, May 2012.
+#  Stefano Pedemonte, May 2013.
 #  CMIC - Centre for Medical Image Computing 
 #  UCL - University College London. 
 #  Released under BSD licence, see LICENSE.txt 
@@ -27,6 +27,6 @@ ELSE(NiftyRec_USE_CUDA)
     ADD_EXECUTABLE(rec_spect rec_spect.cpp rec_spect.h niftyrec_version.h )
     TARGET_LINK_LIBRARIES(rec_spect _reg_resampling _reg_affineTransformation _reg_tools reg_nifti _et _et_array_interface ${LIB_TEEM} ${ZLIB})
 ENDIF(NiftyRec_USE_CUDA)
-INSTALL(TARGETS rec_spect DESTINATION ${BIN_INSTALL_DIR})
+INSTALL(TARGETS rec_spect DESTINATION ${BIN_INSTALL_DIR}/command_line_tools)
 #INSTALL(FILES rec_spect.xml DESTINATION ${BIN_INSTALL_DIR})
 
