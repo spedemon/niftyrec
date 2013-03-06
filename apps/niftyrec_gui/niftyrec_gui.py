@@ -176,6 +176,7 @@ class MainWindow:
         self.box_script = self.wTree.get_widget("box_script_")
         self.box_script.pack_start(self.script_window)
         self.box_script.show()
+        self.python_view.write("'This is the embedded Python console. Type dir() to see a list of the NI_ objects that allow you to interact with NiftyRec GUI'. ")
 
     def initializeDrawingAreas(self):
         self.box_drawing_area_1 = self.wTree.get_widget("box_drawing_area_1")
