@@ -16,12 +16,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <cutil_inline.h>
+//#include <cutil_inline.h>
+//#include <cutil_math.h>
+#include "_reg_blocksize_gpu.h"
 #include <vector_types.h>
 #include <vector_functions.h>
 #include <driver_functions.h>
 //#include <sys/time.h>
-#include <cutil_math.h>
+
 
 extern "C" int set_inViewMatrix(float *invViewMatrix, float_2 detector_scale, float_3 detector_transl, float_3 detector_rotat);
 extern "C" void tt_line_backproject_ray_gpu(dim3 gridSize, dim3 blockSize, float *d_projection, float *d_output, uint2 detectorPixels, float3 sourcePosition, uint3 volumeVoxels, float3 volumeSize, float t_step, int interpolation);

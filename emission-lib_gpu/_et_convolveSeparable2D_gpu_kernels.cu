@@ -13,7 +13,7 @@
  
 
 #include <assert.h>
-#include <cutil_inline.h>
+//#include <cutil_inline.h>
 #include "_et_convolveSeparable2D_gpu.h"
 
 

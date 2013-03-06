@@ -11,7 +11,8 @@
 #ifndef _TT_PROJECT_RAY_GPU_H
 #define _TT_PROJECT_RAY_GPU_H
 
-#include <cutil_inline.h>
+//#include <cutil_inline.h>
+#include "_reg_blocksize_gpu.h"
 #include <vector_types.h>
 #include <vector_functions.h>
 #include <driver_functions.h>

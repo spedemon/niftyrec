@@ -42,20 +42,14 @@ ENDIF (GLEW_INCLUDE_PATH)
 MESSAGE("Glew library: ${GLEW_LIBRARY}")
 MARK_AS_ADVANCED( GLEW_FOUND )
 
-FIND_PATH( SHRUTIL_INCLUDE_PATH shrUtils.h
-        ${CUDA_SDK_ROOT_DIR}/../shared/inc
-        DOC "The directory where shrutil.h resides")
-FIND_LIBRARY( SHRUTIL_LIBRARY
-        NAMES SHRUTIL shrutil_i386_64
-        PATHS
-        ${CUDA_SDK_ROOT_DIR}/../shared/lib
-        DOC "The SHRUTIL library")
-
-FIND_LIBRARY( CUTIL_LIBRARY
-        NAMES CUTIL cutil_i386_64
-        PATHS
-        ${CUDA_SDK_ROOT_DIR}/lib
-        DOC "The CUTIL library")
+#FIND_PATH( SHRUTIL_INCLUDE_PATH shrUtils.h
+#        ${CUDA_SDK_ROOT_DIR}/../shared/inc
+#        DOC "The directory where shrutil.h resides")
+#FIND_LIBRARY( SHRUTIL_LIBRARY
+#        NAMES SHRUTIL shrutil_i386_64
+#        PATHS
+#        ${CUDA_SDK_ROOT_DIR}/../shared/lib
+#        DOC "The SHRUTIL library")
 
 #SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
 #SET(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_PREFIX})SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
@@ -67,7 +61,6 @@ set(CORELIBS
     ${OPENGL_LIBRARY}
     ${GLEW_LIBRARY} 
     ${CUDA_SDK_LIBRARIES} 
-    ${CUTIL_LIBRARY} 
     m)
 
 IF(FORCE_32_BIT)

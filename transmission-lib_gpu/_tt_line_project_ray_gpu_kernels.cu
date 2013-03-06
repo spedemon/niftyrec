@@ -11,7 +11,8 @@
 #ifndef _TTPROJECTRAY_KERNEL_CU_
 #define _TTPROJECTRAY_KERNEL_CU_
 
-#include <cutil_inline.h>
+//#include <cutil_inline.h>
+#include "_reg_blocksize_gpu.h"
 #include <vector_types.h>
 #include <vector_functions.h>
 #include <driver_functions.h>
@@ -154,7 +155,7 @@ extern "C" void initCuda(void *h_volume, cudaExtent volumeSize)
 {
     // create 3D array
     cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<VolumeType>();
-    cutilSafeCall( cudaMalloc3DArray(&d_volumeArray, &channelDesc, volumeSize) );
+    CUDA_SAFE_CALL( cudaMalloc3DArray(&d_volumeArray, &channelDesc, volumeSize) );
 
     // copy data to 3D array
     cudaMemcpy3DParms copyParams = {0};
@@ -162,7 +163,7 @@ extern "C" void initCuda(void *h_volume, cudaExtent volumeSize)
     copyParams.dstArray = d_volumeArray;
     copyParams.extent   = volumeSize;
     copyParams.kind     = cudaMemcpyHostToDevice;
-    cutilSafeCall( cudaMemcpy3D(&copyParams) );  
+    CUDA_SAFE_CALL( cudaMemcpy3D(&copyParams) );  
 
     // set texture parameters
     tex.normalized = true;                      // access with normalized texture coordinates
@@ -171,14 +172,14 @@ extern "C" void initCuda(void *h_volume, cudaExtent volumeSize)
     tex.addressMode[1] = cudaAddressModeClamp;
 
     // bind array to 3D texture
-    cutilSafeCall(cudaBindTextureToArray(tex, d_volumeArray, channelDesc));
+    CUDA_SAFE_CALL(cudaBindTextureToArray(tex, d_volumeArray, channelDesc));
 }
 
 
 
 extern "C" void freeCudaBuffers()
 {
-    cutilSafeCall(cudaFreeArray(d_volumeArray));
+    CUDA_SAFE_CALL(cudaFreeArray(d_volumeArray));
 }
 
 
@@ -197,7 +198,7 @@ extern "C" void copyInvViewMatrix(float *invViewMatrix, size_t sizeofMatrix)
     fprintf(stderr,"\n %4.2f %4.2f %4.2f %4.2f ",invViewMatrix[4],invViewMatrix[5],invViewMatrix[6],invViewMatrix[7]);
     fprintf(stderr,"\n %4.2f %4.2f %4.2f %4.2f ",invViewMatrix[8],invViewMatrix[9],invViewMatrix[10],invViewMatrix[11]);
     fprintf(stderr,"\n %4.2f %4.2f %4.2f %4.2f ",invViewMatrix[12],invViewMatrix[13],invViewMatrix[14],invViewMatrix[15]);*/
-    cutilSafeCall( cudaMemcpyToSymbol(c_invViewMatrix, invViewMatrix, sizeofMatrix) );
+    CUDA_SAFE_CALL( cudaMemcpyToSymbol(c_invViewMatrix, invViewMatrix, sizeofMatrix) );
 }
 
 

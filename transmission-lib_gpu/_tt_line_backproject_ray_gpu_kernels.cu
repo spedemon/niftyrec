@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <cutil_inline.h>
+//#include <cutil_inline.h>
 #include <cutil_math.h>
 #include "device_functions.h"
 #include <_tt_line_backproject_ray_gpu.h>
@@ -210,7 +210,7 @@ extern "C" void copyInvViewMatrix_bk(float *invViewMatrix, size_t sizeofMatrix)
     fprintf(stderr,"\n %4.2f %4.2f %4.2f %4.2f ",invViewMatrix[4],invViewMatrix[5],invViewMatrix[6],invViewMatrix[7]);
     fprintf(stderr,"\n %4.2f %4.2f %4.2f %4.2f ",invViewMatrix[8],invViewMatrix[9],invViewMatrix[10],invViewMatrix[11]);
     fprintf(stderr,"\n %4.2f %4.2f %4.2f %4.2f ",invViewMatrix[12],invViewMatrix[13],invViewMatrix[14],invViewMatrix[15]); */
-    cutilSafeCall( cudaMemcpyToSymbol("c_invViewMatrix_bk", invViewMatrix, sizeofMatrix, 0, cudaMemcpyHostToDevice) );
+    CUDA_SAFE_CALL( cudaMemcpyToSymbol("c_invViewMatrix_bk", invViewMatrix, sizeofMatrix, 0, cudaMemcpyHostToDevice) );
 //    CUDA_SAFE_CALL(cudaMemcpy(c_invViewMatrix_bk, invViewMatrix, sizeofMatrix, cudaMemcpyHostToDevice));
 }
 

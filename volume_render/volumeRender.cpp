@@ -9,8 +9,9 @@
  *
  */
  
-#include<volumeRender.h>
+#include <volumeRender.h>
 #include <unistd.h>
+#include "_reg_blocksize_gpu.h"
 
 //char *volumeFilename = "test.raw";
 uint Vol_width;
@@ -152,7 +153,7 @@ void computeFPS()
 
         glutSetWindowTitle(fps);
         fpsCount = 0; 
-        cutilCheckError(cutResetTimer(timer));  
+        CUDA_CHECK_ERROR(cutResetTimer(timer));  
     }
 }
 
@@ -164,21 +165,21 @@ void render()
     // map PBO to get CUDA device pointer
     uint *d_output;
     // map PBO to get CUDA device pointer
-    cutilSafeCall(cudaGraphicsMapResources(1, &cuda_pbo_resource, 0));
+    CUDA_SAFE_CALL(cudaGraphicsMapResources(1, &cuda_pbo_resource, 0));
     size_t num_bytes; 
-    cutilSafeCall(cudaGraphicsResourceGetMappedPointer((void **)&d_output, &num_bytes, cuda_pbo_resource));
+    CUDA_SAFE_CALL(cudaGraphicsResourceGetMappedPointer((void **)&d_output, &num_bytes, cuda_pbo_resource));
     //printf("CUDA mapped PBO: May access %ld bytes\n", num_bytes);
 
     // clear image
-    cutilSafeCall(cudaMemset(d_output, 0, width*height*4));
+    CUDA_SAFE_CALL(cudaMemset(d_output, 0, width*height*4));
 
     // call CUDA kernel, writing results to PBO
     render_kernel(gridSize, blockSize, d_output, width, height, density1, brightness1, transferOffset1, transferScale1, 
 density2, brightness2, transferOffset2, transferScale2);
 
-    cutilCheckMsg("kernel failed");
+    CUDA_CHECK_MSG("kernel failed");
 
-    cutilSafeCall(cudaGraphicsUnmapResources(1, &cuda_pbo_resource, 0));
+    CUDA_SAFE_CALL(cudaGraphicsUnmapResources(1, &cuda_pbo_resource, 0));
 }
 
 // display results using OpenGL (called by GLUT)
@@ -194,7 +195,7 @@ void display()
     cutResetTimer(timer_display);
     cutStartTimer(timer_display);
 
-    cutilCheckError(cutStartTimer(timer));  
+    CUDA_CHECK_ERROR(cutStartTimer(timer));  
 
     // use OpenGL to build view matrix
     GLfloat modelView[16];
@@ -252,7 +253,7 @@ void display()
     glutSwapBuffers();
     glutReportErrors();
 
-    cutilCheckError(cutStopTimer(timer));  
+    CUDA_CHECK_ERROR(cutStopTimer(timer));  
 
     computeFPS();
     ScreenShot();
@@ -448,10 +449,10 @@ void reshape(int w, int h)
 
 void cleanup()
 {
-    cutilCheckError( cutDeleteTimer( timer));
+    CUDA_CHECK_ERROR( cutDeleteTimer( timer));
     freeCudaBuffers();
     if (pbo) {
-	//cutilSafeCall(cudaGraphicsUnregisterResource(cuda_pbo_resource));
+	//CUDA_SAFE_CALL(cudaGraphicsUnregisterResource(cuda_pbo_resource));
         glDeleteBuffers(1, &pbo);
         glDeleteTextures(1, &tex);
     }
@@ -483,7 +484,7 @@ void initPixelBuffer()
 {
 /*    if (pbo) {
         // unregister this buffer object from CUDA C
-        cutilSafeCall(cudaGraphicsUnregisterResource(cuda_pbo_resource));
+        CUDA_SAFE_CALL(cudaGraphicsUnregisterResource(cuda_pbo_resource));
 
         // delete old buffer
         glDeleteBuffers(1, &pbo);
@@ -497,7 +498,7 @@ void initPixelBuffer()
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
     // register this buffer object with CUDA
-    cutilSafeCall(cudaGraphicsGLRegisterBuffer(&cuda_pbo_resource, pbo, cudaGraphicsMapFlagsWriteDiscard));	
+    CUDA_SAFE_CALL(cudaGraphicsGLRegisterBuffer(&cuda_pbo_resource, pbo, cudaGraphicsMapFlagsWriteDiscard));	
 
     // create texture for display
     glGenTextures(1, &tex);
@@ -561,8 +562,8 @@ extern "C" void run_gui(int volume_x, int volume_y, int volume_z, int camera_x, 
     setCameraPosition(_x_camera, _y_camera, _z_camera);
     setRayStep(_step);
 
-    cutilCheckError( cutCreateTimer( &timer));
-    cutilCheckError( cutCreateTimer( &timer_display));
+    CUDA_CHECK_ERROR( cutCreateTimer( &timer));
+    CUDA_CHECK_ERROR( cutCreateTimer( &timer_display));
     cutStartTimer(timer_display);
  
     // calculate new grid size
