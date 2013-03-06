@@ -16,9 +16,9 @@ MAX_DEVICES = 16
 SIZE_INFO = 5
 ET_BACKGROUND_ACTIVITY = 0.0
 ET_BACKGROUND_ATTENUATION = 0.0
-ET_EPSILON = 0.001
-
+ET_EPSILON = 0.000001
 NIFTYREC_WEBSITE = "http://niftyrec.sourceforge.net"
+
 
 L = None
 for extension in ['so','dylib','dll']:
@@ -53,6 +53,10 @@ if not L:
 
 def et_project(activity, cameras, psf=None, attenuation=None, gpu=1, background=0.0, background_attenuation=0.0):
   """Project activity to multiple cameras"""
+  if gpu and not (et_is_block_multiple(activity.shape[0]) and et_is_block_multiple(activity.shape[1]) and et_is_block_multiple(activity.shape[2])):
+      print "Error et_project() - With GPU acceleration enabled, the volume size has to be multiple of ",et_get_block_size()
+      return None
+
   gpu        = int32(gpu)
   background = float32(background)
   background_attenuation = float32(background_attenuation)
@@ -111,6 +115,10 @@ def et_project(activity, cameras, psf=None, attenuation=None, gpu=1, background=
 
 def et_backproject(projections, cameras, psf=None, attenuation=None, gpu=1, background=0, background_attenuation=0.0):
   """Backproject from multiple cameras to body space"""
+  if gpu and not (et_is_block_multiple(projections.shape[0]) and et_is_block_multiple(projections.shape[1])):
+      print "Error et_backproject() - With GPU acceleration enabled, the volume size has to be multiple of ",et_get_block_size()
+      return None
+
   gpu        = int32(gpu)
   background = float32(background)
   background_attenuation = float32(background_attenuation)
@@ -194,7 +202,22 @@ def et_list_gpus():
 
 
 
+def et_is_block_multiple(integer_value): 
+    L.et_array_is_block_multiple.restype  = c_int
+    L.et_array_is_block_multiple.argtypes = [c_int]
+    integer_value = int32(integer_value)
+    status = L.et_array_is_block_multiple(integer_value)
+    return status 
+
+
+def et_get_block_size():
+    L.et_array_get_block_size.restype = c_int
+    L.et_array_get_block_size.argtypes = []
+    return L.et_array_get_block_size()
+
+
 def et_osmapem_step(subset_order, activity_old, sinogram, cameras, attenuation, psf, beta_osl, gradient_prior, use_gpu, background_activity=ET_BACKGROUND_ACTIVITY, background_attenuation=ET_BACKGROUND_ATTENUATION, epsilon=ET_EPSILON):
+    """Maximum A Posteriori Expectation Maximisation - One Step Late"""
     N1 = activity_old.shape[0]
     N2 = activity_old.shape[1]
     N3 = activity_old.shape[2]
@@ -216,6 +239,8 @@ def et_osmapem_step(subset_order, activity_old, sinogram, cameras, attenuation, 
     activity_new = activity_old * update;
     activity_new = activity_new / (normalization)
     return activity_new
+
+
 
 
 
@@ -325,8 +350,8 @@ class Reconstructor:
             subset_order = parameters['subset_order']
             self._reconstructing = True
             for step in range(steps):
-                gobject.idle_add(self.callback_status,"%d"%((100.0*step)/steps)+"% OSEM reconstruction",(1.0*step)/steps)
-                gobject.idle_add(self.callback_updateactivity, self.activity )
+                #gobject.idle_add(self.callback_status,"%d"%((100.0*step)/steps)+"% OSEM reconstruction",(1.0*step)/steps)
+                #gobject.idle_add(self.callback_updateactivity, self.activity )
                 print('activity:'+str(self.activity.shape)+str(self.activity.dtype))
                 print('sinogram:'+str(self.sinogram.shape)+str(self.sinogram.dtype))
                 print('cameras: '+str(self.cameras.shape)+str(self.cameras.dtype))
@@ -343,7 +368,7 @@ class Reconstructor:
                 gradient_prior=0
                 self.activity = osmapem_step(subset_order, self.activity, self.sinogram, self.cameras, self.attenuation, 
                 self.psf, beta_osl, gradient_prior, self.use_gpu, self.background_activity, self.background_attenuation, self.epsilon)
-                gobject.idle_add(self.callback_updateactivity, self.activity)
+                #gobject.idle_add(self.callback_updateactivity, self.activity)
                 if self._stop:
                     break
         if method=="quadratic_MRF":
@@ -351,8 +376,8 @@ class Reconstructor:
             subset_order = parameters['subset_order']
             self._reconstructing = True
             for step in range(steps):
-                gobject.idle_add(self.callback_status,"%d"%((100.0*step)/steps)+"% TV OSEM reconstruction",(1.0*step)/steps)
-                gobject.idle_add(self.callback_updateactivity, self.activity )
+                #gobject.idle_add(self.callback_status,"%d"%((100.0*step)/steps)+"% TV OSEM reconstruction",(1.0*step)/steps)
+                #gobject.idle_add(self.callback_updateactivity, self.activity )
                 print('activity:'+str(self.activity.shape)+str(self.activity.dtype))
                 print('sinogram:'+str(self.sinogram.shape)+str(self.sinogram.dtype))
                 print('cameras: '+str(self.cameras.shape)+str(self.cameras.dtype))
@@ -371,7 +396,7 @@ class Reconstructor:
                 gradient_prior=convolve(self.activity,kernel,'same')
                 self.activity = osmapem_step(subset_order, self.activity, self.sinogram, self.cameras, self.attenuation, 
                 self.psf, beta_osl, gradient_prior, self.use_gpu, self.background_activity, self.background_attenuation, self.epsilon)
-                gobject.idle_add(self.callback_updateactivity, self.activity)
+                #gobject.idle_add(self.callback_updateactivity, self.activity)
                 if self._stop:
                     break
         elif method=="je":
@@ -379,8 +404,8 @@ class Reconstructor:
             subset_order = parameters['subset_order']
             self._reconstructing = True
             for step in range(steps):
-                gobject.idle_add(self.callback_status,"OSEM reconstruction",(1.0*step)/steps)
-                gobject.idle_add(self.callback_updateactivity, self.activity )
+                #gobject.idle_add(self.callback_status,"OSEM reconstruction",(1.0*step)/steps)
+                #gobject.idle_add(self.callback_updateactivity, self.activity )
                 sleep(0.1)
                 if self._stop:
                     break
@@ -389,8 +414,8 @@ class Reconstructor:
             subset_order = parameters['subset_order']
             self._reconstructing = True
             for step in range(steps):
-                gobject.idle_add(self.callback_status,"OSEM reconstruction",(1.0*step)/steps)
-                gobject.idle_add(self.callback_updateactivity, self.activity )
+                #gobject.idle_add(self.callback_status,"OSEM reconstruction",(1.0*step)/steps)
+                #gobject.idle_add(self.callback_updateactivity, self.activity )
                 sleep(0.1)
                 if self._stop:
                     break

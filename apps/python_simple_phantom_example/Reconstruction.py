@@ -71,7 +71,7 @@ class Reconstructor:
         self.N_cameras   = 0
         self.cameras     = None
         self.psf         = None
-        self.attenuation = zeros(self.volume_size,dtype=single)
+        self.attenuation = None
         self.sinogram    = None
         self.use_gpu     = True
         self.background_activity = single(BG_ACTIVITY)
