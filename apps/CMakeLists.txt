@@ -9,6 +9,7 @@
 
 #-----------------------------------------------------------------------------
 SUBDIRS(niftyrec_gui)
+SUBDIRS(python_simple_phantom_example)
 
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/lib)
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/teem/include/)

@@ -13,7 +13,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <cufft.h>
-#include <cutil_inline.h>
+//#include <cutil_inline.h>
+#include "_reg_blocksize_gpu.h"
 #include "nifti1_io.h"
 
 

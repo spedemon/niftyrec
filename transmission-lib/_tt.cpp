@@ -28,7 +28,7 @@ int tt_project_ray(VolumeType h_volume[], u_int_3 volume_voxels, float out_proje
     float *d_output;
     float *d_output_proj;
 
-    cuInit(0);
+    //cuInit(0);
 
     cudaExtent vsize = make_cudaExtent(volume_voxels.x,volume_voxels.y,volume_voxels.z);
 //fprintf(stderr, "\n %d, %d, %d",volume_voxels.x,volume_voxels.y,volume_voxels.z);
@@ -104,7 +104,7 @@ int tt_backproject_ray(float h_projections[], u_int_2 detector_pixels, u_int n_p
     dim3 gridSize;
     if (use_gpu)
     {
-      cuInit(0);
+      //cuInit(0);
       CUDA_SAFE_CALL(cudaMalloc((void **)&d_projections, detector_pixels.w*detector_pixels.h*n_projections*sizeof(float) ));
       CUDA_SAFE_CALL(cudaMemcpy(d_projections, h_projections, n_projections*detector_pixels.w*detector_pixels.h*sizeof(float), cudaMemcpyHostToDevice));
       gridSize = dim3(iDivUp(detector_pixels.w, blockSize.x), iDivUp(detector_pixels.h, blockSize.y));

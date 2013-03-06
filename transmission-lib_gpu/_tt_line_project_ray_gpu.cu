@@ -21,7 +21,8 @@
 #define MAX(a,b) ((a > b) ? a : b)
 
 
-#include <cutil_inline.h>
+//#include <cutil_inline.h>
+#include "_reg_blocksize_gpu.h"
 #include <vector_types.h>
 #include <vector_functions.h>
 #include <driver_functions.h>

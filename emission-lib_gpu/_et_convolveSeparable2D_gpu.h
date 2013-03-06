@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <cutil_inline.h>
+//#include <cutil_inline.h>
 #include "nifti1_io.h"
 
 #define MAX_SEPARABLE_KERNEL_RADIUS 16

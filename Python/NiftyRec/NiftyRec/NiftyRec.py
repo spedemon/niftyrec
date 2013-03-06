@@ -20,13 +20,13 @@ ET_EPSILON = 0.001
 
 NIFTYREC_WEBSITE = "http://niftyrec.sourceforge.net"
 
-lib = None
+L = None
 for extension in ['so','dylib','dll']:
     try:
-        lib = CDLL(lib_name + "." + extension)
-    except(OSError,e):
+        L = CDLL(lib_name + "." + extension)
+    except OSError as e:
         pass
-if not lib:
+if not L:
     raise(ImportError("Cannot find NiftyRec libraries ("+lib_name+")."))
     print("Please make sure that: ")
     print(" 1) NiftyRec is installed. If not, download from "+NIFTYREC_WEBSITE+" and install.")
@@ -51,7 +51,7 @@ if not lib:
 
 
 
-def et_project(activity, cameras, psf, attenuation, gpu=1, background=0.0, background_attenuation=0.0):
+def et_project(activity, cameras, psf=None, attenuation=None, gpu=1, background=0.0, background_attenuation=0.0):
   """Project activity to multiple cameras"""
   gpu        = int32(gpu)
   background = float32(background)
@@ -62,10 +62,12 @@ def et_project(activity, cameras, psf, attenuation, gpu=1, background=0.0, backg
   #Convert all matrices to float32
   if not(activity.dtype==float32):
       activity = asarray(activity,dtype=float32)
-  if not(attenuation.dtype==float32):
-      attenuation = asarray(attenuation,dtype=float32)
-  if not(psf.dtype==float32):
-      psf = asarray(psf,dtype=float32)
+  if attenuation != None:
+      if not(attenuation.dtype==float32):
+          attenuation = asarray(attenuation,dtype=float32)
+  if psf != None:
+      if not(psf.dtype==float32):
+          psf = asarray(psf,dtype=float32)
   if not(cameras.dtype==float32):
       cameras = asarray(cameras,dtype=float32)
 
@@ -78,18 +80,28 @@ def et_project(activity, cameras, psf, attenuation, gpu=1, background=0.0, backg
   cameras_p      = cameras.ctypes.data_as(P(c_float))
   cameras_size   = asarray(cameras.shape,dtype=int32)
   cameras_size_p = cameras_size.ctypes.data_as(P(c_int))
-  psf_p      = psf.ctypes.data_as(P(c_float))
-  psf_size   = asarray(psf.shape,dtype=int32)
-  psf_size_p = psf_size.ctypes.data_as(P(c_int))
-  attenuation_p      = attenuation.ctypes.data_as(P(c_float))
-  attenuation_size   = asarray(attenuation.shape,dtype=int32)
-  attenuation_size_p = attenuation_size.ctypes.data_as(P(c_int))
-  projection_size   = [activity_size[0],activity_size[2],cameras_size[0]] 
+  if psf != None:
+      psf_p      = psf.ctypes.data_as(P(c_float))
+      psf_size   = asarray(psf.shape,dtype=int32)
+      psf_size_p = psf_size.ctypes.data_as(P(c_int))
+  else:
+      psf_p      = None
+      psf_size   = asarray(zeros([1,3]),dtype=int32)
+      psf_size_p = psf_size.ctypes.data_as(P(c_int))
+  if attenuation != None:
+      attenuation_p      = attenuation.ctypes.data_as(P(c_float))
+      attenuation_size   = asarray(attenuation.shape,dtype=int32)
+      attenuation_size_p = attenuation_size.ctypes.data_as(P(c_int))
+  else:
+      attenuation_p      = None
+      attenuation_size   = asarray(zeros([1,3]),dtype=int32)
+      attenuation_size_p = attenuation_size.ctypes.data_as(P(c_int))      
+  projection_size   = [activity_size[0],activity_size[1],cameras_size[0]]
   projection        = zeros(projection_size,dtype=float32)
   projection_p      = projection.ctypes.data_as(P(c_float))
   projection_size   = asarray(projection.shape,dtype=int32)
   projection_size_p = projection_size.ctypes.data_as(P(c_int))
-
+  
   status = L.et_array_project(activity_p, activity_size_p, projection_p, projection_size_p, cameras_p, cameras_size_p, psf_p, psf_size_p, attenuation_p, attenuation_size_p, background, background_attenuation, gpu)
   if status:
       projection = None
@@ -97,7 +109,7 @@ def et_project(activity, cameras, psf, attenuation, gpu=1, background=0.0, backg
 
 
 
-def et_backproject(projections, cameras, psf, attenuation, gpu=1, background=0, background_attenuation=0.0):
+def et_backproject(projections, cameras, psf=None, attenuation=None, gpu=1, background=0, background_attenuation=0.0):
   """Backproject from multiple cameras to body space"""
   gpu        = int32(gpu)
   background = float32(background)
@@ -108,10 +120,12 @@ def et_backproject(projections, cameras, psf, attenuation, gpu=1, background=0, 
   #Convert all matrices to float32
   if not(projections.dtype==float32):
       projections = asarray(projections,dtype=float32)
-  if not(attenuation.dtype==float32):
-      attenuation = asarray(attenuation,dtype=float32)
-  if not(psf.dtype==float32):
-      psf = asarray(psf,dtype=float32)
+  if attenuation!=None:
+      if not(attenuation.dtype==float32):
+          attenuation = asarray(attenuation,dtype=float32)
+  if psf!=None:
+      if not(psf.dtype==float32):
+          psf = asarray(psf,dtype=float32)
   if not(cameras.dtype==float32):
       cameras = asarray(cameras,dtype=float32)
 
@@ -124,18 +138,28 @@ def et_backproject(projections, cameras, psf, attenuation, gpu=1, background=0, 
   cameras_p          = cameras.ctypes.data_as(P(c_float))
   cameras_size       = asarray(cameras.shape,dtype=int32)
   cameras_size_p     = cameras_size.ctypes.data_as(P(c_int))
-  psf_p              = psf.ctypes.data_as(P(c_float))
-  psf_size           = asarray(psf.shape,dtype=int32)
-  psf_size_p         = psf_size.ctypes.data_as(P(c_int))
-  attenuation_p      = attenuation.ctypes.data_as(P(c_float))
-  attenuation_size   = asarray(attenuation.shape,dtype=int32)
-  attenuation_size_p = attenuation_size.ctypes.data_as(P(c_int))
-  bkprojection_size   = [projections_size[0],projections_size[0],projections_size[1]]
+  if psf != None:
+      psf_p      = psf.ctypes.data_as(P(c_float))
+      psf_size   = asarray(psf.shape,dtype=int32)
+      psf_size_p = psf_size.ctypes.data_as(P(c_int))
+  else:
+      psf_p      = None
+      psf_size   = asarray(zeros([1,3]),dtype=int32)
+      psf_size_p = psf_size.ctypes.data_as(P(c_int))
+  if attenuation != None:
+      attenuation_p      = attenuation.ctypes.data_as(P(c_float))
+      attenuation_size   = asarray(attenuation.shape,dtype=int32)
+      attenuation_size_p = attenuation_size.ctypes.data_as(P(c_int))
+  else:
+      attenuation_p      = None
+      attenuation_size   = asarray(zeros([1,3]),dtype=int32)
+      attenuation_size_p = attenuation_size.ctypes.data_as(P(c_int))     
+  bkprojection_size   = [projections_size[0],projections_size[1],projections_size[0]]
   bkprojection        = zeros(bkprojection_size,dtype=float32)
   bkprojection_p      = bkprojection.ctypes.data_as(P(c_float))
   bkprojection_size   = asarray(bkprojection.shape,dtype=int32)
   bkprojection_size_p = bkprojection_size.ctypes.data_as(P(c_int))
-
+  
   status = L.et_array_backproject(projections_p, projections_size_p, bkprojection_p, bkprojection_size_p, cameras_p, cameras_size_p, psf_p, psf_size_p, attenuation_p, attenuation_size_p, background, background_attenuation, gpu)
   if status:
       bkprojection = None
@@ -172,6 +196,7 @@ def et_list_gpus():
 
 def et_osmapem_step(subset_order, activity_old, sinogram, cameras, attenuation, psf, beta_osl, gradient_prior, use_gpu, background_activity=ET_BACKGROUND_ACTIVITY, background_attenuation=ET_BACKGROUND_ATTENUATION, epsilon=ET_EPSILON):
     N1 = activity_old.shape[0]
+    N2 = activity_old.shape[1]
     N3 = activity_old.shape[2]
     N_cameras = cameras.shape[1]
     N_cameras_sub = int32(round(N_cameras/subset_order))
@@ -180,13 +205,13 @@ def et_osmapem_step(subset_order, activity_old, sinogram, cameras, attenuation, 
     cameras_sub = zeros((3,N_cameras_sub))
     cameras_sub[:,:] = cameras[:,cameras_indexes]
     #compute sensitivity for the subset
-    normalization = backproject(ones((N1,N3,N_cameras_sub),dtype=single), cameras_sub, psf, attenuation, use_gpu, background_activity, background_attenuation)
+    normalization = backproject(ones((N1,N2,N_cameras_sub),dtype=single), cameras_sub, psf, attenuation, use_gpu, background_activity, background_attenuation)
     normalization = (normalization - beta_osl * gradient_prior)
     normalization = normalization*(normalization>0) + epsilon
     #project and backproject
     proj = project(activity_old, cameras_sub, psf, attenuation, use_gpu, background_activity, background_attenuation)
     proj = proj*(proj>0) + epsilon
-    update = backproject(sinogram[cameras_indexes,:,:].reshape(N1,N3,N_cameras_sub) / proj, cameras_sub, psf, attenuation, use_gpu, background_activity, background_attenuation)
+    update = backproject(sinogram[cameras_indexes,:,:].reshape(N1,N2,N_cameras_sub) / proj, cameras_sub, psf, attenuation, use_gpu, background_activity, background_attenuation)
     update = update*(update>0)
     activity_new = activity_old * update;
     activity_new = activity_new / (normalization)
@@ -305,9 +330,15 @@ class Reconstructor:
                 print('activity:'+str(self.activity.shape)+str(self.activity.dtype))
                 print('sinogram:'+str(self.sinogram.shape)+str(self.sinogram.dtype))
                 print('cameras: '+str(self.cameras.shape)+str(self.cameras.dtype))
-                print('psf:     '+str(self.psf.shape)+str(self.psf.dtype))
-                print('attenuation:',self.attenuation.shape)+str(self.attenuation.dtype))
-                print('use gpu: ',self.use_gpu))
+                if self.psf!=None:
+                    print 'psf:     ', self.psf.shape, self.psf.dtype
+                else: 
+                    print 'psf:     None'
+                if self.attenuation!=None:
+                    print 'attenuation:',self.attenuation.shape, self.attenuation.dtype
+                else: 
+                    print 'attenuation:None'
+                print('use gpu: ',str(self.use_gpu))
                 beta_osl=0
                 gradient_prior=0
                 self.activity = osmapem_step(subset_order, self.activity, self.sinogram, self.cameras, self.attenuation, 
@@ -325,9 +356,15 @@ class Reconstructor:
                 print('activity:'+str(self.activity.shape)+str(self.activity.dtype))
                 print('sinogram:'+str(self.sinogram.shape)+str(self.sinogram.dtype))
                 print('cameras: '+str(self.cameras.shape)+str(self.cameras.dtype))
-                print('psf:     '+str(self.psf.shape)+str(self.psf.dtype))
-                print('attenuation:',self.attenuation.shape)+str(self.attenuation.dtype))
-                print('use gpu: ',self.use_gpu))
+                if self.psf!=None:
+                    print 'psf:     ', self.psf.shape, self.psf.dtype
+                else: 
+                    print 'psf:     None'
+                if self.attenuation!=None:
+                    print 'attenuation:',self.attenuation.shape, self.attenuation.dtype
+                else: 
+                    print 'attenuation:None'
+                print('use gpu: ',str(self.use_gpu))
                 beta_osl=parameters['beta']/1000.0
                 kernel = -1*ones((3,3,3))
                 kernel[1,1,1] = 26

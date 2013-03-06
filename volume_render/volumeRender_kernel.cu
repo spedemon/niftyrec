@@ -228,8 +228,8 @@ void initCuda(uint w, uint h, uint d)
     // create 3D array
     cudaChannelFormatDesc channelDesc1 = cudaCreateChannelDesc<VolumeType>();
     cudaChannelFormatDesc channelDesc2 = cudaCreateChannelDesc<VolumeType>();
-    cutilSafeCall( cudaMalloc3DArray(&d_volumeArray1, &channelDesc1, volumeSize) );
-    cutilSafeCall( cudaMalloc3DArray(&d_volumeArray2, &channelDesc2, volumeSize) );
+    CUDA_SAFE_CALL( cudaMalloc3DArray(&d_volumeArray1, &channelDesc1, volumeSize) );
+    CUDA_SAFE_CALL( cudaMalloc3DArray(&d_volumeArray2, &channelDesc2, volumeSize) );
 
     // set texture parameters
     tex1.normalized = true;                      // access with normalized texture coordinates
@@ -244,8 +244,8 @@ void initCuda(uint w, uint h, uint d)
 
 
     // bind array to 3D texture
-    cutilSafeCall(cudaBindTextureToArray(tex1, d_volumeArray1, channelDesc1));
-    cutilSafeCall(cudaBindTextureToArray(tex2, d_volumeArray2, channelDesc2));
+    CUDA_SAFE_CALL(cudaBindTextureToArray(tex1, d_volumeArray1, channelDesc1));
+    CUDA_SAFE_CALL(cudaBindTextureToArray(tex2, d_volumeArray2, channelDesc2));
 
     // create transfer function texture
     float4 transferFunc1[] = {
@@ -265,38 +265,38 @@ void initCuda(uint w, uint h, uint d)
 
     cudaChannelFormatDesc channelDesc1a = cudaCreateChannelDesc<float4>();
     cudaArray* d_transferFuncArray1;
-    cutilSafeCall(cudaMallocArray( &d_transferFuncArray1, &channelDesc1a, sizeof(transferFunc1)/sizeof(float4), 1)); 
-    cutilSafeCall(cudaMemcpyToArray( d_transferFuncArray1, 0, 0, transferFunc1, sizeof(transferFunc1), cudaMemcpyHostToDevice));
+    CUDA_SAFE_CALL(cudaMallocArray( &d_transferFuncArray1, &channelDesc1a, sizeof(transferFunc1)/sizeof(float4), 1)); 
+    CUDA_SAFE_CALL(cudaMemcpyToArray( d_transferFuncArray1, 0, 0, transferFunc1, sizeof(transferFunc1), cudaMemcpyHostToDevice));
     transferTex1.filterMode = cudaFilterModeLinear;
     transferTex1.normalized = true;    // access with normalized texture coordinates
     transferTex1.addressMode[0] = cudaAddressModeClamp;   // wrap texture coordinates
 
     cudaChannelFormatDesc channelDesc2a = cudaCreateChannelDesc<float4>();
     cudaArray* d_transferFuncArray2;
-    cutilSafeCall(cudaMallocArray( &d_transferFuncArray2, &channelDesc2a, sizeof(transferFunc2)/sizeof(float4), 1)); 
-    cutilSafeCall(cudaMemcpyToArray( d_transferFuncArray2, 0, 0, transferFunc2, sizeof(transferFunc2), cudaMemcpyHostToDevice));
+    CUDA_SAFE_CALL(cudaMallocArray( &d_transferFuncArray2, &channelDesc2a, sizeof(transferFunc2)/sizeof(float4), 1)); 
+    CUDA_SAFE_CALL(cudaMemcpyToArray( d_transferFuncArray2, 0, 0, transferFunc2, sizeof(transferFunc2), cudaMemcpyHostToDevice));
     transferTex2.filterMode = cudaFilterModeLinear;
     transferTex2.normalized = true;    // access with normalized texture coordinates
     transferTex2.addressMode[0] = cudaAddressModeClamp;   // wrap texture coordinates
 
     // Bind the array to the texture
-    cutilSafeCall( cudaBindTextureToArray( transferTex1, d_transferFuncArray1, channelDesc1a));
-    cutilSafeCall( cudaBindTextureToArray( transferTex2, d_transferFuncArray2, channelDesc2a));
+    CUDA_SAFE_CALL( cudaBindTextureToArray( transferTex1, d_transferFuncArray1, channelDesc1a));
+    CUDA_SAFE_CALL( cudaBindTextureToArray( transferTex2, d_transferFuncArray2, channelDesc2a));
 }
 
 extern "C" 
 void freeCudaBuffers()
 {
-    cutilSafeCall(cudaFreeArray(d_volumeArray1));
-    if(colormap_inuse1==0)
-        cutilSafeCall(cudaFreeArray(d_transferFuncArray1));
-    else
-        cutilSafeCall(cudaFreeArray(d_transferFuncArray1_swap));
-    cutilSafeCall(cudaFreeArray(d_volumeArray2));
-    if(colormap_inuse2==0)
-        cutilSafeCall(cudaFreeArray(d_transferFuncArray2));
-    else
-        cutilSafeCall(cudaFreeArray(d_transferFuncArray2_swap));
+    CUDA_SAFE_CALL(cudaFreeArray(d_volumeArray1));
+    if(colormap_inuse1==0) {
+        CUDA_SAFE_CALL(cudaFreeArray(d_transferFuncArray1));}
+    else {
+        CUDA_SAFE_CALL(cudaFreeArray(d_transferFuncArray1_swap));
+        CUDA_SAFE_CALL(cudaFreeArray(d_volumeArray2)); }
+    if(colormap_inuse2==0) {
+        CUDA_SAFE_CALL(cudaFreeArray(d_transferFuncArray2)); }
+    else {
+        CUDA_SAFE_CALL(cudaFreeArray(d_transferFuncArray2_swap)); }
 }
 
 
@@ -313,7 +313,7 @@ void render_kernel(dim3 gridSize, dim3 blockSize, uint *d_output, uint imageW, u
 extern "C"
 void copyInvViewMatrix(float *invViewMatrix, size_t sizeofMatrix)
 {
-    cutilSafeCall( cudaMemcpyToSymbol(c_invViewMatrix, invViewMatrix, sizeofMatrix) );
+    CUDA_SAFE_CALL( cudaMemcpyToSymbol(c_invViewMatrix, invViewMatrix, sizeofMatrix) );
 }
 
 extern "C" void setTexture1(VolumeType* h_volume,uint w,uint h,uint d)
@@ -324,7 +324,7 @@ extern "C" void setTexture1(VolumeType* h_volume,uint w,uint h,uint d)
     copyParams.dstArray = d_volumeArray1;
     copyParams.extent   = volumeSize;
     copyParams.kind     = cudaMemcpyHostToDevice;
-    cutilSafeCall( cudaMemcpy3D(&copyParams) );  
+    CUDA_SAFE_CALL( cudaMemcpy3D(&copyParams) );  
 }
 
 extern "C"
@@ -336,7 +336,7 @@ void setTexture2(VolumeType* h_volume,uint w,uint h,uint d)
     copyParams.dstArray = d_volumeArray2;
     copyParams.extent   = volumeSize;
     copyParams.kind     = cudaMemcpyHostToDevice;
-    cutilSafeCall( cudaMemcpy3D(&copyParams) );  
+    CUDA_SAFE_CALL( cudaMemcpy3D(&copyParams) );  
 }
 
 
@@ -347,29 +347,29 @@ void setTransferFunction1(float *colormap, unsigned int colormap_size)
     if (colormap_inuse1==0) {
         colormap_inuse1=1;
         //allocate new colormap device array and copy colormap to device
-        cutilSafeCall(cudaMallocArray( &d_transferFuncArray1_swap, &channelDesc, colormap_size, 1)); 
-        cutilSafeCall(cudaMemcpyToArray( d_transferFuncArray1_swap, 0, 0, colormap, colormap_size*4*sizeof(float), cudaMemcpyHostToDevice));    
+        CUDA_SAFE_CALL(cudaMallocArray( &d_transferFuncArray1_swap, &channelDesc, colormap_size, 1)); 
+        CUDA_SAFE_CALL(cudaMemcpyToArray( d_transferFuncArray1_swap, 0, 0, colormap, colormap_size*4*sizeof(float), cudaMemcpyHostToDevice));    
         //unbind previous colormap and bind texture to the new one
-        cutilSafeCall( cudaUnbindTexture( transferTex1 ));
+        CUDA_SAFE_CALL( cudaUnbindTexture( transferTex1 ));
         transferTex1.filterMode = cudaFilterModeLinear;
         transferTex1.normalized = true;    // access with normalized texture coordinates
         transferTex1.addressMode[0] = cudaAddressModeClamp;   // wrap texture coordinates
-        cutilSafeCall( cudaBindTextureToArray( transferTex1, d_transferFuncArray1_swap, channelDesc));
-        cutilSafeCall( cudaFreeArray(d_transferFuncArray1) );
+        CUDA_SAFE_CALL( cudaBindTextureToArray( transferTex1, d_transferFuncArray1_swap, channelDesc));
+        CUDA_SAFE_CALL( cudaFreeArray(d_transferFuncArray1) );
         }
     else {
         colormap_inuse1=0;
         //allocate new colormap device array and copy colormap to device
-        cutilSafeCall(cudaMallocArray( &d_transferFuncArray1, &channelDesc, colormap_size, 1)); 
-        cutilSafeCall(cudaMemcpyToArray( d_transferFuncArray1, 0, 0, colormap, colormap_size*4*sizeof(float), cudaMemcpyHostToDevice));   
+        CUDA_SAFE_CALL(cudaMallocArray( &d_transferFuncArray1, &channelDesc, colormap_size, 1)); 
+        CUDA_SAFE_CALL(cudaMemcpyToArray( d_transferFuncArray1, 0, 0, colormap, colormap_size*4*sizeof(float), cudaMemcpyHostToDevice));   
         //unbind previous colormap and bind texture to the new one
-        cutilSafeCall( cudaUnbindTexture( transferTex1 ));
+        CUDA_SAFE_CALL( cudaUnbindTexture( transferTex1 ));
         transferTex1.filterMode = cudaFilterModeLinear;
         transferTex1.normalized = true;    // access with normalized texture coordinates
         transferTex1.addressMode[0] = cudaAddressModeClamp;   // wrap texture coordinates
-        cutilSafeCall( cudaBindTextureToArray( transferTex1, d_transferFuncArray1, channelDesc));
+        CUDA_SAFE_CALL( cudaBindTextureToArray( transferTex1, d_transferFuncArray1, channelDesc));
         //free previous colormap
-        cutilSafeCall( cudaFreeArray(d_transferFuncArray1_swap) );
+        CUDA_SAFE_CALL( cudaFreeArray(d_transferFuncArray1_swap) );
         } 
 }
 
@@ -380,29 +380,29 @@ void setTransferFunction2(float *colormap, unsigned int colormap_size)
     if (colormap_inuse2==0) {
         colormap_inuse2=1;
         //allocate new colormap device array and copy colormap to device
-        cutilSafeCall(cudaMallocArray( &d_transferFuncArray2_swap, &channelDesc, colormap_size, 1)); 
-        cutilSafeCall(cudaMemcpyToArray( d_transferFuncArray2_swap, 0, 0, colormap, colormap_size*4*sizeof(float), cudaMemcpyHostToDevice));    
+        CUDA_SAFE_CALL(cudaMallocArray( &d_transferFuncArray2_swap, &channelDesc, colormap_size, 1)); 
+        CUDA_SAFE_CALL(cudaMemcpyToArray( d_transferFuncArray2_swap, 0, 0, colormap, colormap_size*4*sizeof(float), cudaMemcpyHostToDevice));    
         //unbind previous colormap and bind texture to the new one
-        cutilSafeCall( cudaUnbindTexture( transferTex2 ));
+        CUDA_SAFE_CALL( cudaUnbindTexture( transferTex2 ));
         transferTex2.filterMode = cudaFilterModeLinear;
         transferTex2.normalized = true;    // access with normalized texture coordinates
         transferTex2.addressMode[0] = cudaAddressModeClamp;   // wrap texture coordinates
-        cutilSafeCall( cudaBindTextureToArray( transferTex2, d_transferFuncArray2_swap, channelDesc));
-        cutilSafeCall( cudaFreeArray(d_transferFuncArray2) );
+        CUDA_SAFE_CALL( cudaBindTextureToArray( transferTex2, d_transferFuncArray2_swap, channelDesc));
+        CUDA_SAFE_CALL( cudaFreeArray(d_transferFuncArray2) );
         }
     else {
         colormap_inuse2=0;
         //allocate new colormap device array and copy colormap to device
-        cutilSafeCall(cudaMallocArray( &d_transferFuncArray2, &channelDesc, colormap_size, 1)); 
-        cutilSafeCall(cudaMemcpyToArray( d_transferFuncArray2, 0, 0, colormap, colormap_size*4*sizeof(float), cudaMemcpyHostToDevice));   
+        CUDA_SAFE_CALL(cudaMallocArray( &d_transferFuncArray2, &channelDesc, colormap_size, 1)); 
+        CUDA_SAFE_CALL(cudaMemcpyToArray( d_transferFuncArray2, 0, 0, colormap, colormap_size*4*sizeof(float), cudaMemcpyHostToDevice));   
         //unbind previous colormap and bind texture to the new one
-        cutilSafeCall( cudaUnbindTexture( transferTex2 ));
+        CUDA_SAFE_CALL( cudaUnbindTexture( transferTex2 ));
         transferTex1.filterMode = cudaFilterModeLinear;
         transferTex1.normalized = true;    // access with normalized texture coordinates
         transferTex1.addressMode[0] = cudaAddressModeClamp;   // wrap texture coordinates
-        cutilSafeCall( cudaBindTextureToArray( transferTex2, d_transferFuncArray2, channelDesc));
+        CUDA_SAFE_CALL( cudaBindTextureToArray( transferTex2, d_transferFuncArray2, channelDesc));
         //free previous colormap
-        cutilSafeCall( cudaFreeArray(d_transferFuncArray2_swap) );
+        CUDA_SAFE_CALL( cudaFreeArray(d_transferFuncArray2_swap) );
         } 
 
 }

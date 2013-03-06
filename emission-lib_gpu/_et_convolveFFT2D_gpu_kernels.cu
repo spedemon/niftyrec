@@ -18,14 +18,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <cutil_inline.h>
 #include "_et_convolveFFT2D_gpu.h"
 
 #if(0)
     texture<float, 1, cudaReadModeElementType> texFloat;
     size_t offset = 0;
     #define   LOAD_FLOAT(i) tex1Dfetch(texFloat, i)
-    #define  SET_FLOAT_BASE cutilSafeCall( cudaBindTexture(&offset, texFloat, d_Src, fftH*fftW*sizeof(float)) )
+    #define  SET_FLOAT_BASE CUDA_SAFE_CALL( cudaBindTexture(&offset, texFloat, d_Src, fftH*fftW*sizeof(float)) )
 
     #define  UNSET_FLOAT_BASE cudaUnbindTexture( texFloat );
 #else
@@ -84,7 +83,7 @@ extern "C" void padKernel(
         kernelY,
         kernelX
     );
-    cutilCheckMsg("padKernel_kernel<<<>>> execution failed\n");
+    CUDA_CHECK_MSG("padKernel_kernel<<<>>> execution failed\n");
 UNSET_FLOAT_BASE;
 }
 
@@ -152,7 +151,7 @@ extern "C" void padDataClampToBorder(
         kernelY,
         kernelX
     );
-    cutilCheckMsg("padDataClampToBorder_kernel<<<>>> execution failed\n");
+    CUDA_CHECK_MSG("padDataClampToBorder_kernel<<<>>> execution failed\n");
 UNSET_FLOAT_BASE;
 }
 
@@ -191,7 +190,7 @@ extern "C" void modulateAndNormalize(
         dataSize,
         1.0f / (float)(fftW * fftH)
     );
-    cutilCheckMsg("modulateAndNormalize() execution failed\n");
+    CUDA_CHECK_MSG("modulateAndNormalize() execution failed\n");
 }
 
 
@@ -242,7 +241,7 @@ extern "C" void crop_image(
         kernelH,
         kernelW
     );
-    cutilCheckMsg("padKernel_kernel<<<>>> execution failed\n");
+    CUDA_CHECK_MSG("padKernel_kernel<<<>>> execution failed\n");
 UNSET_FLOAT_BASE;
 }
 

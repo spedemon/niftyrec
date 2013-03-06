@@ -1964,13 +1964,13 @@ int et_convolve_gpu(nifti_image *inImage, nifti_image *outImage, nifti_image *ps
     et_convolveFFT2D_gpu(&d_Input, data_size, &d_Kernel, kernel_size, &d_Result);
 
     fprintf_verbose("et_convolve_gpu - Reading back GPU FFT results...\n");
-    //cutilSafeCall( cudaMemcpy(h_Result, d_PaddedData, fftH * fftW * sizeof(float), cudaMemcpyDeviceToHost) );
+    //CUDA_SAFE_CALL( cudaMemcpy(h_Result, d_PaddedData, fftH * fftW * sizeof(float), cudaMemcpyDeviceToHost) );
     if(cudaCommon_transferFromDeviceToNifti(outImage, &d_Result)) return 1; 
 
     fprintf_verbose("et_convolve_gpu - Freeign GPU memory...\n");    
-    cutilSafeCall( cudaFree(d_Input) );
-    cutilSafeCall( cudaFree(d_Kernel) );
-    cutilSafeCall( cudaFree(d_Result) );
+    CUDA_SAFE_CALL( cudaFree(d_Input) );
+    CUDA_SAFE_CALL( cudaFree(d_Kernel) );
+    CUDA_SAFE_CALL( cudaFree(d_Result) );
     fprintf_verbose("et_convolve_gpu - Freeign GPU memory...\n");   
 
     status = 0;

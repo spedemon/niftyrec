@@ -12,9 +12,9 @@ setup(
     version = VERSION,
     description = "Tomographic Reconstruction Toolbox, PET, SPECT, CT",
     author = "Stefano Pedemonte",
-    author_email = "s.pedemonte@cs.ucl.ac.ul",
-    url = "http://niftyrec.sourceforge.net/",
-    download_url = "http://sourceforge.net/projects/niftyrec/files/nifty_rec-1.6.tar.gz",
+    author_email = "stefano.pedemonte@gmail.com",
+    url = "http://niftyrec.scienceontheweb.net/",
+    download_url = "http://sourceforge.net/projects/niftyrec/files/",
     keywords = ["PET", "SPECT", "emission tomography", "transmission tomography", "tomographic reconstruction"],
     classifiers = [
         "Programming Language :: Python",
