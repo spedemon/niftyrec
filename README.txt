@@ -1,20 +1,21 @@
 ##############################################################################
-#                        NIFTYREC TOMOGRAPHY TOOLBOX                         #
+#                                                                            #
+#                         NIFTYREC TOMOGRAPHY TOOLBOX                        #
+#                                                                            #
+#                     http://niftyrec.scienceontheweb.net                    #
+#                                                                            #
 ##############################################################################
 
------------------------------------
+------------------
 1 PACKAGE CONTENTS
+------------------
 
-See the sebsite of NiftyRec for 
-more details. 
------------------------------------
-
-NiftyRec provides routines for Tomographic reconstruction. 
-The software is written in C and computationally intensive functions have a 
-GPU accelerated version based on NVidia CUDA.
-NiftyRec includes a mex-based Matlab Toolbox and a Python module that access 
-the low level routines for reconstruction, hiding the complexity of C and 
-of the GPU accelerated algorithms, while maintaining the full speed. 
+NiftyRec is a software toolbox for Tomographic image reconstruction. 
+NiftyRec is written in C and computationally intensive functions have a 
+GPU accelerated version based on NVidia CUDA. 
+NiftyRec includes a Matlab Toolbox and a Python Package that access 
+the low level routines, hiding the complexity of the GPU accelerated 
+algorithms. 
 
 ##############################################################################
 

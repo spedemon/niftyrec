@@ -3,7 +3,12 @@ from thread import start_new_thread
 from time import sleep
 from numpy import zeros, ones, single, linspace, int32, round, pi, asarray
 from numpy.random import rand
-from scipy.signal import convolve
+try: 
+    from scipy.signal import convolve
+except ImportError:
+    HAVE_SCIPY = False
+else:
+    HAVE_SCIPY = True
 import gobject
 
 try:
@@ -216,7 +221,11 @@ class Reconstructor:
                 beta_osl=parameters['beta']/1000.0
                 kernel = -1*ones((3,3,3))
                 kernel[1,1,1] = 26
-                gradient_prior=convolve(self.activity,kernel,'same')
+                if HAVE_SCIPY:
+                    gradient_prior=convolve(self.activity,kernel,'same')
+                else:
+                    print "\nPlease install Scipy! (cannot find scipy.signal)\n"
+                    exit(-1)
                 self.activity = osmapem_step(subset_order, self.activity, self.sinogram, self.cameras, self.attenuation,\
 					     self.psf, beta_osl, gradient_prior, self.use_gpu, self.background_activity, self.background_attenuation, self.epsilon, verbose)
                 gobject.idle_add(self.callback_updateactivity, self.activity)

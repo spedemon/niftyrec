@@ -8,7 +8,12 @@ from numpy import zeros, asarray, float32, int32, ones, single, linspace, round,
 from thread import start_new_thread
 from time import sleep
 from numpy.random import rand
-from scipy.signal import convolve
+try: 
+    from scipy.signal import convolve
+except ImportError:
+    HAVE_SCIPY = False
+else:
+    HAVE_SCIPY = True
 
 lib_name = "lib_et_array_interface"
 
@@ -391,8 +396,12 @@ class Reconstructor:
                 print('use gpu: ',str(self.use_gpu))
                 beta_osl=parameters['beta']/1000.0
                 kernel = -1*ones((3,3,3))
-                kernel[1,1,1] = 26
-                gradient_prior=convolve(self.activity,kernel,'same')
+                kernel[1,1,1] = 26 
+                if HAVE_SCIPY:
+                    gradient_prior=convolve(self.activity,kernel,'same')
+                else:
+                    print "\nPlease install Scipy! (cannot find scipy.signal)\n"
+                    exit(-1)
                 self.activity = osmapem_step(subset_order, self.activity, self.sinogram, self.cameras, self.attenuation, 
                 self.psf, beta_osl, gradient_prior, self.use_gpu, self.background_activity, self.background_attenuation, self.epsilon)
                 #gobject.idle_add(self.callback_updateactivity, self.activity)
