@@ -29,13 +29,13 @@ int64_t timespecDiff(struct timespec *timeA_p, struct timespec *timeB_p)
 }
 
 
-int et_is_block_multiple(int size)
+unsigned short int et_is_block_multiple(unsigned short int size)
 {
     if (size % (ET_BLOCK_SIZE*ET_BLOCK_SIZE) == 0)
         return 1;
     return 0;
 }
-int et_get_block_size(void)
+unsigned short int et_get_block_size(void)
 {
     return ET_BLOCK_SIZE*ET_BLOCK_SIZE;
 }

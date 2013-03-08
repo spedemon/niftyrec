@@ -70,8 +70,8 @@ int et_project_partial_gpu(nifti_image *activity, nifti_image *sinoImage, nifti_
 int et_reset_gpu(); 
 #endif
 
-int et_is_block_multiple(int size);
-int et_get_block_size(void);
+unsigned short int et_is_block_multiple(unsigned short int size);
+unsigned short int et_get_block_size(void);
 int et_rotate(nifti_image *sourceImage, nifti_image *resultImage, float alpha, float beta, float gamma, float center_x, float center_y, float center_z, float background, int axis_order);
 int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values);
 int et_backproject(nifti_image *sinogram, nifti_image *accumulator, nifti_image *psf, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values);
