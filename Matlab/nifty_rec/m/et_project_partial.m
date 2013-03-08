@@ -1,4 +1,4 @@
-function [sinogram,partial] = et_project_partial(activity, cameras, attenuation, psf, use_gpu, rotation_of_partial_integrals, background, background_attenuation, truncate_negative_values)
+function [sinogram,partial] = et_project_partial(activity, cameras, attenuation, psf, use_gpu, rotation_of_partial_integrals, background, background_image, background_attenuation, truncate_negative_values)
 %ET_PROJECT
 %    Experimental - Projector for Emission Tomographic reconstruction. Returns projection and
 %    partial line integrals. 
@@ -6,7 +6,7 @@ function [sinogram,partial] = et_project_partial(activity, cameras, attenuation,
 %Description
 %    Function for projection of activity into detector space.
 %
-%    [SINOGRAM,PARTIAL] = ET_PROJECT_PARTIAL(ACTIVITY, CAMERAS, ATTENUATION, PSF, USE_GPU, ROTATION_OF_PARTIAL_INTEGRALS, BACKGROUND, BACKGROUND_ATTENUATION, TRUNCATE_NEGATIVE_VALUES)
+%    [SINOGRAM,PARTIAL] = ET_PROJECT_PARTIAL(ACTIVITY, CAMERAS, ATTENUATION, PSF, USE_GPU, ROTATION_OF_PARTIAL_INTEGRALS, BACKGROUND, BACKGROUND_IMAGE, BACKGROUND_ATTENUATION, TRUNCATE_NEGATIVE_VALUES)
 %
 %    SINOGRAM is the projection 
 %
@@ -37,6 +37,9 @@ function [sinogram,partial] = et_project_partial(activity, cameras, attenuation,
 %    BACKGROUND is the value the background is set to when performing rotation. 
 %    It defaults to 0. 
 %
+%    BACKGROUND_IMAGE Background light pattern. This parameters is intended e.g. for coded aperture imaging. 
+%    It's an image of size [Nx,Ny]. If it is set to a scalar value then it is ignored. 
+%
 %    BACKGROUND_ATTENUATION is the value the attenuation background is set 
 %    to when performing rotation. It defaults to 0.
 %
@@ -64,45 +67,48 @@ function [sinogram,partial] = et_project_partial(activity, cameras, attenuation,
 %   attenuation = zeros(N,N,N);
 %   PSF = ones(7,7,N);
 %   cameras = [0:pi/100:pi]';
-%   [sinogram,partial] = et_project_partial(activity,cameras,attenuation,PSF,use_gpu,1);
+%   [sinogram,partial] = et_project_partial(activity,cameras,attenuation,PSF,use_gpu);
 %
 %See also
-%   ET_BACKPROJECT, ET_MAPEM_STEP, ET_MLEM_DEMO
-%   ET_LIST_GPUS, ET_SET_GPU
+%   ET_PROJECT
 %
 % 
 %Stefano Pedemonte
-%Copyright 2009-2012 CMIC-UCL
+%Copyright 2009-2013 CMIC-UCL
 %Gower Street, London, UK
 
 
-if not(exist('attenuation'))
+if not(exist('attenuation','var'))
     attenuation = 0;
 end
 
-if not(exist('psf'))
+if not(exist('psf','var'))
     psf = 0;
 end
 
-if not(exist('use_gpu'))
+if not(exist('use_gpu','var'))
     use_gpu = 0;
 end
    
-if not(exist('rotation_of_partial_integrals'))
+if not(exist('rotation_of_partial_integrals','var'))
     rotation_of_partial_integrals = 0;
 end
  
-if not(exist('background'))
+if not(exist('background','var'))
     background = 0;
 end
 
-if not(exist('background_attenuation'))
+if not(exist('background_image','var'))
+    background_image = 0;
+end
+
+if not(exist('background_attenuation','var'))
     background_attenuation = 0;
 end
 
-if not(exist('truncate_negative_values'))
+if not(exist('truncate_negative_values','var'))
     truncate_negative_values = 1;
 end
 
-[sinogram,partial] = et_project_partial_mex(activity, cameras, attenuation, psf, use_gpu, rotation_of_partial_integrals, background, background_attenuation, truncate_negative_values);
+[sinogram,partial] = et_project_partial_mex(activity, cameras, attenuation, psf, use_gpu, rotation_of_partial_integrals, background, background_image, background_attenuation, truncate_negative_values);
 

@@ -13,7 +13,7 @@
 __device__ __constant__ int3 c_ImageSize;
 
 
-__global__ void et_line_integral_attenuated_gpu_kernel(float *g_activity, float *g_attenuation, float *g_sinogram, float *g_partialsum, float background_activity) 
+__global__ void et_line_integral_attenuated_gpu_kernel(float *g_activity, float *g_attenuation, float *g_background_image, float *g_sinogram, float *g_partialsum, float background_activity) 
 {
 	const unsigned int tid = blockIdx.x*blockDim.x + threadIdx.x;
 	const unsigned int pixelNumber = c_ImageSize.x * c_ImageSize.y;
@@ -60,6 +60,8 @@ __global__ void et_line_integral_attenuated_gpu_kernel(float *g_activity, float 
                         {
                         index_inv = tid+pixelNumber*(c_ImageSize.z-1);
                         sum_activity = background_activity; 
+                        if (g_background_image!=NULL)
+                            sum_activity = sum_activity*g_background_image[tid];
 		        for(unsigned int z=0; z<c_ImageSize.z; z++)
                             {
                             g_partialsum[index_inv] = sum_activity; 
@@ -72,6 +74,8 @@ __global__ void et_line_integral_attenuated_gpu_kernel(float *g_activity, float 
                         {
                         index_inv = tid+pixelNumber*(c_ImageSize.z-1);
                         sum_activity = background_activity; 
+                        if (g_background_image!=NULL)
+                            sum_activity = sum_activity*g_background_image[tid];
 		        for(unsigned int z=0; z<c_ImageSize.z; z++)
                             {
                             g_partialsum[index_inv] = sum_activity; 
@@ -84,6 +88,8 @@ __global__ void et_line_integral_attenuated_gpu_kernel(float *g_activity, float 
                         {
                         index_inv = tid+pixelNumber*(c_ImageSize.z-1);
                         sum_activity = background_activity; 
+                        if (g_background_image!=NULL)
+                            sum_activity = sum_activity*g_background_image[tid];
 		        for(unsigned int z=0; z<c_ImageSize.z; z++)
                             {
                             g_partialsum[index_inv] = sum_activity; 

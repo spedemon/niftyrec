@@ -47,8 +47,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    int enable_gpu = 0;      // Flag that enables(1)/disables(0) GPU acceleration
    float background = 0; // Background (for rotation in the backprojection)
    float background_attenuation=0; // Attenuation background (when rotating attenuation)
-   int no_psf = 0;       // Flag for psf: if 1 it means that no PSF was specified
-   int no_attenuation = 0;// This flag goes high if an attenuation image is given and it is not a scalar. 
+   int no_psf = 0;         // This flag goes high if psf input parameter from the Matlab function is a scalar -> no psf
+   int no_attenuation = 0; // This flag goes high if attenuation is a scalar -> no attenuation 
    int truncate_negative_values = 1; // Set this flag to 1 in order to truncate the results to 0 if negative. Set it to 0 to disable truncation. 
 
    int status = 1;       // Return status: 0 if succesful
