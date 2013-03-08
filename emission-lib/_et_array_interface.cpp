@@ -1345,7 +1345,7 @@ extern "C" int et_array_joint_histogram(float *matrix_A, float *matrix_B, int *j
 
 
 
-extern "C" int et_array_project_partial(float *activity, int *activity_size, float *sinogram, int *sinogram_size, float *partialsum, int *partialsum_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *attenuation, int *attenuation_size, float background, float background_attenuation, int GPU, int truncate_negative_values, int do_rotate_partial)
+extern "C" int et_array_project_partial(float *activity, int *activity_size, float *sinogram, int *sinogram_size, float *partialsum, int *partialsum_size, float *cameras, int *cameras_size, float *psf, int *psf_size, float *attenuation, int *attenuation_size, float background, float *background_image, float background_attenuation, int GPU, int truncate_negative_values, int do_rotate_partial)
 {
 	int status = 0;
         int n_cameras;
@@ -1353,6 +1353,7 @@ extern "C" int et_array_project_partial(float *activity, int *activity_size, flo
         int no_psf = 0;
         int no_attenuation = 0;
         int no_activity = 0;
+        int no_background_image = 0;
         float *cameras_array;
 
         n_cameras = cameras_size[0];
@@ -1378,6 +1379,11 @@ extern "C" int et_array_project_partial(float *activity, int *activity_size, flo
             fprintf(stderr,"_et_array_project: Error - define at least one between 'activity' and 'attenuation'. \n"); 
             return niftyrec_error_parameters; 
             } 
+
+        //background image or not?
+        no_background_image = 0; 
+        if (background_image==NULL)
+            no_background_image = 1; 
 
         /* Check consistency of input */ 
         // Cameras must specify all 3 axis of rotation (3D array) or can be a 1D array if rotation is only along z axis. 
@@ -1440,7 +1446,6 @@ extern "C" int et_array_project_partial(float *activity, int *activity_size, flo
 
 	// Allocate the result nifti image
 	//fprintf_verbose( "\nN CAMERAS: %d ",n_cameras);
-
         dim[1] = activity_size[0];
         dim[2] = activity_size[1];
         dim[3] = n_cameras;	   
@@ -1469,16 +1474,29 @@ extern "C" int et_array_project_partial(float *activity, int *activity_size, flo
         nifti_image *partialsumImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
         partialsumImage->data = (float *)(partialsum);
 
+        // Allocate background nifti image
+        nifti_image *backgroundImage = NULL;
+        if(!no_background_image)
+            {
+            dim[0]    = 2;
+            dim[1]    = activity_size[0];
+            dim[2]    = activity_size[1];
+            dim[3]    = 1;
+            dim[4]    = 1;
+            backgroundImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false);
+            backgroundImage->data = (float *)(background_image);        
+            }
+
         //Do projection
         #ifdef _USE_CUDA
         if (GPU)
-            status = et_project_partial_gpu(activityImage, sinogramImage, partialsumImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values, do_rotate_partial);
+            status = et_project_partial_gpu(activityImage, sinogramImage, partialsumImage, psfImage, attenuationImage, cameras_array, n_cameras, background, backgroundImage, background_attenuation, truncate_negative_values, do_rotate_partial);
         else
-            status = et_project_partial(activityImage, sinogramImage, partialsumImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values, do_rotate_partial);
+            status = et_project_partial(activityImage, sinogramImage, partialsumImage, psfImage, attenuationImage, cameras_array, n_cameras, background, backgroundImage, background_attenuation, truncate_negative_values, do_rotate_partial);
         #else
             if (GPU)
                 fprintf_verbose( "et_array_project: No GPU support. In order to activate GPU acceleration please configure with GPU flag and compile.");
-            status = et_project_partial(activityImage, sinogramImage, partialsumImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values, do_rotate_partial);
+            status = et_project_partial(activityImage, sinogramImage, partialsumImage, psfImage, attenuationImage, cameras_array, n_cameras, background, backgroundImage, background_attenuation, truncate_negative_values, do_rotate_partial);
         #endif
 
 	//Free
@@ -1498,6 +1516,22 @@ extern "C" int et_array_project_partial(float *activity, int *activity_size, flo
             free(attenuationImage) ;
             }
 	
+        if(!no_background_image)
+            {
+            if( backgroundImage->fname != NULL ) free(backgroundImage->fname) ;
+            if( backgroundImage->iname != NULL ) free(backgroundImage->iname) ;
+            (void)nifti_free_extensions( backgroundImage ) ;
+            free(backgroundImage) ;
+            }
+
+        if (!no_psf)
+            {
+            if( psfImage->fname != NULL ) free(psfImage->fname) ;
+            if( psfImage->iname != NULL ) free(psfImage->iname) ;
+            (void)nifti_free_extensions( psfImage ) ;
+            free(psfImage) ;
+            }
+
 	if( sinogramImage->fname != NULL ) free(sinogramImage->fname) ;
 	if( sinogramImage->iname != NULL ) free(sinogramImage->iname) ;
 	(void)nifti_free_extensions( sinogramImage ) ;
@@ -1507,14 +1541,6 @@ extern "C" int et_array_project_partial(float *activity, int *activity_size, flo
 	if( partialsumImage->iname != NULL ) free(partialsumImage->iname) ;
 	(void)nifti_free_extensions( partialsumImage ) ;
 	free(partialsumImage) ;
-
-        if (!no_psf)
-            {
-            if( psfImage->fname != NULL ) free(psfImage->fname) ;
-            if( psfImage->iname != NULL ) free(psfImage->iname) ;
-            (void)nifti_free_extensions( psfImage ) ;
-            free(psfImage) ;
-            }
 
         free(cameras_array);
 

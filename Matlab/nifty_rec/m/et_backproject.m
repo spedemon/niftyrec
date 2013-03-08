@@ -64,31 +64,31 @@ function image = et_backproject(sinogram, cameras, attenuation, psf, use_gpu, ba
 %
 % 
 %Stefano Pedemonte
-%Copyright 2009-2012 CMIC-UCL.
+%Copyright 2009-2013 CMIC-UCL.
 %Gower Street, London, UK
 
 
-if not(exist('attenuation'))
+if not(exist('attenuation','var'))
     attenuation = 0;
 end
 
-if not(exist('psf'))
+if not(exist('psf','var'))
     psf = 0;
 end
 
-if not(exist('use_gpu'))
+if not(exist('use_gpu','var'))
     use_gpu = 0;
 end
 
-if not(exist('background'))
+if not(exist('background','var'))
     background = 0;
 end
 
-if not(exist('background_attenuation'))
+if not(exist('background_attenuation','var'))
     background_attenuation = 0;
 end
 
-if not(exist('truncate_negative_values'))
+if not(exist('truncate_negative_values','var'))
     truncate_negative_values = 1;
 end
 

@@ -53,8 +53,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    float background_attenuation; // Attenuation background value, defaults to 0.
    int enable_gpu;         // Flag for GPU Acceleration: 1 to enable, 0 to disable.
    int no_psf = 0;         // This flag goes high if psf input parameter from the Matlab function is a scalar -> no psf
-   int no_attenuation = 0; // This flag goes high if an attenuation image is given and it is not a scalar. 
-   int no_activity = 0;    // This flag goes high if an activity image is given and it is not a scalar. 
+   int no_attenuation = 0; // This flag goes high if attenuation is a scalar -> no attenuation 
+   int no_activity = 0;    // This flag goes high if activity is a scalar -> no activity
    int truncate_negative_values = 1; // Set this flag to 1 in order to truncate the results to 0 if negative. Set it to 0 to disable truncation. 
 
    int N;                  // Size of activity: [N,N,m].

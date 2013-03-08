@@ -28,8 +28,8 @@
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
    /* Check for proper number of arguments. */
-   if (!(nrhs==2 || nrhs==3 || nrhs==4 || nrhs==5 || nrhs==6 || nrhs==7 || nrhs==8 || nrhs==9)){
-      mexErrMsgTxt("2, 3, 4, 5, 6, 7, 8 or 9 inputs required: Activity, Cameras, [Attenuation], [PointSpreadFunction], [EnableGPU], [InverseRotatePartialIntegrals], [Background], [BackgroundAttenuation], [TruncateNegativeValues]");
+   if (!(nrhs==2 || nrhs==3 || nrhs==4 || nrhs==5 || nrhs==6 || nrhs==7 || nrhs==8 || nrhs==9 || nrhs==10)){
+      mexErrMsgTxt("2, 3, 4, 5, 6, 7, 8, 9 or 10 inputs required: Activity, Cameras, [Attenuation], [PointSpreadFunction], [EnableGPU], [InverseRotatePartialIntegrals], [Background], [BackgroundImage], [BackgroundAttenuation], [TruncateNegativeValues]");
    }
 
    mxClassID cid_activity  = mxGetClassID(prhs[0]);
@@ -55,8 +55,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    int do_rotate_partial_integrals = 0; // Wheter to rotate the partial integrals back to the image frame or not. 
    int enable_gpu;         // Flag for GPU Acceleration: 1 to enable, 0 to disable.
    int no_psf = 0;         // This flag goes high if psf input parameter from the Matlab function is a scalar -> no psf
-   int no_attenuation = 0; // This flag goes high if an attenuation image is given and it is not a scalar. 
-   int no_activity = 0;    // This flag goes high if an activity image is given and it is not a scalar. 
+   int no_attenuation = 0; // This flag goes high if attenuation is a scalar -> no attenuation 
+   int no_activity = 0;    // This flag goes high if activity is a scalar -> no activity
+   int no_background_image = 0; // This flag goes high if background image is a scalar -> no background image
    int truncate_negative_values = 1; // Set this flag to 1 in order to truncate the results to 0 if negative. Set it to 0 to disable truncation. 
 
    int N;                  // Size of activity: [N,N,m].
@@ -201,19 +202,48 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    if (nrhs>=6)
        do_rotate_partial_integrals = (int) (mxGetScalar(prhs[5]));
 
-   /* Check if Background is specified */
-   background = 0.0f;
-   if (nrhs>=7)
+   /* Check if Background is specified */ 
+   background = 0.0f; 
+   if (nrhs>=7) 
        background = (mxGetScalar(prhs[6])); 
+
+   /* Check if BackgroundImage is specified */ 
+   no_background_image = 1;
+   int background_image_size[2] = {0,0}; 
+   if (nrhs>=8) 
+       {
+       // make sure that it is not a scalar
+       temp=1;
+       for (int i=0; i<mxGetNumberOfDimensions(prhs[7]); i++)
+           {
+           if (mxGetDimensions(prhs[7])[i]!=1)
+              temp = 0;
+           }
+       if (temp)
+           no_background_image = 1;  //attenuation parameter is a scalar
+       else
+       // make sure that the background image is of the right size 
+           {
+           background_image_size[0] = mxGetDimensions(prhs[7])[0]; 
+           background_image_size[1] = mxGetDimensions(prhs[7])[1];            
+           if (!(background_image_size[0] == activity_size[0] && background_image_size[1] == activity_size[1]))
+               {
+               mexErrMsgTxt("et_project_partial() - incompatible size of BackgroundImage.\n");
+               }
+           no_background_image = 0;       
+           }
+       }
+
 
    /* Check if attenuation background is specified */
    background_attenuation = 0.0f;
-   if (nrhs>=8)
-       background_attenuation = (mxGetScalar(prhs[7])); 
+   if (nrhs>=9)
+       background_attenuation = (mxGetScalar(prhs[8])); 
+
 
    /* Check if 'truncate negative values' flag has been specified */
-   if (nrhs>=9)
-       truncate_negative_values = (mxGetScalar(prhs[8])); 
+   if (nrhs>=10)
+       truncate_negative_values = (mxGetScalar(prhs[9])); 
 
 
    /* Extract pointers to input matrices (and eventually convert double to float)*/
@@ -279,6 +309,20 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
            }
        }
 
+   float *background_image_ptr=NULL; 
+   if (!no_background_image)
+       {
+       if (mxGetClassID(prhs[7]) == mxSINGLE_CLASS)
+           background_image_ptr = (float *) (mxGetData(prhs[7]));
+       else
+           {
+           double *background_image_ptr_d = (double *) (mxGetData(prhs[7]));        
+           background_image_ptr = (float*) malloc(background_image_size[0]*background_image_size[1]*sizeof(float));
+           for (int i=0; i<background_image_size[0]*background_image_size[1];i++)
+               background_image_ptr[i] = background_image_ptr_d[i];
+           }
+       }
+
    /* Allocate sinogram matrix */   
    int dim_sino=3;   
    mwSize mw_sino_size[3];
@@ -304,13 +348,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
 
    /* Perform projection */
-   status = et_array_project_partial(activity_ptr, activity_size, sinogram_ptr, sino_size, partialsum_ptr, partialsum_size, cameras_ptr, cameras_size, psf_ptr, psf_size, attenuation_ptr, attenuation_size, background, background_attenuation, enable_gpu, truncate_negative_values, do_rotate_partial_integrals);
+   status = et_array_project_partial(activity_ptr, activity_size, sinogram_ptr, sino_size, partialsum_ptr, partialsum_size, cameras_ptr, cameras_size, psf_ptr, psf_size, attenuation_ptr, attenuation_size, background, background_image_ptr, background_attenuation, enable_gpu, truncate_negative_values, do_rotate_partial_integrals);
 
    /* Shutdown */
    if (mxGetClassID(prhs[1]) != mxSINGLE_CLASS) free(cameras_ptr);
-   if ((!no_activity)    && (mxGetClassID(prhs[0]) != mxSINGLE_CLASS)) free(activity_ptr);
-   if ((!no_attenuation) && (mxGetClassID(prhs[2]) != mxSINGLE_CLASS)) free(attenuation_ptr);
-   if ((!no_psf)         && (mxGetClassID(prhs[3]) != mxSINGLE_CLASS)) free(psf_ptr);
+   if ((!no_activity)         && (mxGetClassID(prhs[0]) != mxSINGLE_CLASS)) free(activity_ptr);
+   if ((!no_attenuation)      && (mxGetClassID(prhs[2]) != mxSINGLE_CLASS)) free(attenuation_ptr);
+   if ((!no_psf)              && (mxGetClassID(prhs[3]) != mxSINGLE_CLASS)) free(psf_ptr);
+   if ((!no_background_image) && (mxGetClassID(prhs[7]) != mxSINGLE_CLASS)) free(background_image_ptr);
 
    /* Return */
    if (status != niftyrec_success)

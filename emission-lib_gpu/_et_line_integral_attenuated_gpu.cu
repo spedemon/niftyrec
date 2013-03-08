@@ -13,7 +13,7 @@
 
 #define BLOCK 256
 
-void et_line_integral_attenuated_gpu(float *d_activity, float *d_attenuation, float *d_sinogram, float *d_partialsum, int cam, nifti_image *img, float background_activity)
+void et_line_integral_attenuated_gpu(float *d_activity, float *d_attenuation, float *d_sinogram, float *d_background_image, float *d_partialsum, int cam, nifti_image *img, float background_activity)
 {
 	int3 imageSize = make_int3(img->dim[1],img->dim[2],img->dim[3]);
 	CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_ImageSize,&imageSize,sizeof(int3)));
@@ -24,7 +24,7 @@ void et_line_integral_attenuated_gpu(float *d_activity, float *d_attenuation, fl
 	
 	float *currentCamPointer = (d_sinogram) + cam * img->dim[1] * img->dim[2] ;
 
-	et_line_integral_attenuated_gpu_kernel <<<G1,B1>>> (d_activity, d_attenuation, currentCamPointer, d_partialsum, background_activity);
+	et_line_integral_attenuated_gpu_kernel <<<G1,B1>>> (d_activity, d_attenuation, d_background_image, currentCamPointer, d_partialsum, background_activity);
 
 	CUDA_SAFE_CALL(cudaThreadSynchronize());
 }

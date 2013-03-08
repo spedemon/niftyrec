@@ -781,7 +781,7 @@ int et_convolve(nifti_image *inImage, nifti_image *outImage, nifti_image *kernel
 }
 
 
-int et_project_partial(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *partialsumImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values, int do_rotate_partial)
+int et_project_partial(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *partialsumImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, nifti_image *backgroundImage, float background_attenuation, int truncate_negative_values, int do_rotate_partial)
 {
 return 1;
 }
@@ -1095,6 +1095,7 @@ int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_ima
 						rotatedAttenuationArray_d, 
 						sinoArray_d,
                                                 NULL,
+                                                NULL,
 						cam,
 						referenceImage,
                                                 background);
@@ -1103,6 +1104,7 @@ int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_ima
                                                 NULL,
 						sinoArray_d,
                                                 NULL,
+                                                NULL,
 						cam,
 						referenceImage,
                                                 background);
@@ -1110,6 +1112,7 @@ int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_ima
                     et_line_integral_attenuated_gpu(NULL,
 						rotatedAttenuationArray_d, 
 						sinoArray_d,
+                                                NULL,
                                                 NULL,
 						cam,
 						referenceImage,
@@ -2101,7 +2104,7 @@ int et_joint_histogram_gpu(nifti_image *matrix_A_Image, nifti_image *matrix_B_Im
   \param background the activity background (used when activity is rotated and resampled). 
   \param background_attenuation the attenuation background (used when the attenuation map is rotated and resampled). 
 */
-int et_project_partial_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *partialsumImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values, int do_rotate_partial)
+int et_project_partial_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *partialsumImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, nifti_image *backgroundImage, float background_attenuation, int truncate_negative_values, int do_rotate_partial)
 {
 	/* initialise the cuda arrays */
 	cudaArray *activityArray_d=NULL;               //stores input activity, makes use of fetch unit
@@ -2263,6 +2266,26 @@ int et_project_partial_gpu(nifti_image *activityImage, nifti_image *sinoImage, n
                  return niftyrec_error_transfergpu;}
             }
 
+        float *backgroundArray_d=NULL; 
+        if (backgroundImage != NULL)
+            {
+            if(cudaMalloc((void **)&backgroundArray_d, backgroundImage->nx*backgroundImage->ny*sizeof(float)) != cudaSuccess) {
+                alloc_record_destroy(memory_record); 
+                return niftyrec_error_allocgpu;}
+            alloc_record_add(memory_record,(void*)backgroundArray_d,ALLOCTYPE_CUDA);
+
+//            if(cudaCommon_allocateArrayToDevice<float>(&backgroundArray_d, backgroundImage->dim)) {
+//                 alloc_record_destroy(memory_record); 
+//                 return niftyrec_error_transfergpu;} 
+//            alloc_record_add(memory_record,(void*)backgroundArray_d,ALLOCTYPE_CUDA);
+
+            cudaMemcpy((float*)backgroundArray_d,(float*)backgroundImage->data, backgroundImage->nx*backgroundImage->ny*sizeof(float), cudaMemcpyHostToDevice); 
+//            if(cudaCommon_transferNiftiToArrayOnDevice<float>(&backgroundArray_d,backgroundImage)) {
+//                 alloc_record_destroy(memory_record);
+//                 return niftyrec_error_transfergpu;}
+            }
+
+
 	for(unsigned int cam=0; cam<n_cameras; cam++){
                 fprintf_verbose( "et_project: Rotation: %f  %f  %f  \n",cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam]);
 		// Apply affine //
@@ -2323,6 +2346,7 @@ int et_project_partial_gpu(nifti_image *activityImage, nifti_image *sinoImage, n
                     et_line_integral_attenuated_gpu(	rotatedArray_d,
 						rotatedAttenuationArray_d, 
 						sinoArray_d,
+                                                backgroundArray_d, 
                                                 partialsumArray_d,
 						cam,
 						referenceImage,
@@ -2331,6 +2355,7 @@ int et_project_partial_gpu(nifti_image *activityImage, nifti_image *sinoImage, n
 		    et_line_integral_attenuated_gpu(	rotatedArray_d,
                                                 NULL,
 						sinoArray_d,
+                                                backgroundArray_d, 
                                                 partialsumArray_d,
 						cam,
 						referenceImage,
@@ -2339,6 +2364,7 @@ int et_project_partial_gpu(nifti_image *activityImage, nifti_image *sinoImage, n
                     et_line_integral_attenuated_gpu(NULL,
 						rotatedAttenuationArray_d, 
 						sinoArray_d,
+                                                backgroundArray_d, 
                                                 partialsumArray_d,
 						cam,
 						referenceImage,

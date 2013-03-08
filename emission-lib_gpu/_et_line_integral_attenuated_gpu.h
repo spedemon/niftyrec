@@ -15,6 +15,5 @@
 #include "_reg_blocksize_gpu.h"
 #include "nifti1_io.h"
 
-void et_line_integral_attenuated_gpu(float *d_activity, float *d_attenuation, float *d_sinogram, float *d_partialsum, int cam, nifti_image *, float background_activity);
-
+void et_line_integral_attenuated_gpu(float *d_activity, float *d_attenuation, float *d_sinogram, float *d_background_image, float *d_partialsum, int cam, nifti_image *, float background_activity);
 
