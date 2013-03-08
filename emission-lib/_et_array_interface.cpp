@@ -177,7 +177,7 @@ extern "C" int et_array_project(float *activity, int *activity_size, float *sino
             {
             memset(cameras_array, 0, n_cameras*3*sizeof(float));
             for (int cam=0; cam<n_cameras; cam++)
-                cameras_array[0*n_cameras+cam] = cameras[cam];
+                cameras_array[1*n_cameras+cam] = cameras[cam];
             }
 
 	// Allocate nifti images
@@ -334,7 +334,7 @@ extern "C" int et_array_backproject(float *sino, int *sino_size, float *bkpr, in
             {
             memset(cameras_array, 0, n_cameras*3*sizeof(float));
             for (int cam=0; cam<n_cameras; cam++)
-                cameras_array[0*n_cameras+cam] = cameras[cam];
+                cameras_array[1*n_cameras+cam] = cameras[cam];
             }
 
 
@@ -493,7 +493,7 @@ extern "C" int et_array_gradient_attenuation(float *sino, int *sino_size, float 
             {
             memset(cameras_array, 0, n_cameras*3*sizeof(float));
             for (int cam=0; cam<n_cameras; cam++)
-                cameras_array[0*n_cameras+cam] = cameras[cam];
+                cameras_array[1*n_cameras+cam] = cameras[cam];
             }
 
 
@@ -894,7 +894,7 @@ fprintf(stderr,"et_array_project: Incorrect size of cameras %d %d. 'Cameras' mus
             {
             memset(cameras_array, 0, n_cameras*3*sizeof(float));
             for (int cam=0; cam<n_cameras; cam++)
-                cameras_array[0*n_cameras+cam] = cameras[cam];
+                cameras_array[1*n_cameras+cam] = cameras[cam];
             }
 
 	// Allocate source nifti image 
@@ -1082,7 +1082,7 @@ extern "C" int et_array_fisher_grid_projection(float *sinogram_ptr, int *sinogra
             {
             memset(cameras_array, 0, n_cameras*3*sizeof(float));
             for (int cam=0; cam<n_cameras; cam++)
-                cameras_array[0*n_cameras+cam] = cameras[cam];
+                cameras_array[1*n_cameras+cam] = cameras[cam];
             }
 
 	// Allocate source nifti image 
@@ -1414,7 +1414,7 @@ extern "C" int et_array_project_partial(float *activity, int *activity_size, flo
             {
             memset(cameras_array, 0, n_cameras*3*sizeof(float));
             for (int cam=0; cam<n_cameras; cam++)
-                cameras_array[0*n_cameras+cam] = cameras[cam];
+                cameras_array[1*n_cameras+cam] = cameras[cam];
             }
 
 	// Allocate nifti images
