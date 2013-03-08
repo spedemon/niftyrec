@@ -207,15 +207,15 @@ def et_list_gpus():
 
 
 def et_is_block_multiple(integer_value): 
-    L.et_array_is_block_multiple.restype  = c_int
-    L.et_array_is_block_multiple.argtypes = [c_int]
+    L.et_array_is_block_multiple.restype  = c_ushort
+    L.et_array_is_block_multiple.argtypes = [c_ushort]
     integer_value = int32(integer_value)
     status = L.et_array_is_block_multiple(integer_value)
     return status 
 
 
 def et_get_block_size():
-    L.et_array_get_block_size.restype = c_int
+    L.et_array_get_block_size.restype = c_ushort
     L.et_array_get_block_size.argtypes = []
     return L.et_array_get_block_size()
 

@@ -4,7 +4,7 @@
 %     NiftyRec Demo: iterative reconstruction transmission tomography with parallel rays 
 %
 %See also
-%   TT_DEMO_PROJECT
+%   TT_DEMO_PROJECT_PARALLEL 
 %
 % 
 %Stefano Pedemonte

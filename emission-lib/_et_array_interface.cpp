@@ -1569,12 +1569,12 @@ extern "C" int et_array_histogram_weighted(float *inputdata, float *weights, flo
 }
 
 
-extern "C" int et_array_is_block_multiple(int size)
+extern "C" unsigned short int et_array_is_block_multiple(unsigned short int size)
 {
     return et_is_block_multiple(size); 
 }
 
-extern "C" int et_array_get_block_size(void)
+extern "C" unsigned short int et_array_get_block_size(void)
 {
     return et_get_block_size();
 }

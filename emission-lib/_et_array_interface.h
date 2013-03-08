@@ -37,7 +37,7 @@ extern "C" int et_array_project_partial(float *activity, int *activity_size, flo
 extern "C" int et_array_isinstalled();
 extern "C" int et_array_reset_gpu();
 extern "C" int et_array_histogram_weighted(float *inputdata_ptr, float *weights_ptr, float *histogram_ptr, int N, int N_classes, int N_bins, double min_value, double max_value); 
-extern "C" int et_array_is_block_multiple(int size); 
-extern "C" int et_array_get_block_size(void); 
+extern "C" unsigned short int et_array_is_block_multiple(unsigned short int size); 
+extern "C" unsigned short int et_array_get_block_size(void); 
 
 
