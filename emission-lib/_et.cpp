@@ -201,7 +201,7 @@ int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *
         float psf_norm;
 	if(psfImage!=NULL)
             {
-            if (psfImage->nx <= (MAX_SEPARABLE_KERNEL_RADIUS*2)+1) 
+            if(1) //(psfImage->nx <= (MAX_SEPARABLE_KERNEL_RADIUS*2)+1) 
                 {
                 separable_psf=1;
                 psf_size[0] = psfImage->dim[1];
@@ -389,7 +389,7 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *backprojectionImage,
         float psf_norm;
 	if(psfImage!=NULL)
             {
-            if (psfImage->nx <= (MAX_SEPARABLE_KERNEL_RADIUS*2)+1) 
+            if(1) //(psfImage->nx <= (MAX_SEPARABLE_KERNEL_RADIUS*2)+1) 
                 {
                 separable_psf=1;
                 psf_size[0] = psfImage->dim[1];
@@ -995,7 +995,7 @@ int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_ima
             image_size[1] = referenceImage->dim[2];
             image_size[2] = referenceImage->dim[3];
 
-            if (psf_size[0]<= (MAX_SEPARABLE_KERNEL_RADIUS*2)+1)
+            if(1) //(psf_size[0]<= (MAX_SEPARABLE_KERNEL_RADIUS*2)+1)
                 separable_psf=1;
             }
 
@@ -1282,7 +1282,7 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *backprojectionImage,
             image_size[1] = backprojectionImage->dim[2];
             image_size[2] = backprojectionImage->dim[3];
 
-            if (psf_size[0]<= (MAX_SEPARABLE_KERNEL_RADIUS*2)+1)
+            if(1) //(psf_size[0]<= (MAX_SEPARABLE_KERNEL_RADIUS*2)+1)
                 separable_psf=1;
             }
 
@@ -1769,7 +1769,7 @@ int et_gradient_attenuation_gpu(nifti_image *gradientImage, nifti_image *sinoIma
             image_size[1] = gradientImage->dim[2];
             image_size[2] = gradientImage->dim[3];
 
-            if (psf_size[0]<= (MAX_SEPARABLE_KERNEL_RADIUS*2)+1)
+            if(1) //(psf_size[0]<= (MAX_SEPARABLE_KERNEL_RADIUS*2)+1)
                 separable_psf=1;
             }
 
@@ -2227,7 +2227,7 @@ int et_project_partial_gpu(nifti_image *activityImage, nifti_image *sinoImage, n
             image_size[1] = referenceImage->dim[2];
             image_size[2] = referenceImage->dim[3];
 
-            if (psf_size[0]<= (MAX_SEPARABLE_KERNEL_RADIUS*2)+1)
+            if(1) //(psf_size[0]<= (MAX_SEPARABLE_KERNEL_RADIUS*2)+1)
                 separable_psf=1;
             }
 

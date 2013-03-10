@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "_reg_cudaCommon.h"
+#include "nifti1_io.h"
 
 #define ALLOCTYPE_GUEST 0
 #define ALLOCTYPE_CUDA  1

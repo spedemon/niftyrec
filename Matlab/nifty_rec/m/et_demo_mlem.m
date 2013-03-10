@@ -35,7 +35,12 @@ figure(1); subplot(2,3,6); image(zeros(N,N)); colormap gray; axis square off tig
 disp('Creating synthetic sinogram..');
 mask = et_spherical_phantom(N,N,N,N*0.45,1,0,(N+1)/2,(N+1)/2,(N+1)/2);
 if phantom_type == 0
-    phantom = et_load_nifti('activity_128.nii'); 
+    phantom_file = 'activity_128.nii'; 
+    if not(exist(phantom_file,'file'))
+        fprintf('Synthetic data file %s cannot be found. \nPlease make sure that NiftyRec data is installed. \nIf NiftyRec was built and installed from the source code, \nrun CMake, enable the INCLUDE_DATA flag and run "make install".\n',phantom_file); 
+        return;
+    end
+    phantom = et_load_nifti(phantom_file); 
     phantom = phantom.img .* mask;
 elseif phantom_type == 1
     phantom = et_spherical_phantom(N,N,N,N/8,60,20,N/4,N/2,N/3) .* mask;

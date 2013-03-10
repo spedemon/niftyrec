@@ -23,7 +23,6 @@ GPU        = 1;
 cameras    = zeros(N_cameras,3); 
 cameras(:,2)  = linspace(0,2*pi,N_cameras); 
 
-phantom_type = 1;  % 0 for 'brain FDG PET'; 1 for 'sphere in uniform background'
 
 %% Simulate SPECT scan 
 disp('Creating synthetic sinogram..');
@@ -35,7 +34,6 @@ sinogram = et_poissrnd(ideal_sinogram);
 
 
 %% Reconstruction:
-
 %Compute normalization volume
 disp('Computing normalization..');
 norm = et_backproject(ones(N,m,length(cameras)), cameras, attenuation, psf, GPU) ;
@@ -55,9 +53,8 @@ end
 
 
 %% Cleanup 
-
 if GPU
     et_reset_gpu();
 end
 
-disp('Done');
+disp('MLEM Done.');

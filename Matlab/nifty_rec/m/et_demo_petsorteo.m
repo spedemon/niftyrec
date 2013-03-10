@@ -12,7 +12,12 @@
 
 
 %% Load PET-SORTEO dataset
-[sinogram,scaninfo,hd]=et_load_ecat('PET_SORTEO_01_FDG.S');
+sinogram_file = 'PET_SORTEO_01_FDG.S'; 
+if not(exist(sinogram_file,'file'))
+    fprintf('Sinogram file %s cannot be found. \nPlease make sure that NiftyRec data is installed. \nIf NiftyRec was built and installed from the source code, \nrun CMake, enable the INCLUDE_DATA flag and run "make install".\n',sinogram_file); 
+    return;
+end
+[sinogram,scaninfo,hd]=et_load_ecat(sinogram_file);
 
 %% Parameters
 N_projections = 144; 
