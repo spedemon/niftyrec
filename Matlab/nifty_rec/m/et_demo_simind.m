@@ -17,7 +17,12 @@ X = 128;
 Y = 128;
 theta_first = 0.0;   
 theta_last  = 2*pi; 
-sinogram = et_load_simind('SIMIND_01_PERFUSION.a00',X,Y,N_projections);
+sinogram_file = 'SIMIND_01_PERFUSION.a00';
+if not(exist(sinogram_file,'file'))
+    fprintf('Sinogram file %s cannot be found. \nPlease make sure that NiftyRec data is installed. \nIf NiftyRec was built and installed from the source code, \nrun CMake, enable the INCLUDE_DATA flag and run "make install".\n',sinogram_file); 
+    return;
+end
+sinogram = et_load_simind(sinogram_file,X,Y,N_projections);
 
 %% Parameters 
 N_iter_osem = 50; 

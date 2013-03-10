@@ -46,6 +46,7 @@ int free_record_element(alloc_record_element *element)
         free(element->memory_section);
         element->memory_section=NULL;
         }
+#ifdef _USE_CUDA
     else if (element->platform == ALLOCTYPE_CUDA)
         {
         //fprintf(stderr,"_niftyrec_memory: freeing CUDA memory %d\n",(int)element->memory_section);
@@ -58,6 +59,7 @@ int free_record_element(alloc_record_element *element)
         cudaFreeArray((cudaArray*)element->memory_section);
         element->memory_section=NULL;
         }
+#endif
     else if (element->platform == ALLOCTYPE_NIFTI)
         {
         //fprintf(stderr,"_niftyrec_memory: freeing NIFTI IMAGE memory %d\n",(int)element->memory_section);

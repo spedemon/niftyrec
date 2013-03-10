@@ -8,7 +8,7 @@
 %
 % 
 %Stefano Pedemonte
-%Copyright 2009-2012 CMIC-UCL
+%Copyright 2009-2013 CMIC-UCL
 %Gower Street, London, UK
 
 
