@@ -119,11 +119,12 @@ int et_rotate(nifti_image *sourceImage, nifti_image *resultImage, float theta_x,
   \param *psfImage the depth-dependent point spread function, NULL for no PSF. 
   \param *attenuationImage the attenuation map, NULL for no attenuation. 
   \param *cameras [n_camerasx3] array of camera orientations in radians. 
+  \param *centers [n_camerasx3] array of center of the cameras in voxels. 
   \param n_cameras number of projections (camera positions). 
   \param background the activity background (used when activity is rotated and resampled). 
   \param background_attenuation the attenuation background (used when the attenuation map is rotated and resampled). 
 */
-int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values)
+int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, float *centers, int n_cameras, float background, float background_attenuation, int truncate_negative_values)
 {
         int separable_psf = 0;
         int psf_size[3];
@@ -185,11 +186,6 @@ int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *
             if (rotatedAttenuationImage->data==NULL) {alloc_record_destroy(memory_record); return niftyrec_error_alloccpu;}; 
             alloc_record_add(memory_record,(void*)rotatedAttenuationImage,ALLOCTYPE_NIFTI);	
             }
-
-	/* Define centers of rotation */
-	float center_x = ((float)(referenceImage->nx - 1)) / 2.0;
-	float center_y = ((float)(referenceImage->ny - 1)) / 2.0;
-	float center_z = ((float)(referenceImage->nz - 1)) / 2.0;
 		
 	/* Alloc transformation matrix */
 	mat44 *affineTransformation = (mat44 *)calloc(1,sizeof(mat44));
@@ -226,7 +222,16 @@ int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *
 	for(int cam=0; cam<n_cameras; cam++){
 		// Apply affine //
                 fprintf_verbose( "et_project: Rotation: %f  %f  %f  \n",cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam]);
-		et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], center_x, center_y, center_z, XYZ_ROTATION);
+                fprintf_verbose( "et_project: Center:   %f  %f  %f  \n",centers[0*n_cameras+cam], centers[1*n_cameras+cam], centers[2*n_cameras+cam]);
+		et_create_rotation_matrix(      affineTransformation, 
+						cameras[0*n_cameras+cam], 
+						cameras[1*n_cameras+cam], 
+						cameras[2*n_cameras+cam], 
+						centers[0*n_cameras+cam], 
+						centers[1*n_cameras+cam], 
+						centers[2*n_cameras+cam], 
+						XYZ_ROTATION);
+
 		reg_affine_positionField(	affineTransformation,
 						referenceImage,
 						positionFieldImage );
@@ -301,11 +306,12 @@ int et_project(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *
   \param *psfImage the depth-dependent point spread function, NULL for no point spread function. 
   \param *attenuationImage the attenuation map, NULL for no attenuation. 
   \param *cameras [n_camerasx3] array of camera orientations in radians. 
+  \param *centers [n_camerasx3] array of center of the cameras in voxels. 
   \param n_cameras number of projections (camera positions). 
   \param background the activity background (used when activity is rotated and resampled). 
   \param background_attenuation the attenuation background (used when the attenuation map is rotated and resampled). 
 */
-int et_backproject(nifti_image *sinogramImage, nifti_image *backprojectionImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values)
+int et_backproject(nifti_image *sinogramImage, nifti_image *backprojectionImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, float *centers, int n_cameras, float background, float background_attenuation, int truncate_negative_values)
 {
 
         int separable_psf = 0;
@@ -369,11 +375,6 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *backprojectionImage,
             alloc_record_add(memory_record,rotatedAttenuationImage,ALLOCTYPE_NIFTI); 
             }
 
-	/* Define centers of rotation */
-	float center_x = ((float)(backprojectionImage->nx - 1)) / 2.0;
-	float center_y = ((float)(backprojectionImage->ny - 1)) / 2.0;
-	float center_z = ((float)(backprojectionImage->nz - 1)) / 2.0;
-
 	/* Clear accumulator */
 	et_clear_accumulator(backprojectionImage);	
 	
@@ -422,9 +423,9 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *backprojectionImage,
 						cameras[0*n_cameras+cam],
 						cameras[1*n_cameras+cam],
 						cameras[2*n_cameras+cam],
-						center_x,
-						center_y, 
-						center_z,
+						centers[0*n_cameras+cam],
+						centers[1*n_cameras+cam],
+					        centers[2*n_cameras+cam],
 						XYZ_ROTATION);
                     reg_affine_positionField(	affineTransformation,
 						attenuationImage,
@@ -475,9 +476,9 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *backprojectionImage,
 						-cameras[0*n_cameras+cam],
 						-cameras[1*n_cameras+cam],
 						-cameras[2*n_cameras+cam],
-						center_x,
-						center_y, 
-						center_z,
+						centers[0*n_cameras+cam],
+						centers[1*n_cameras+cam],
+					        centers[2*n_cameras+cam],
 						ZYX_ROTATION);
 						
 		reg_affine_positionField(	affineTransformation,
@@ -522,11 +523,12 @@ int et_backproject(nifti_image *sinogramImage, nifti_image *backprojectionImage,
   \param *psfImage Point Spread Function
   \param *attenuationImage attenuation map, save size as the activity. 
   \param *cameras [n_camerasx3] array of camera orientations in radians. 
+  \param *centers [n_camerasx3] array of center of the cameras in voxels. 
   \param n_cameras number of projections (camera positions). 
   \param background the activity background (used when activity is rotated and resampled). 
   \param background_attenuation the attenuation background (used when the attenuation map is rotated and resampled). 
 */
-int et_fisher_grid(int from_projection, nifti_image *inputImage, nifti_image *gridImage, nifti_image *fisherImage, nifti_image *fisherpriorImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation)
+int et_fisher_grid(int from_projection, nifti_image *inputImage, nifti_image *gridImage, nifti_image *fisherImage, nifti_image *fisherpriorImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, float *centers, int n_cameras, float background, float background_attenuation)
 {
     int status = 0;
     int psf_size_x = psfImage->nx;
@@ -554,7 +556,7 @@ int et_fisher_grid(int from_projection, nifti_image *inputImage, nifti_image *gr
         {
         invsinogram = (float*) malloc(dim[1]*dim[2]*dim[3]*sizeof(float));
         invsinogramImage->data = (float *)(invsinogram);
-        status = et_project(inputImage, invsinogramImage, psfImage, attenuationImage, cameras, n_cameras, background, background_attenuation, 1);
+        status = et_project(inputImage, invsinogramImage, psfImage, attenuationImage, cameras, centers, n_cameras, background, background_attenuation, 1);
         if (status)
             {
             fprintf(stderr,"'et_fisher_grid': error while calculating projection\n");
@@ -604,10 +606,6 @@ int et_fisher_grid(int from_projection, nifti_image *inputImage, nifti_image *gr
         for (int i=0; i<n_grid_elements*n_grid_elements; i++)
             fisher_matrix_prior[i]=0;
         }
-
-    float center_x = ((float)(gridImage->nx - 1)) / 2.0;
-    float center_y = ((float)(gridImage->ny - 1)) / 2.0;
-    float center_z = ((float)(gridImage->nz - 1)) / 2.0;
 		
     mat44 *affineTransformation = (mat44 *)calloc(1,sizeof(mat44));
     int *grid_coords_rotated = (int*) malloc(n_grid_elements*sizeof(int)*3); 
@@ -617,7 +615,7 @@ int et_fisher_grid(int from_projection, nifti_image *inputImage, nifti_image *gr
         {
         float *invsino_data = (float *) (invsinogramImage->data) + cam*gridImage->nx*gridImage->nz ;
         // 3a) rotate the grid coordinates
-        et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], center_x, center_y, center_z, XYZ_ROTATION);
+        et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], centers[0*n_cameras+cam], centers[1*n_cameras+cam], centers[2*n_cameras+cam], XYZ_ROTATION);
         for (int n=0; n<n_grid_elements; n++)
             {
             position[0]=grid_coords[3*n]; position[1]=grid_coords[3*n+1]; position[2]=grid_coords[3*n+2]; 
@@ -757,11 +755,12 @@ int et_fisher_grid(int from_projection, nifti_image *inputImage, nifti_image *gr
   \param *psfImage Point Spread Function
   \param *attenuationImage attenuation map, save size as the activity. 
   \param *cameras [n_camerasx3] array of camera orientations in radians. 
+  \param *centers [n_camerasx3] array of center of the cameras in voxels. 
   \param n_cameras number of projections (camera positions). 
   \param background the activity background (used when activity is rotated and resampled). 
   \param background the attenuation background (used when the attenuation map is rotated and resampled). 
 */
-int et_gradient_attenuation(nifti_image *gradientImage, nifti_image *sinoImage, nifti_image *activityImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values) 
+int et_gradient_attenuation(nifti_image *gradientImage, nifti_image *sinoImage, nifti_image *activityImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, float *centers, int n_cameras, float background, float background_attenuation, int truncate_negative_values) 
 {
     return 1;
 }
@@ -781,7 +780,7 @@ int et_convolve(nifti_image *inImage, nifti_image *outImage, nifti_image *kernel
 }
 
 
-int et_project_partial(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *partialsumImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, nifti_image *backgroundImage, float background_attenuation, int truncate_negative_values, int do_rotate_partial)
+int et_project_partial(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *partialsumImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, float *centers, int n_cameras, float background, nifti_image *backgroundImage, float background_attenuation, int truncate_negative_values, int do_rotate_partial)
 {
 return 1;
 }
@@ -898,11 +897,12 @@ int et_rotate_gpu(nifti_image *sourceImage, nifti_image *resultImage, float thet
   \param *psfImage the depth-dependent point spread function, NULL for no PSF. 
   \param *attenuationImage the attenuation map, NULL for no attenuation. 
   \param *cameras [n_camerasx3] array of camera orientations in radians. 
+  \param *centers [n_camerasx3] array of center of the cameras in voxels. 
   \param n_cameras number of projections (camera positions). 
   \param background the activity background (used when activity is rotated and resampled). 
   \param background_attenuation the attenuation background (used when the attenuation map is rotated and resampled). 
 */
-int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values)
+int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, float *centers, int n_cameras, float background, float background_attenuation, int truncate_negative_values)
 {
 	/* initialise the cuda arrays */
 	cudaArray *activityArray_d=NULL;               //stores input activity, makes use of fetch unit
@@ -968,11 +968,6 @@ int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_ima
 	for(int i=0; i<referenceImage->nvox; i++) mask_h[i]=i;
 	cudaMemcpy(mask_d, mask_h, referenceImage->nvox*sizeof(int), cudaMemcpyHostToDevice);
 	free(mask_h);
-	
-	/* Define centers of rotation */
-	float center_x = ((float)(referenceImage->nx - 1)) / 2.0;
-	float center_y = ((float)(referenceImage->ny - 1)) / 2.0;
-	float center_z = ((float)(referenceImage->nz - 1)) / 2.0;
 		
 	/* Alloc transformation matrix */
 	mat44 *affineTransformation = (mat44 *)calloc(1,sizeof(mat44));
@@ -1035,9 +1030,18 @@ int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_ima
             }
 
 	for(unsigned int cam=0; cam<n_cameras; cam++){
-                fprintf_verbose( "et_project: Rotation: %f  %f  %f  \n",cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam]);
+                fprintf_verbose("et_project: Rotation: %f  %f  %f  \n",cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam]);
+                fprintf_verbose("et_project: Center:   %f  %f  %f  \n",centers[0*n_cameras+cam], centers[1*n_cameras+cam], centers[2*n_cameras+cam]);
 		// Apply affine //
-		et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], center_x, center_y, center_z, XYZ_ROTATION);
+		et_create_rotation_matrix(      affineTransformation, 
+                                                cameras[0*n_cameras+cam], 
+                                                cameras[1*n_cameras+cam], 
+                                                cameras[2*n_cameras+cam], 
+                                                centers[0*n_cameras+cam], 
+                                                centers[1*n_cameras+cam], 
+                                                centers[2*n_cameras+cam], 
+                                                XYZ_ROTATION);
+
 		reg_affine_positionField_gpu(	affineTransformation,
 						referenceImage,
 						&positionFieldImageArray_d);
@@ -1152,11 +1156,12 @@ int et_project_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_ima
   \param *psfImage the depth-dependent point spread function, NULL for no point spread function. 
   \param *attenuationImage the attenuation map, NULL for no attenuation. 
   \param *cameras [n_camerasx3] array of camera orientations in radians. 
+  \param *centers [n_camerasx3] array of center of the cameras in voxels. 
   \param n_cameras number of projections (camera positions). 
   \param background the activity background (used when activity is rotated and resampled). 
   \param background_attenuation the attenuation background (used when the attenuation map is rotated and resampled). 
 */
-int et_backproject_gpu(nifti_image *sinoImage, nifti_image *backprojectionImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values)
+int et_backproject_gpu(nifti_image *sinoImage, nifti_image *backprojectionImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, float *centers, int n_cameras, float background, float background_attenuation, int truncate_negative_values)
 {
 	/* initialise the cuda arrays */
 	cudaArray *backprojectionArray_d;
@@ -1250,11 +1255,6 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *backprojectionImage,
             return niftyrec_error_transfergpu;}
 	free(mask_h);
 
-	/* Define centers of rotation */
-	float center_x = ((float)(backprojectionImage->nx - 1)) / 2.0;
-	float center_y = ((float)(backprojectionImage->ny - 1)) / 2.0;
-	float center_z = ((float)(backprojectionImage->nz - 1)) / 2.0;
-
 	/* Alloc transformation matrix */
 	mat44 *affineTransformation = (mat44 *)calloc(1,sizeof(mat44));
         if (affineTransformation==NULL) {
@@ -1316,9 +1316,9 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *backprojectionImage,
 						cameras[0*n_cameras+cam],
 						cameras[1*n_cameras+cam],
 						cameras[2*n_cameras+cam],
-						center_x,
-						center_y, 
-						center_z,
+                                                centers[0*n_cameras+cam], 
+                                                centers[1*n_cameras+cam], 
+                                                centers[2*n_cameras+cam], 
 						XYZ_ROTATION);
                     reg_affine_positionField_gpu(affineTransformation,
 						attenuationImage,
@@ -1386,9 +1386,9 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *backprojectionImage,
 						-cameras[0*n_cameras+cam],
 						-cameras[1*n_cameras+cam],
 						-cameras[2*n_cameras+cam],
-						center_x,
-						center_y, 
-						center_z,
+                                                centers[0*n_cameras+cam], 
+                                                centers[1*n_cameras+cam], 
+                                                centers[2*n_cameras+cam], 
 						ZYX_ROTATION);
 		reg_affine_positionField_gpu(	affineTransformation,
 						backprojectionImage,
@@ -1436,11 +1436,12 @@ int et_backproject_gpu(nifti_image *sinoImage, nifti_image *backprojectionImage,
   \param *psfImage Point Spread Function
   \param *attenuationImage attenuation map, save size as the activity. 
   \param *cameras [n_camerasx3] array of camera orientations in radians. 
+  \param *centers [n_camerasx3] array of center of the cameras in voxels. 
   \param n_cameras number of projections (camera positions). 
   \param background the activity background (used when activity is rotated and resampled). 
   \param background_attenuation the attenuation background (used when the attenuation map is rotated and resampled). 
 */
-int et_fisher_grid_gpu(int from_projection, nifti_image *inputImage, nifti_image *gridImage, nifti_image *fisherImage, nifti_image *fisherpriorImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation)
+int et_fisher_grid_gpu(int from_projection, nifti_image *inputImage, nifti_image *gridImage, nifti_image *fisherImage, nifti_image *fisherpriorImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, float *centers, int n_cameras, float background, float background_attenuation)
 {
     int status = 0;
     int psf_size_x = psfImage->nx;
@@ -1468,7 +1469,7 @@ int et_fisher_grid_gpu(int from_projection, nifti_image *inputImage, nifti_image
         {
         invsinogram = (float*) malloc(dim[1]*dim[2]*dim[3]*sizeof(float));
         invsinogramImage->data = (float *)(invsinogram);
-        status = et_project_gpu(inputImage, invsinogramImage, psfImage, attenuationImage, cameras, n_cameras, background, background_attenuation, 1);
+        status = et_project_gpu(inputImage, invsinogramImage, psfImage, attenuationImage, cameras, centers, n_cameras, background, background_attenuation, 1);
         if (status)
             {
             fprintf_verbose("'et_fisher_grid': error while calculating projection\n");
@@ -1516,11 +1517,6 @@ int et_fisher_grid_gpu(int from_projection, nifti_image *inputImage, nifti_image
     if (fisher_matrix_prior!=NULL)
         for (int i=0; i<n_grid_elements*n_grid_elements; i++)
             fisher_matrix_prior[i]=0; 
-   
-
-    float center_x = ((float)(gridImage->nx - 1)) / 2.0;
-    float center_y = ((float)(gridImage->ny - 1)) / 2.0;
-    float center_z = ((float)(gridImage->nz - 1)) / 2.0;
 		
     mat44 *affineTransformation = (mat44 *)calloc(1,sizeof(mat44));
     int *grid_coords_rotated = (int*) malloc(n_grid_elements*sizeof(int)*3); 
@@ -1530,7 +1526,7 @@ int et_fisher_grid_gpu(int from_projection, nifti_image *inputImage, nifti_image
         {
         float *invsino_data = (float *) (invsinogramImage->data) + cam*gridImage->nx*gridImage->nz ;
         // 3a) rotate the grid coordinates
-        et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], center_x, center_y, center_z, XYZ_ROTATION);
+        et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], centers[0*n_cameras+cam], centers[1*n_cameras+cam], centers[2*n_cameras+cam], XYZ_ROTATION);
         for (int n=0; n<n_grid_elements; n++)
             {
             position[0]=grid_coords[3*n]; position[1]=grid_coords[3*n+1]; position[2]=grid_coords[3*n+2]; 
@@ -1672,11 +1668,12 @@ int et_fisher_grid_gpu(int from_projection, nifti_image *inputImage, nifti_image
   \param *psfImage Point Spread Function
   \param *attenuationImage attenuation map, save size as the activity. 
   \param *cameras [n_camerasx3] array of camera orientations in radians. 
+  \param *centers [n_camerasx3] array of center of the cameras in voxels. 
   \param n_cameras number of projections (camera positions). 
   \param background the activity background (used when activity is rotated and resampled). 
   \param background the attenuation background (used when the attenuation map is rotated and resampled). 
 */
-int et_gradient_attenuation_gpu(nifti_image *gradientImage, nifti_image *sinoImage, nifti_image *activityImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, float background_attenuation, int truncate_negative_values) 
+int et_gradient_attenuation_gpu(nifti_image *gradientImage, nifti_image *sinoImage, nifti_image *activityImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, float *centers, int n_cameras, float background, float background_attenuation, int truncate_negative_values) 
 {
 	/* initialise the cuda arrays */
 	cudaArray *activityArray_d;               //stores input activity, makes use of fetch unit
@@ -1746,11 +1743,6 @@ int et_gradient_attenuation_gpu(nifti_image *gradientImage, nifti_image *sinoIma
 	cudaMemcpy(mask_d, mask_h, gradientImage->nvox*sizeof(int), cudaMemcpyHostToDevice);
 	free(mask_h);
 
-	/* Define centers of rotation */
-	float center_x = ((float)(gradientImage->nx - 1)) / 2.0;
-	float center_y = ((float)(gradientImage->ny - 1)) / 2.0;
-	float center_z = ((float)(gradientImage->nz - 1)) / 2.0;
-
 	/* Alloc transformation matrix */
 	mat44 *affineTransformation = (mat44 *)calloc(1,sizeof(mat44));
 
@@ -1795,9 +1787,9 @@ int et_gradient_attenuation_gpu(nifti_image *gradientImage, nifti_image *sinoIma
 						cameras[0*n_cameras+cam],
 						cameras[1*n_cameras+cam],
 						cameras[2*n_cameras+cam],
-						center_x,
-						center_y, 
-						center_z,
+						centers[0*n_cameras+cam],
+						centers[1*n_cameras+cam],
+						centers[2*n_cameras+cam],
 						XYZ_ROTATION);
                 reg_affine_positionField_gpu(   affineTransformation,
 						attenuationImage,
@@ -1866,9 +1858,9 @@ int et_gradient_attenuation_gpu(nifti_image *gradientImage, nifti_image *sinoIma
 						-cameras[0*n_cameras+cam],
 						-cameras[1*n_cameras+cam],
 						-cameras[2*n_cameras+cam],
-						center_x,
-						center_y, 
-						center_z,
+						centers[0*n_cameras+cam],
+						centers[1*n_cameras+cam],
+						centers[2*n_cameras+cam],
 						ZYX_ROTATION);
 		reg_affine_positionField_gpu(	affineTransformation,
 						gradientImage,
@@ -2100,11 +2092,12 @@ int et_joint_histogram_gpu(nifti_image *matrix_A_Image, nifti_image *matrix_B_Im
   \param *psfImage the depth-dependent point spread function, NULL for no PSF. 
   \param *attenuationImage the attenuation map, NULL for no attenuation. 
   \param *cameras [n_camerasx3] array of camera orientations in radians. 
+  \param *centers [n_camerasx3] array of center of the cameras in voxels. 
   \param n_cameras number of projections (camera positions). 
   \param background the activity background (used when activity is rotated and resampled). 
   \param background_attenuation the attenuation background (used when the attenuation map is rotated and resampled). 
 */
-int et_project_partial_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *partialsumImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, int n_cameras, float background, nifti_image *backgroundImage, float background_attenuation, int truncate_negative_values, int do_rotate_partial)
+int et_project_partial_gpu(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *partialsumImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, float *centers, int n_cameras, float background, nifti_image *backgroundImage, float background_attenuation, int truncate_negative_values, int do_rotate_partial)
 {
 	/* initialise the cuda arrays */
 	cudaArray *activityArray_d=NULL;               //stores input activity, makes use of fetch unit
@@ -2200,11 +2193,6 @@ int et_project_partial_gpu(nifti_image *activityImage, nifti_image *sinoImage, n
 	for(int i=0; i<referenceImage->nvox; i++) mask_h[i]=i;
 	cudaMemcpy(mask_d, mask_h, referenceImage->nvox*sizeof(int), cudaMemcpyHostToDevice);
 	free(mask_h);
-	
-	/* Define centers of rotation */
-	float center_x = ((float)(referenceImage->nx - 1)) / 2.0;
-	float center_y = ((float)(referenceImage->ny - 1)) / 2.0;
-	float center_z = ((float)(referenceImage->nz - 1)) / 2.0;
 		
 	/* Alloc transformation matrix */
 	mat44 *affineTransformation = (mat44 *)calloc(1,sizeof(mat44));
@@ -2289,7 +2277,7 @@ int et_project_partial_gpu(nifti_image *activityImage, nifti_image *sinoImage, n
 	for(unsigned int cam=0; cam<n_cameras; cam++){
                 fprintf_verbose( "et_project: Rotation: %f  %f  %f  \n",cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam]);
 		// Apply affine //
-		et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], center_x, center_y, center_z, XYZ_ROTATION);
+		et_create_rotation_matrix(affineTransformation, cameras[0*n_cameras+cam], cameras[1*n_cameras+cam], cameras[2*n_cameras+cam], centers[0*n_cameras+cam], centers[1*n_cameras+cam], centers[2*n_cameras+cam], XYZ_ROTATION);
 		reg_affine_positionField_gpu(	affineTransformation,
 						referenceImage,
 						&positionFieldImageArray_d);
@@ -2393,24 +2381,24 @@ int et_project_partial_gpu(nifti_image *activityImage, nifti_image *sinoImage, n
 
 
 		et_create_rotation_matrix(	affineTransformation,
-						-cameras[0*n_cameras+cam],
-						-cameras[1*n_cameras+cam],
-						-cameras[2*n_cameras+cam],
-						center_x,
-						center_y, 
-						center_z,
-						ZYX_ROTATION);
+                                                -cameras[0*n_cameras+cam],
+                                                -cameras[1*n_cameras+cam],
+                                                -cameras[2*n_cameras+cam],
+                                                centers[0*n_cameras+cam],
+                                                centers[1*n_cameras+cam],
+                                                centers[2*n_cameras+cam],
+                                                ZYX_ROTATION);
 		reg_affine_positionField_gpu(	affineTransformation,
-						referenceImage,
-						&positionFieldImageArray_d);
+                                                referenceImage,
+                                                &positionFieldImageArray_d);
 		reg_resampleSourceImage_gpu(	referenceImage,
-						referenceImage,
-						&partialsumRotatedArray_d,
-						&temp_partialsumArray_d,
-						&positionFieldImageArray_d,
-						&mask_d,
-						referenceImage->nvox,
-						background);
+                                                referenceImage,
+                                                &partialsumRotatedArray_d,
+                                                &temp_partialsumArray_d,
+                                                &positionFieldImageArray_d,
+                                                &mask_d,
+                                                referenceImage->nvox,
+                                                background);
 
                 if (cudaMemcpy(((float*) partialsumImage->data)+referenceImage->nx*referenceImage->ny*referenceImage->nz*cam, partialsumRotatedArray_d, referenceImage->nx*referenceImage->ny*referenceImage->nz*sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) {
                     alloc_record_destroy(memory_record); 
