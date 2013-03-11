@@ -71,8 +71,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    /* Check if size of cameras matrix is correct */
    cameras_size[0] = mxGetDimensions(prhs[1])[0];
    cameras_size[1] = mxGetDimensions(prhs[1])[1];
-   if (!(cameras_size[1] == 3 || cameras_size[1] == 1))
-      mexErrMsgTxt("Cameras must be of size [n_cameras x 1] or [n_cameras x 3]");        
+   if (!(cameras_size[1] == 3 || cameras_size[1] == 1 || cameras_size[1] == 6))
+      mexErrMsgTxt("Cameras must be of size [n_cameras x 1], [n_cameras x 3] or [n_cameras x 6]");        
    /* Check if number of output arguments is correct */
    if (nlhs != 1){
       mexErrMsgTxt("One output: Sinogram");

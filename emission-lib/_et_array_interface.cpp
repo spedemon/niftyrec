@@ -123,6 +123,7 @@ extern "C" int et_array_project(float *activity, int *activity_size, float *sino
         int no_attenuation = 0;
         int no_activity = 0;
         float *cameras_array;
+        float *centers_array; 
 
         n_cameras = cameras_size[0];
         n_cameras_axis = cameras_size[1];
@@ -150,9 +151,9 @@ extern "C" int et_array_project(float *activity, int *activity_size, float *sino
 
         /* Check consistency of input */ 
         // Cameras must specify all 3 axis of rotation (3D array) or can be a 1D array if rotation is only along z axis. 
-        if (!(n_cameras_axis == 1 || n_cameras_axis == 3))
+        if (!(n_cameras_axis == 1 || n_cameras_axis == 3 || n_cameras_axis == 6))
             {
-            fprintf_verbose("et_array_project: Incorrect size of cameras %d %d. 'Cameras' must be either [n_cameras x 3] or [n_cameras x 1].\n",cameras_size[0],cameras_size[1]);
+            fprintf_verbose("et_array_project: Incorrect size of cameras %d %d. 'Cameras' must be [n_cameras x 1] or [n_cameras x 3] or [n_cameras x 6].\n",cameras_size[0],cameras_size[1]);
             return niftyrec_error_parameters;
             }
 
@@ -171,7 +172,7 @@ extern "C" int et_array_project(float *activity, int *activity_size, float *sino
         cameras_array = (float *)malloc(n_cameras*3*sizeof(float)); 
         if (cameras_array==NULL)
             return niftyrec_error_alloccpu;
-        if (n_cameras_axis == 3)
+        if (n_cameras_axis == 3 || n_cameras_axis == 6)
             memcpy((void*) cameras_array, (void*) cameras, n_cameras*3*sizeof(float));
         if (n_cameras_axis == 1)
             {
@@ -179,6 +180,32 @@ extern "C" int et_array_project(float *activity, int *activity_size, float *sino
             for (int cam=0; cam<n_cameras; cam++)
                 cameras_array[1*n_cameras+cam] = cameras[cam];
             }
+
+//        for(int i=0;i<n_cameras;i++)
+//            fprintf(stderr,"Camera %d: %3.3f %3.3f %3.3f\n",i,cameras_array[0*n_cameras+i],cameras_array[1*n_cameras+i],cameras_array[2*n_cameras+i]);
+            
+        // Allocate array for center of rotation 
+        centers_array = (float *)malloc(n_cameras*3*sizeof(float)); 
+        if(n_cameras_axis == 6)
+            {
+            if (centers_array==NULL)
+                return niftyrec_error_alloccpu;
+            memcpy((void*) centers_array, (void*) &cameras[n_cameras*3], n_cameras*3*sizeof(float));
+            }
+        else
+            {
+            for (int cam=0; cam<n_cameras; cam++)
+                {
+                centers_array[0*n_cameras+cam] = (activity_size[0]-1)/2.0; 
+                centers_array[1*n_cameras+cam] = (activity_size[1]-1)/2.0; 
+                centers_array[2*n_cameras+cam] = (activity_size[2]-1)/2.0; 
+                }
+            }
+//        for(int i=0;i<n_cameras;i++)
+//            {
+//            fprintf(stderr,"Camera %d: %3.3f %3.3f %3.3f\n",i,cameras_array[0*n_cameras+i],cameras_array[1*n_cameras+i],cameras_array[2*n_cameras+i]);
+//            fprintf(stderr,"Center %d: %3.3f %3.3f %3.3f\n",i,centers_array[0*n_cameras+i],centers_array[1*n_cameras+i],centers_array[2*n_cameras+i]);  
+//            }
 
 	// Allocate nifti images
         int dim[8];
@@ -231,13 +258,13 @@ extern "C" int et_array_project(float *activity, int *activity_size, float *sino
         //Do projection
         #ifdef _USE_CUDA
         if (GPU)
-            status = et_project_gpu(activityImage, sinogramImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values);
+            status = et_project_gpu(activityImage, sinogramImage, psfImage, attenuationImage, cameras_array, centers_array, n_cameras, background, background_attenuation, truncate_negative_values);
         else
-            status = et_project(activityImage, sinogramImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values);
+            status = et_project(activityImage, sinogramImage, psfImage, attenuationImage, cameras_array, centers_array, n_cameras, background, background_attenuation, truncate_negative_values);
         #else
             if (GPU)
                 fprintf_verbose( "et_array_project: No GPU support. In order to activate GPU acceleration please configure with GPU flag and compile.");
-            status = et_project(activityImage, sinogramImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values);
+            status = et_project(activityImage, sinogramImage, psfImage, attenuationImage, cameras_array, centers_array, n_cameras, background, background_attenuation, truncate_negative_values);
         #endif
 
 	//Free
@@ -271,6 +298,7 @@ extern "C" int et_array_project(float *activity, int *activity_size, float *sino
             }
 
         free(cameras_array);
+        free(centers_array);
 
 	return status;
 }
@@ -287,6 +315,8 @@ extern "C" int et_array_backproject(float *sino, int *sino_size, float *bkpr, in
         int no_psf = 0;
         int no_attenuation = 0;
         float *cameras_array;
+        float *centers_array; 
+        int activity_size[3]; 
 
         n_cameras = cameras_size[0];
         n_cameras_axis = cameras_size[1];
@@ -301,9 +331,9 @@ extern "C" int et_array_backproject(float *sino, int *sino_size, float *bkpr, in
 
         /* Check consistency of input */
         // Cameras must specify all 3 axis of rotation (3D array) or can be a 1D array if rotation is only along z axis.
-        if (!(n_cameras_axis == 1 || n_cameras_axis == 3))
+        if (!(n_cameras_axis == 1 || n_cameras_axis == 3 || n_cameras_axis == 6))
             {
-            fprintf_verbose("et_array_backproject: 'Cameras' must be either [n_cameras x 3] or [n_cameras x 1]\n");
+            fprintf_verbose("et_array_backproject: 'Cameras' must be [n_cameras x 1] or [n_cameras x 3] or [n_cameras x 6]\n");
             return status;
             }
 
@@ -323,12 +353,15 @@ extern "C" int et_array_backproject(float *sino, int *sino_size, float *bkpr, in
                 }
             }
 
+        activity_size[0] = sino_size[0]; 
+        activity_size[1] = sino_size[1]; 
+        activity_size[2] = sino_size[0]; 
 
         // Allocate array for cameras
         cameras_array = (float *)malloc(n_cameras*3*sizeof(float));
         if (cameras_array==NULL)
             return niftyrec_error_alloccpu; 
-        if (n_cameras_axis == 3)
+        if (n_cameras_axis == 3 || n_cameras_axis == 6)
             memcpy((void*) cameras_array, (void*) cameras, n_cameras*3*sizeof(float));
         if (n_cameras_axis == 1)
             {
@@ -337,6 +370,23 @@ extern "C" int et_array_backproject(float *sino, int *sino_size, float *bkpr, in
                 cameras_array[1*n_cameras+cam] = cameras[cam];
             }
 
+        // Allocate array for center of rotation 
+        centers_array = (float *)malloc(n_cameras*3*sizeof(float)); 
+        if(n_cameras_axis == 6)
+            {
+            if (centers_array==NULL)
+                return niftyrec_error_alloccpu;
+            memcpy((void*) centers_array, (void*) &cameras[n_cameras*3], n_cameras*3*sizeof(float));
+            }
+        else
+            {
+            for (int cam=0; cam<n_cameras; cam++)
+                {
+                centers_array[0*n_cameras+cam] = (activity_size[0]-1)/2.0; 
+                centers_array[1*n_cameras+cam] = (activity_size[1]-1)/2.0; 
+                centers_array[2*n_cameras+cam] = (activity_size[2]-1)/2.0; 
+                }
+            }
 
 	// Allocate backprojection (result) image 
         int dim[8];
@@ -377,11 +427,11 @@ extern "C" int et_array_backproject(float *sino, int *sino_size, float *bkpr, in
 	//Backproject
 	#ifdef _USE_CUDA
 	if(GPU)
-	    status = et_backproject_gpu(sinoImage, bkprImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values);
+	    status = et_backproject_gpu(sinoImage, bkprImage, psfImage, attenuationImage, cameras_array, centers_array, n_cameras, background, background_attenuation, truncate_negative_values);
 	else
-	    status = et_backproject(sinoImage, bkprImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values);	    
+	    status = et_backproject(sinoImage, bkprImage, psfImage, attenuationImage, cameras_array, centers_array, n_cameras, background, background_attenuation, truncate_negative_values);	    
 	#else
-	    status = et_backproject(sinoImage, bkprImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values);	    
+	    status = et_backproject(sinoImage, bkprImage, psfImage, attenuationImage, cameras_array, centers_array, n_cameras, background, background_attenuation, truncate_negative_values);	    
 	#endif
 	
 	//Free (free nifti images but not their data arrays)
@@ -412,6 +462,7 @@ extern "C" int et_array_backproject(float *sino, int *sino_size, float *bkpr, in
             }
 
         free(cameras_array);
+        free(centers_array); 
 
 	return status;
 }
@@ -426,6 +477,7 @@ extern "C" int et_array_gradient_attenuation(float *sino, int *sino_size, float 
         int n_cameras_axis;
         int no_psf = 0;
         float *cameras_array;
+        float *centers_array; 
 
         n_cameras = cameras_size[0];
         n_cameras_axis = cameras_size[1];
@@ -441,9 +493,9 @@ extern "C" int et_array_gradient_attenuation(float *sino, int *sino_size, float 
 
         /* Check consistency of input */
         // Cameras must specify all 3 axis of rotation (3D array) or can be a 1D array if rotation is only along z axis.
-        if (!(n_cameras_axis == 1 || n_cameras_axis == 3))
+        if (!(n_cameras_axis == 1 || n_cameras_axis == 3 || n_cameras_axis == 6))
             {
-            fprintf_verbose("et_array_backproject: 'Cameras' must be either [n_cameras x 3] or [n_cameras x 1]\n");
+            fprintf_verbose("et_array_backproject: 'Cameras' must be [n_cameras x 1] or [n_cameras x 3] or [n_cameras x 6]\n");
             return status;
             }
         if (dims==2)
@@ -487,7 +539,7 @@ extern "C" int et_array_gradient_attenuation(float *sino, int *sino_size, float 
         cameras_array = (float *)malloc(n_cameras*3*sizeof(float));
         if (cameras_array==NULL)
             return niftyrec_error_alloccpu; 
-        if (n_cameras_axis == 3)
+        if (n_cameras_axis == 3 || n_cameras_axis == 6)
             memcpy((void*) cameras_array, (void*) cameras, n_cameras*3*sizeof(float));
         if (n_cameras_axis == 1)
             {
@@ -496,6 +548,23 @@ extern "C" int et_array_gradient_attenuation(float *sino, int *sino_size, float 
                 cameras_array[1*n_cameras+cam] = cameras[cam];
             }
 
+        // Allocate array for center of rotation 
+        centers_array = (float *)malloc(n_cameras*3*sizeof(float)); 
+        if(n_cameras_axis == 6)
+            {
+            if (centers_array==NULL)
+                return niftyrec_error_alloccpu;
+            memcpy((void*) centers_array, (void*) &cameras[n_cameras*3], n_cameras*3*sizeof(float));
+            }
+        else
+            {
+            for (int cam=0; cam<n_cameras; cam++)
+                {
+                centers_array[0*n_cameras+cam] = (activity_size[0]-1)/2.0; 
+                centers_array[1*n_cameras+cam] = (activity_size[1]-1)/2.0; 
+                centers_array[2*n_cameras+cam] = (activity_size[2]-1)/2.0; 
+                }
+            }
 
 	// Allocate backprojection (result) image 
         int dim[8];
@@ -538,11 +607,11 @@ extern "C" int et_array_gradient_attenuation(float *sino, int *sino_size, float 
 	//Backproject
 	#ifdef _USE_CUDA
 	if(GPU)
-	    status = et_gradient_attenuation_gpu(gradientImage, sinoImage, activityImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values);
+	    status = et_gradient_attenuation_gpu(gradientImage, sinoImage, activityImage, psfImage, attenuationImage, cameras_array, centers_array, n_cameras, background, background_attenuation, truncate_negative_values);
 	else
-	    status = et_gradient_attenuation(gradientImage, sinoImage, activityImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values);
+	    status = et_gradient_attenuation(gradientImage, sinoImage, activityImage, psfImage, attenuationImage, cameras_array, centers_array, n_cameras, background, background_attenuation, truncate_negative_values);
 	#else
-	    status = et_gradient_attenuation(gradientImage, sinoImage, activityImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation, truncate_negative_values);
+	    status = et_gradient_attenuation(gradientImage, sinoImage, activityImage, psfImage, attenuationImage, cameras_array, centers_array, n_cameras, background, background_attenuation, truncate_negative_values);
 	#endif
 	
 	//Free (free nifti images but not their data arrays)
@@ -575,6 +644,7 @@ extern "C" int et_array_gradient_attenuation(float *sino, int *sino_size, float 
             }
 
         free(cameras_array);
+        free(centers_array);
 
 	return status;
 }
@@ -822,6 +892,7 @@ extern "C" int et_array_fisher_grid(float *activity_ptr, int *activity_size, flo
         int no_psf = 0;
         int no_attenuation = 0;
         float *cameras_array;
+        float *centers_array;
 
         n_cameras = cameras_size[0];
         n_cameras_axis = cameras_size[1];
@@ -841,10 +912,9 @@ extern "C" int et_array_fisher_grid(float *activity_ptr, int *activity_size, flo
 
         /* Check consistency of input */
         // Cameras must specify all 3 axis of rotation (3D array) or can be a 1D array if rotation is only along z axis.
-        if (!(n_cameras_axis == 1 || n_cameras_axis == 3))
+        if (!(n_cameras_axis == 1 || n_cameras_axis == 3 || n_cameras_axis == 6))
             {
-fprintf(stderr,"et_array_project: Incorrect size of cameras %d %d. 'Cameras' must be either [n_cameras x 3] or [n_cameras x 1].\n",cameras_size[0],cameras_size[1]);
-            fprintf(stderr,"et_array_project: Incorrect size of cameras %d %d. 'Cameras' must be either [n_cameras x 3] or [n_cameras x 1].\n",cameras_size[0],cameras_size[1]);
+            fprintf(stderr,"et_array_project: Incorrect size of cameras %d %d. 'Cameras' must be [n_cameras x 1] or [n_cameras x 3] or [n_cameras x 6].\n",cameras_size[0],cameras_size[1]);
             return status;
             }
         if (dims==2)
@@ -888,13 +958,31 @@ fprintf(stderr,"et_array_project: Incorrect size of cameras %d %d. 'Cameras' mus
         cameras_array = (float *)malloc(n_cameras*3*sizeof(float));
         if (cameras_array==NULL)
             return niftyrec_error_alloccpu; 
-        if (n_cameras_axis == 3)
+        if (n_cameras_axis == 3 || n_cameras_axis == 6)
             memcpy((void*) cameras_array, (void*) cameras, n_cameras*3*sizeof(float));
         if (n_cameras_axis == 1)
             {
             memset(cameras_array, 0, n_cameras*3*sizeof(float));
             for (int cam=0; cam<n_cameras; cam++)
                 cameras_array[1*n_cameras+cam] = cameras[cam];
+            }
+
+        // Allocate array for center of rotation 
+        centers_array = (float *)malloc(n_cameras*3*sizeof(float)); 
+        if(n_cameras_axis == 6)
+            {
+            if (centers_array==NULL)
+                return niftyrec_error_alloccpu;
+            memcpy((void*) centers_array, (void*) &cameras[n_cameras*3], n_cameras*3*sizeof(float));
+            }
+        else
+            {
+            for (int cam=0; cam<n_cameras; cam++)
+                {
+                centers_array[0*n_cameras+cam] = (activity_size[0]-1)/2.0; 
+                centers_array[1*n_cameras+cam] = (activity_size[1]-1)/2.0; 
+                centers_array[2*n_cameras+cam] = (activity_size[2]-1)/2.0; 
+                }
             }
 
 	// Allocate source nifti image 
@@ -952,13 +1040,13 @@ fprintf(stderr,"et_array_project: Incorrect size of cameras %d %d. 'Cameras' mus
         //Compute Fisher Information Matrix
         #ifdef _USE_CUDA
         if (GPU)
-            status = et_fisher_grid_gpu(from_projection, activityImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation); 
+            status = et_fisher_grid_gpu(from_projection, activityImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, centers_array, n_cameras, background, background_attenuation); 
         else
-            status = et_fisher_grid(from_projection, activityImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation); 
+            status = et_fisher_grid(from_projection, activityImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, centers_array, n_cameras, background, background_attenuation); 
         #else
             if (GPU)
                 fprintf(stderr, "et_array_project: No GPU support. In order to activate GPU acceleration please configure with GPU flag and compile.");
-            status = et_fisher_grid(from_projection, activityImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation); 
+            status = et_fisher_grid(from_projection, activityImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, centers_array, n_cameras, background, background_attenuation); 
         #endif
 
 	//Free
@@ -996,6 +1084,7 @@ fprintf(stderr,"et_array_project: Incorrect size of cameras %d %d. 'Cameras' mus
             }
 
         free(cameras_array);
+        free(centers_array);
 
 	return status;
 }
@@ -1011,6 +1100,8 @@ extern "C" int et_array_fisher_grid_projection(float *sinogram_ptr, int *sinogra
         int no_psf = 0;
         int no_attenuation = 0;
         float *cameras_array;
+        float *centers_array; 
+        int activity_size[3]; 
 
         n_cameras = cameras_size[0];
         n_cameras_axis = cameras_size[1];
@@ -1030,9 +1121,9 @@ extern "C" int et_array_fisher_grid_projection(float *sinogram_ptr, int *sinogra
 
         /* Check consistency of input */
         // Cameras must specify all 3 axis of rotation (3D array) or can be a 1D array if rotation is only along z axis.
-        if (!(n_cameras_axis == 1 || n_cameras_axis == 3))
+        if (!(n_cameras_axis == 1 || n_cameras_axis == 3 || n_cameras_axis == 6))
             {
-            fprintf(stderr,"et_array_project: Incorrect size of cameras %d %d. 'Cameras' must be either [n_cameras x 3] or [n_cameras x 1].\n",cameras_size[0],cameras_size[1]);
+            fprintf(stderr,"et_array_project: Incorrect size of cameras %d %d. 'Cameras' must be [n_cameras x 1] or [n_cameras x 3] or [n_cameras x 6].\n",cameras_size[0],cameras_size[1]);
             return status;
             }
         if (dims==2)
@@ -1072,17 +1163,39 @@ extern "C" int et_array_fisher_grid_projection(float *sinogram_ptr, int *sinogra
                 }
             }
 
+        activity_size[0]=sinogram_size[0];
+        activity_size[1]=sinogram_size[1];
+        activity_size[2]=sinogram_size[0];
+
         // Allocate array for cameras
         cameras_array = (float *)malloc(n_cameras*3*sizeof(float));
         if (cameras_array==NULL)
             return niftyrec_error_alloccpu; 
-        if (n_cameras_axis == 3)
+        if (n_cameras_axis == 3 || n_cameras_axis == 6)
             memcpy((void*) cameras_array, (void*) cameras, n_cameras*3*sizeof(float));
         if (n_cameras_axis == 1)
             {
             memset(cameras_array, 0, n_cameras*3*sizeof(float));
             for (int cam=0; cam<n_cameras; cam++)
                 cameras_array[1*n_cameras+cam] = cameras[cam];
+            }
+
+        // Allocate array for center of rotation 
+        centers_array = (float *)malloc(n_cameras*3*sizeof(float)); 
+        if(n_cameras_axis == 6)
+            {
+            if (centers_array==NULL)
+                return niftyrec_error_alloccpu;
+            memcpy((void*) centers_array, (void*) &cameras[n_cameras*3], n_cameras*3*sizeof(float));
+            }
+        else
+            {
+            for (int cam=0; cam<n_cameras; cam++)
+                {
+                centers_array[0*n_cameras+cam] = (activity_size[0]-1)/2.0; 
+                centers_array[1*n_cameras+cam] = (activity_size[1]-1)/2.0; 
+                centers_array[2*n_cameras+cam] = (activity_size[2]-1)/2.0; 
+                }
             }
 
 	// Allocate source nifti image 
@@ -1142,13 +1255,13 @@ extern "C" int et_array_fisher_grid_projection(float *sinogram_ptr, int *sinogra
         //Compute Fisher Information Matrix
         #ifdef _USE_CUDA
         if (GPU)
-            status = et_fisher_grid_gpu(from_projection, projectionImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation); 
+            status = et_fisher_grid_gpu(from_projection, projectionImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, centers_array, n_cameras, background, background_attenuation); 
         else
-            status = et_fisher_grid(from_projection, projectionImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation); 
+            status = et_fisher_grid(from_projection, projectionImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, centers_array, n_cameras, background, background_attenuation); 
         #else
             if (GPU)
                 fprintf(stderr,"et_array_project: No GPU support. In order to activate GPU acceleration please configure with GPU flag and compile.");
-            status = et_fisher_grid(from_projection, projectionImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, n_cameras, background, background_attenuation); 
+            status = et_fisher_grid(from_projection, projectionImage, gridImage, fisherImage, fisherpriorImage, psfImage, attenuationImage, cameras_array, centers_array, n_cameras, background, background_attenuation); 
         #endif
 
 	//Free
@@ -1186,6 +1299,7 @@ extern "C" int et_array_fisher_grid_projection(float *sinogram_ptr, int *sinogra
             }
 
         free(cameras_array);
+        free(centers_array);
 
 	return status;
 }
@@ -1355,6 +1469,7 @@ extern "C" int et_array_project_partial(float *activity, int *activity_size, flo
         int no_activity = 0;
         int no_background_image = 0;
         float *cameras_array;
+        float *centers_array; 
 
         n_cameras = cameras_size[0];
         n_cameras_axis = cameras_size[1];
@@ -1387,9 +1502,9 @@ extern "C" int et_array_project_partial(float *activity, int *activity_size, flo
 
         /* Check consistency of input */ 
         // Cameras must specify all 3 axis of rotation (3D array) or can be a 1D array if rotation is only along z axis. 
-        if (!(n_cameras_axis == 1 || n_cameras_axis == 3))
+        if (!(n_cameras_axis == 1 || n_cameras_axis == 3 || n_cameras_axis == 6))
             {
-            fprintf_verbose("et_array_project: Incorrect size of cameras %d %d. 'Cameras' must be either [n_cameras x 3] or [n_cameras x 1].\n",cameras_size[0],cameras_size[1]);
+            fprintf_verbose("et_array_project: Incorrect size of cameras %d %d. 'Cameras' must be [n_cameras x 1] or [n_cameras x 3] or [n_cameras x 6].\n",cameras_size[0],cameras_size[1]);
             return niftyrec_error_parameters;
             }
 
@@ -1408,13 +1523,31 @@ extern "C" int et_array_project_partial(float *activity, int *activity_size, flo
         cameras_array = (float *)malloc(n_cameras*3*sizeof(float)); 
         if (cameras_array==NULL)
             return niftyrec_error_alloccpu;
-        if (n_cameras_axis == 3)
+        if (n_cameras_axis == 3 || n_cameras_axis == 6)
             memcpy((void*) cameras_array, (void*) cameras, n_cameras*3*sizeof(float));
         if (n_cameras_axis == 1)
             {
             memset(cameras_array, 0, n_cameras*3*sizeof(float));
             for (int cam=0; cam<n_cameras; cam++)
                 cameras_array[1*n_cameras+cam] = cameras[cam];
+            }
+
+        // Allocate array for center of rotation 
+        centers_array = (float *)malloc(n_cameras*3*sizeof(float)); 
+        if(n_cameras_axis == 6)
+            {
+            if (centers_array==NULL)
+                return niftyrec_error_alloccpu;
+            memcpy((void*) centers_array, (void*) &cameras[n_cameras*3], n_cameras*3*sizeof(float));
+            }
+        else
+            {
+            for (int cam=0; cam<n_cameras; cam++)
+                {
+                centers_array[0*n_cameras+cam] = (activity_size[0]-1)/2.0; 
+                centers_array[1*n_cameras+cam] = (activity_size[1]-1)/2.0; 
+                centers_array[2*n_cameras+cam] = (activity_size[2]-1)/2.0; 
+                }
             }
 
 	// Allocate nifti images
@@ -1490,13 +1623,13 @@ extern "C" int et_array_project_partial(float *activity, int *activity_size, flo
         //Do projection
         #ifdef _USE_CUDA
         if (GPU)
-            status = et_project_partial_gpu(activityImage, sinogramImage, partialsumImage, psfImage, attenuationImage, cameras_array, n_cameras, background, backgroundImage, background_attenuation, truncate_negative_values, do_rotate_partial);
+            status = et_project_partial_gpu(activityImage, sinogramImage, partialsumImage, psfImage, attenuationImage, cameras_array, centers_array, n_cameras, background, backgroundImage, background_attenuation, truncate_negative_values, do_rotate_partial);
         else
-            status = et_project_partial(activityImage, sinogramImage, partialsumImage, psfImage, attenuationImage, cameras_array, n_cameras, background, backgroundImage, background_attenuation, truncate_negative_values, do_rotate_partial);
+            status = et_project_partial(activityImage, sinogramImage, partialsumImage, psfImage, attenuationImage, cameras_array, centers_array, n_cameras, background, backgroundImage, background_attenuation, truncate_negative_values, do_rotate_partial);
         #else
             if (GPU)
                 fprintf_verbose( "et_array_project: No GPU support. In order to activate GPU acceleration please configure with GPU flag and compile.");
-            status = et_project_partial(activityImage, sinogramImage, partialsumImage, psfImage, attenuationImage, cameras_array, n_cameras, background, backgroundImage, background_attenuation, truncate_negative_values, do_rotate_partial);
+            status = et_project_partial(activityImage, sinogramImage, partialsumImage, psfImage, attenuationImage, cameras_array, centers_array, n_cameras, background, backgroundImage, background_attenuation, truncate_negative_values, do_rotate_partial);
         #endif
 
 	//Free
@@ -1543,6 +1676,7 @@ extern "C" int et_array_project_partial(float *activity, int *activity_size, flo
 	free(partialsumImage) ;
 
         free(cameras_array);
+        free(centers_array);
 
 	return status;
 }
