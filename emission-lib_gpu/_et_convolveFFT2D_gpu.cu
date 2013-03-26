@@ -73,8 +73,8 @@ int et_convolveFFT2D_gpu(float **d_data, int *data_size, float **d_kernel, int *
 
     //Create cuFFT plan
 //    fprintf_verbose("Creating FFT plan for %i x %i...\n", fftH, fftW);
-    CUFFT_SAFE_CALL( cufftPlan2d(&fftPlanFwd, fftH, fftW, CUFFT_R2C) );
-    CUFFT_SAFE_CALL( cufftPlan2d(&fftPlanInv, fftH, fftW, CUFFT_C2R) );
+    CUDA_SAFE_CALL( cufftPlan2d(&fftPlanFwd, fftH, fftW, CUFFT_R2C) );
+    CUDA_SAFE_CALL( cufftPlan2d(&fftPlanInv, fftH, fftW, CUFFT_C2R) );
 
     //Convolve slices one by one
     for (int slice=0; slice<n_slices; slice++)
@@ -96,13 +96,13 @@ CUDA_SAFE_CALL( cudaThreadSynchronize() );
 CUDA_SAFE_CALL( cudaThreadSynchronize() );
         //Convolve
 //        fprintf_verbose("Transforming convolution kernel...\n");
-        CUFFT_SAFE_CALL( cufftExecR2C(fftPlanFwd, d_PaddedKernel, (cufftComplex *)d_KernelSpectrum) );
+        CUDA_SAFE_CALL( cufftExecR2C(fftPlanFwd, d_PaddedKernel, (cufftComplex *)d_KernelSpectrum) );
 
 //        fprintf_verbose("Running GPU FFT convolution...\n");
         CUDA_SAFE_CALL( cudaThreadSynchronize() );
-        CUFFT_SAFE_CALL( cufftExecR2C(fftPlanFwd, d_PaddedData, (cufftComplex *)d_DataSpectrum) );
+        CUDA_SAFE_CALL( cufftExecR2C(fftPlanFwd, d_PaddedData, (cufftComplex *)d_DataSpectrum) );
         modulateAndNormalize(d_DataSpectrum, d_KernelSpectrum, fftH, fftW);
-        CUFFT_SAFE_CALL( cufftExecC2R(fftPlanInv, (cufftComplex *)d_DataSpectrum, d_PaddedData) );
+        CUDA_SAFE_CALL( cufftExecC2R(fftPlanInv, (cufftComplex *)d_DataSpectrum, d_PaddedData) );
         CUDA_SAFE_CALL( cudaThreadSynchronize() );
       
 
@@ -114,8 +114,8 @@ CUDA_SAFE_CALL( cudaThreadSynchronize() );
 
     //Destroy cuFFT plan and free memory
 //    fprintf_verbose("Shutting down...\n");
-    CUFFT_SAFE_CALL( cufftDestroy(fftPlanInv) );
-    CUFFT_SAFE_CALL( cufftDestroy(fftPlanFwd) );
+    CUDA_SAFE_CALL( cufftDestroy(fftPlanInv) );
+    CUDA_SAFE_CALL( cufftDestroy(fftPlanFwd) );
     CUDA_SAFE_CALL( cudaFree(d_DataSpectrum)   );
     CUDA_SAFE_CALL( cudaFree(d_KernelSpectrum) );
     CUDA_SAFE_CALL( cudaFree(d_PaddedData)   );

@@ -8,14 +8,13 @@
  *  Released under BSD licence, see LICENSE.txt 
  */
 
-
-#include <mex.h>
 #include "_et_array_interface.h"
 
 #include <limits>
 #include <string.h>
 #include <math.h>
 #include <cmath>
+#include <mex.h>
 
 /*###############################################################################################*/
 /* Matlab extensions */

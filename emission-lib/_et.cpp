@@ -12,7 +12,7 @@
 #include "_et.h"
 #include "_et_common.h"
 #include <stdio.h>
-#include <time.h>
+//#include <time.h>
 
 #define max(a,b)	(((a) > (b)) ? (a) : (b))
 #define min(a,b)	(((a) < (b)) ? (a) : (b))
@@ -22,11 +22,11 @@
 /////////////////////////////////////////   CPU   ///////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-int64_t timespecDiff(struct timespec *timeA_p, struct timespec *timeB_p)
-{
-  return ((timeA_p->tv_sec * 1000000000) + timeA_p->tv_nsec) -
-           ((timeB_p->tv_sec * 1000000000) + timeB_p->tv_nsec);
-}
+//int64_t timespecDiff(struct timespec *timeA_p, struct timespec *timeB_p)
+//{
+//  return ((timeA_p->tv_sec * 1000000000) + timeA_p->tv_nsec) -
+//           ((timeB_p->tv_sec * 1000000000) + timeB_p->tv_nsec);
+//}
 
 
 unsigned short int et_is_block_multiple(unsigned short int size)
@@ -2435,12 +2435,12 @@ int et_project_partial_gpu(nifti_image *activityImage, nifti_image *sinoImage, n
 //! Reset GPU
 int et_reset_gpu()
 {
-//    #ifdef _CUDA_4
+    #ifdef _CUDA_4
     cudaDeviceReset();
     return niftyrec_success;
-//    #else
-//    return niftyrec_error_nogpubuilt;  
-//    #endif
+    #else
+    return niftyrec_error_nogpubuilt;  
+    #endif
 }
 
 #endif

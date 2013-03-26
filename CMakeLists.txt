@@ -18,7 +18,7 @@ ENABLE_TESTING()
 #-----------------------------------------------------------------------------
 SET(Nifty_Rec_VERSION_MAJOR 1)
 SET(Nifty_Rec_VERSION_MINOR 6)
-SET(Nifty_Rec_VERSION_PATCH 7)
+SET(Nifty_Rec_VERSION_PATCH 8)
 
 #-----------------------------------------------------------------------------
 OPTION(NiftyRec_BUILD_APPS          "Build command line applications (including 3D Slicer plugins)" ON)
@@ -310,9 +310,9 @@ IF(NiftyRec_DO_PACKAGE)
         #Nsis
         SET(CPACK_NSIS_INSTALLED_ICON_NAME "bin\\\\NiftyRec.exe")
         SET(CPACK_NSIS_DISPLAY_NAME "${CPACK_PACKAGE_INSTALL_DIRECTORY} NiftyRec")
-        SET(CPACK_NSIS_HELP_LINK "http:\\\\\\\\cmic.cs.ucl.ac.uk")
-        SET(CPACK_NSIS_URL_INFO_ABOUT "http:\\\\\\\\cmic.cs.ucl.ac.uk")
-        SET(CPACK_NSIS_CONTACT "s.pedemonte@cs.ucl.ac.uk")
+        SET(CPACK_NSIS_HELP_LINK "http:\\\\\\\\niftyrec.scienceontheweb.net")
+        SET(CPACK_NSIS_URL_INFO_ABOUT "http:\\\\\\\\niftyrec.scienceontheweb.net")
+        SET(CPACK_NSIS_CONTACT "stefano.pedemonte@gmail.com")
         SET(CPACK_NSIS_MODIFY_PATH ON)
 
         #Apple drag-and-drop
