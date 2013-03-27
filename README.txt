@@ -77,6 +77,9 @@ algorithms.
     * Added simple python example 
     * Added sample dataset for the Python GUI example
 
+-- NiftyRec 1.6.8 (Rel. Mar. 2013) -- 
+    * Fixed compilation issues under Windows
+
 ######################################################################################
 
 -----------------------------------
