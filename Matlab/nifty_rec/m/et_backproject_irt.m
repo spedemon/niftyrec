@@ -1,4 +1,4 @@
-function backprojection = et_backproject_irt(sinogram, cameras, attenuation, psf)
+function backprojection = et_backproject_irt(sinogram, cameras, attenuation, psf, use_gpu, background, background_attenuation, truncate_negative_values)
 
 %ET_BACKPROJECT_IRT
 %    Backprojection function for Emission Tomographic reconstruction

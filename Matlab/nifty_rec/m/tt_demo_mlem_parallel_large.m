@@ -24,10 +24,10 @@
 
 % Load phantom attenuation data, pad, rotate, crop
 attenuation_phantom_file_nifti = 'attenuation_01.nii'; 
-Nx = 576; 
+Nx = 448; 
 Ny = 64; 
-Nz = 576; 
-rotate_axis = 1;   % 0 -> no rotation; 1 -> x; 2 -> y; 3 -> z
+Nz = 448; 
+rotate_axis = 3;   % 0 -> no rotation; 1 -> x; 2 -> y; 3 -> z
 
 fprintf('Loading phantom ...\n');
 N = max([Nx,Ny,Nz]);
@@ -41,18 +41,20 @@ attenuation_phantom = zeros(N,N,N);
 attenuation_phantom(floor((N-nx)/2)+1:floor((N-nx)/2)+nx,floor((N-ny)/2)+1:floor((N-ny)/2)+ny,floor((N-nz)/2)+1:floor((N-nz)/2)+nz) = attenuation;
 clear attenuation
 
-fprintf('Rotating ...\n');
+fprintf('Rotating ...\n'); 
+attenuation_phantom2 = attenuation_phantom; 
 if rotate_axis ~= 0
     for i =1:Nz
         if rotate_axis == 1
-            attenuation_phantom(:,i,:) = attenuation_phantom(:,:,i);
+            attenuation_phantom(:,i,:) = attenuation_phantom2(:,:,i);
         elseif rotate_axis == 2
-            attenuation_phantom(i,:,:) = attenuation_phantom(:,i,:);            
+            attenuation_phantom(i,:,:) = attenuation_phantom2(:,i,:);            
         elseif rotate_axis == 3            
-            attenuation_phantom(:,:,i) = attenuation_phantom(i,:,:);            
+            attenuation_phantom(:,:,i) = attenuation_phantom2(i,:,:);            
         end
     end
 end
+clear attenuation_phantom2
 
 fprintf('Cropping ...\n');
 if Nx < N

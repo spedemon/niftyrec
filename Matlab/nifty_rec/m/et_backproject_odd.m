@@ -111,4 +111,5 @@ end
 centers = repmat([(size(sinogram_even,1)-2)/2, (size(sinogram_even,2)-1)/2, (size(sinogram_even,1)-2)/2],size(cameras,1),1); 
 cameras = [cameras,centers];
 image = et_backproject_mex(sinogram_even, cameras, attenuation_even, psf, use_gpu, background, background_attenuation, truncate_negative_values);
-image = image(1:end-1,1,1:end-1); 
+image = image(1:end-1,:,1:end-1); 
+

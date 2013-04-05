@@ -89,20 +89,20 @@ if not(exist('truncate_negative_values','var'))
 end
 
 if not(isscalar(activity))
-    activity_even = zeros(size(activity,1)+1,size(activity,2),size(activity,3)+1); 
-    activity_even(1:end-1,:,1:end-1) = activity; 
+    activity_even = zeros(size(activity,1)+1,size(activity,2),size(activity,3)); 
+    activity_even(1:end-1,:,:) = activity; 
 else
     activity_even = activity; 
 end
 if not(isscalar(attenuation))
-    attenuation_even = zeros(size(attenuation,1)+1,size(attenuation,2),size(attenuation,3)+1); 
-    attenuation_even(1:end-1,:,1:end-1) = attenuation; 
+    attenuation_even = zeros(size(attenuation,1)+1,size(attenuation,2),size(attenuation,3)); 
+    attenuation_even(1:end-1,:,:) = attenuation; 
 else
     attenuation_even = attenuation; 
 end
 
 if not(size(cameras,2)==3)
-    fptinf('et_project_odd() expects the parameter "cameras" to be of size [n_cameras,3]\n');
+    fprintf('et_project_odd() expects the parameter "cameras" to be of size [n_cameras,3]\n');
     return;
 end
 centers = repmat([(size(activity_even,1)-2)/2, (size(activity_even,2)-1)/2, (size(activity_even,3)-2)/2],size(cameras,1),1); 
