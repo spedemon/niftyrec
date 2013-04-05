@@ -1,4 +1,4 @@
-function sinogram = et_project_irt(activity, cameras, attenuation, psf, use_gpu, background, background_attenuation)
+function sinogram = et_project_irt(activity, cameras, attenuation, psf, use_gpu, background, background_attenuation, truncate_negative_values)
 %ET_PROJECT_IRT
 %    Projection function for Emission Tomographic reconstruction
 %
