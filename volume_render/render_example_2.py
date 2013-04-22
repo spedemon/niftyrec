@@ -13,12 +13,18 @@ dynrange = 4.5
 def run():
     if not 'screenshots' in os.listdir('./'):
         os.mkdir('./screenshots')
-    #load data
-    mri = scipy.io.loadmat('slice.mat')
-    activity = scipy.io.loadmat('L.mat')
-    v1 = uint16( activity['L']*(2**16*(1.0/dynrange)/activity['L'].max()) )
-    v2 = uint16( mri['slice']*(2**16/mri['slice'].max()) )
-    v2[:,:,50:-1]=0
+
+    #load Matlab data
+#    import scipy.io
+#    mri = scipy.io.loadmat('brainweb_128.mat')
+#    activity = scipy.io.loadmat('L.mat')
+#    v1 = uint16( activity['L']*(2**16*(1.0/dynrange)/activity['L'].max()) )
+#    v2 = uint16( mri['t1_128']*(2**16/mri['t1_128'].max()) )
+
+    #load Nifty data
+    from nifti import NiftiImage
+    v1 = NiftiImage('./activity_128.nii').data
+    v2 = 0*v1
 
     #create volume renderer and initialize it
     V = VolumeRender((N,N,N),(512,512))

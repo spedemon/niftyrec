@@ -12,11 +12,11 @@
 
 
 %% Parameters
-N          = 128;
-N_cameras  = 120;
-cameras    = linspace(0,2*pi,N_cameras)';
-psf        = ones(5,5,N);
-N_counts   = 50e6;
+N              = 128;
+N_projections  = 120;
+cameras        = linspace(0,2*pi,N_projections)';
+psf            = ones(5,5,N);
+N_counts       = 50e6;
 
 iter_mlem  = 30;
 GPU        = 1;
@@ -57,10 +57,11 @@ sinogram = et_poissrnd(ideal_sinogram);
 
 disp('Visualising sinogram..');
 for i=1:N_projections  
-    figure(1); subplot(2,3,2); image(0.3*squeeze(sinogram(:,:,i))'); colormap gray; axis square off tight;  pause(0.1);     
+    figure(1); subplot(2,3,2); image(0.3*squeeze(sinogram(:,:,i))'); colormap gray; axis square off tight;     
     if i<N/2
-        figure(1); subplot(2,3,3); image(0.3*squeeze(sinogram(:,i,:))); colormap gray; axis square off tight;  pause(0.1); 
+        figure(1); subplot(2,3,3); image(0.3*squeeze(sinogram(:,i,:))); colormap gray; axis square off tight;  
     end
+    pause(0.05);  
 end
 
 %% Compute normalization volume

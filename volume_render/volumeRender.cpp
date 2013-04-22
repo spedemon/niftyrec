@@ -49,8 +49,8 @@ GLuint tex = 0;     // OpenGL texture object
 struct cudaGraphicsResource *cuda_pbo_resource; // CUDA Graphics Resource (to transfer PBO)
 
 int window=0;
-unsigned int timer = 0;
-unsigned int timer_display = 0;
+//unsigned int timer = 0;
+//unsigned int timer_display = 0;
 
 int fpsCount = 0;        // FPS count for averaging
 int fpsLimit = 10;       // FPS limit for sampling
@@ -147,13 +147,13 @@ void computeFPS()
         g_Verify = true;
     }
     if (fpsCount == fpsLimit) {
-        char fps[256];
-        float ifps = 1.f / (cutGetAverageTimerValue(timer) / 1000.f);
-        sprintf(fps, "Volume Render: %3.1f fps", ifps);  
+        //char fps[256];
+        //float ifps = 1.f / (cutGetAverageTimerValue(timer) / 1000.f);
+        //sprintf(fps, "Volume Render: %3.1f fps", ifps);  
 
-        glutSetWindowTitle(fps);
+        //glutSetWindowTitle(fps);
         fpsCount = 0; 
-        CUDA_CHECK_ERROR(cutResetTimer(timer));  
+        //CUDA_CHECK_ERROR(cutResetTimer(timer));  
     }
 }
 
@@ -185,17 +185,17 @@ density2, brightness2, transferOffset2, transferScale2);
 // display results using OpenGL (called by GLUT)
 void display()
 {
-    cutStopTimer(timer_display);
-    float time_since_display = cutGetAverageTimerValue(timer_display);
+    //cutStopTimer(timer_display);
+    //float time_since_display = cutGetAverageTimerValue(timer_display);
 //    fprintf(stderr,"\ntime: %f",time_since_display);
-    if(not(time_since_display>(1000/fpsMax))) {
+    //if(not(time_since_display>(1000/fpsMax))) {
 //        cutStartTimer(timer_display);
-        return;
-    }
-    cutResetTimer(timer_display);
-    cutStartTimer(timer_display);
+    //    return;
+    //}
+    //cutResetTimer(timer_display);
+    //cutStartTimer(timer_display);
 
-    CUDA_CHECK_ERROR(cutStartTimer(timer));  
+    //CUDA_CHECK_ERROR(cutStartTimer(timer));  
 
     // use OpenGL to build view matrix
     GLfloat modelView[16];
@@ -253,12 +253,12 @@ void display()
     glutSwapBuffers();
     glutReportErrors();
 
-    CUDA_CHECK_ERROR(cutStopTimer(timer));  
+    //CUDA_CHECK_ERROR(cutStopTimer(timer));  
 
     computeFPS();
     ScreenShot();
 
-    cutStopTimer(timer_display);
+    //cutStopTimer(timer_display);
 }
 
 void idle()
@@ -449,7 +449,7 @@ void reshape(int w, int h)
 
 void cleanup()
 {
-    CUDA_CHECK_ERROR( cutDeleteTimer( timer));
+    //CUDA_CHECK_ERROR( cutDeleteTimer( timer));
     freeCudaBuffers();
     if (pbo) {
 	//CUDA_SAFE_CALL(cudaGraphicsUnregisterResource(cuda_pbo_resource));
@@ -562,9 +562,9 @@ extern "C" void run_gui(int volume_x, int volume_y, int volume_z, int camera_x, 
     setCameraPosition(_x_camera, _y_camera, _z_camera);
     setRayStep(_step);
 
-    CUDA_CHECK_ERROR( cutCreateTimer( &timer));
-    CUDA_CHECK_ERROR( cutCreateTimer( &timer_display));
-    cutStartTimer(timer_display);
+    //CUDA_CHECK_ERROR( cutCreateTimer( &timer));
+    //CUDA_CHECK_ERROR( cutCreateTimer( &timer_display));
+    //cutStartTimer(timer_display);
  
     // calculate new grid size
     gridSize = dim3(iDivUp(width, blockSize.x), iDivUp(height, blockSize.y));
