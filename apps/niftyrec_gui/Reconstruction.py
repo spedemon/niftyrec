@@ -15,8 +15,11 @@ try:
 	from NiftyRec.NiftyRec import et_project as project
 	from NiftyRec.NiftyRec import et_backproject as backproject
 except:
-    print 'Error importing NiftyRec !'
-    HAS_NIFTYREC = Falsec
+    print 'Error importing NiftyRec !!'
+    print 'Please make sure that NiftyRec in installed. '
+    print 'If NiftyRec has been installed, please make sure that the NiftyRec libraries are in the system path. '
+    print 'Please refer to the Wiki on the NiftyRec website for more information on installation of the NiftyRec Python Package. '
+    HAS_NIFTYREC = False
     project = None
     backproject = None
 else:

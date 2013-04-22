@@ -1,7 +1,7 @@
 
 from ctypes import cdll, CDLL, pydll, PyDLL, CFUNCTYPE
 from ctypes.util import find_library
-from ctypes import string_at, byref, c_int, c_long, c_size_t, c_char_p, c_double, c_void_p, c_float
+from ctypes import string_at, byref, c_int, c_long, c_size_t, c_char_p, c_double, c_void_p, c_float, c_ushort
 from ctypes import Structure, pointer, cast, addressof, c_int, c_double, c_float
 from ctypes import POINTER as P
 from numpy import zeros, asarray, float32, int32, ones, single, linspace, round, pi

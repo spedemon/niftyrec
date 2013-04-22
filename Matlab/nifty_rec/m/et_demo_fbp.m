@@ -1,9 +1,9 @@
 
-% ET_DEMO_MLEM
-%     NiftyRec Demo: MLEM SPECT reconstruction 
+% ET_DEMO_FBP
+%     NiftyRec Demo: FBP SPECT reconstruction 
 %
 %See also
-%   ET_DEMO_OSEM, ET_DEMO_MAPEM_MRF, ET_MAPEM_STEP
+%   ET_DEMO_MLEM, ET_DEMO_OSEM, ET_DEMO_MAPEM_MRF
 %
 % 
 %Stefano Pedemonte
@@ -14,12 +14,12 @@
 %% Parameters
 N              = 128;
 N_projections  = 120;
-cameras        = linspace(0,2*pi,N_projections)';
+cameras        = linspace(0,2*pi,N_cameras)';
 psf            = ones(5,5,N);
 N_counts       = 50e6;
 
-iter_mlem  = 30;
-GPU        = 1;
+iter_mlem      = 30;
+GPU            = 1;
 
 phantom_type   = 3;  % 0 for 'brain FDG PET'; 1 for sphere in uniform background; 2 for spiral
 
@@ -57,28 +57,37 @@ sinogram = et_poissrnd(ideal_sinogram);
 
 disp('Visualising sinogram..');
 for i=1:N_projections  
-    figure(1); subplot(2,3,2); image(0.3*squeeze(sinogram(:,:,i))'); colormap gray; axis square off tight;     
+    figure(1); subplot(2,3,2); image(0.3*squeeze(sinogram(:,:,i))'); colormap gray; axis square off tight;      
     if i<N/2
         figure(1); subplot(2,3,3); image(0.3*squeeze(sinogram(:,i,:))); colormap gray; axis square off tight;  
     end
-    pause(0.05);  
+    pause(0.05); 
 end
 
-%% Compute normalization volume
-disp('Computing normalization..');
-norm = et_backproject(ones(N,N,length(cameras)), cameras, attenuation, psf, GPU) ;
 
-%% Reconstruction:
-disp('Reconstructing..');
-activity = ones(N,N,N);
-for i=1:iter_mlem
-    fprintf('\nMLEM step: %d',i);
-    activity = et_mapem_step(activity, norm, sinogram, cameras, attenuation, psf, 0, 0, GPU, 0, 0.0001);
-    scale = 400;
-    figure(1); subplot(2,3,4); image(scale*squeeze(mask(:,floor(N/2),:).*activity(:,floor(N/2),:))); colormap gray; axis square off tight;     
-    figure(1); subplot(2,3,5); image(scale*squeeze(mask(floor(N/2),:,:).*activity(floor(N/2),:,:))); colormap gray; axis square off tight;
-    figure(1); subplot(2,3,6); image(scale*squeeze(mask(:,:,floor(N/2)).*activity(:,:,floor(N/2))')); colormap gray; axis square off tight; pause(0.05);     
+%% Reconstruction - FBP:
+disp('Filtering ..');
+H = linspace(0, 2*pi, N/2);
+H_ramp = [H H(end-1:-1:2)];
+h_ramp = ifftshift( ifft( H_ramp ) ); h_ramp = h_ramp / max(h_ramp); 
+h_ramp = h_ramp(N/2-10:N/2+10);
+sinogram_filtered = sinogram; 
+for cam = 1:N_projections
+    for i =1:N
+        sinogram_filtered(:,i,cam) = conv(sinogram(:,i,cam),h_ramp,'same'); 
+    end
 end
+
+disp('Back-projecting ..');
+tic; 
+activity = et_backproject(sinogram_filtered, cameras, attenuation, psf, GPU); 
+time_fbp = toc; 
+
+scale = 0.004; 
+figure(1); subplot(2,3,4); image(scale*squeeze(mask(:,floor(N/2),:).*activity(:,floor(N/2),:))); colormap gray; axis square off tight;     
+figure(1); subplot(2,3,5); image(scale*squeeze(mask(floor(N/2),:,:).*activity(floor(N/2),:,:))); colormap gray; axis square off tight;
+figure(1); subplot(2,3,6); image(scale*squeeze(mask(:,:,floor(N/2)).*activity(:,:,floor(N/2))')); colormap gray; axis square off tight; pause(0.05);     
+
 
 
 
@@ -87,5 +96,9 @@ if GPU
     et_reset_gpu();
 end
 
-disp('MLEM Done');
+fprintf('FBP done in %d sec.\n',time_fbp);
+
+
+
+
 

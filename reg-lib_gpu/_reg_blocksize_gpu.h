@@ -221,7 +221,7 @@
     } \
 }
 
-#define CUFFT_SAFE_CALL(err) { \
+/*#define CUFFT_SAFE_CALL(err) { \
     if( CUFFT_SUCCESS != err) { \
         fprintf(stderr, "%s(%i) : CUFFT_SAFE_CALL() CUFFT error %d: ",__FILE__, __LINE__, (int)err); \
         switch (err) { \
@@ -238,7 +238,7 @@
         } \
         exit(-1); \
     } \
-}
+}    */
 
 #define CUDA_CHECK_ERROR(err) { \
     if( CUTTrue != err) { \

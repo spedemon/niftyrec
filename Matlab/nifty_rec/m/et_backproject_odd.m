@@ -95,11 +95,11 @@ if not(exist('truncate_negative_values','var'))
 end
 
 
-sinogram_even = zeros(size(sinogram,1)+1,size(sinogram,2),size(sinogram,3)+1); 
+sinogram_even = zeros(size(sinogram,1)+1,size(sinogram,2),size(sinogram,3)); 
 sinogram_even(1:end-1,:,:) = sinogram; 
 if not(isscalar(attenuation))
-    attenuation_even = zeros(size(attenuation,1)+1,size(attenuation,2),size(attenuation,3)+1); 
-    attenuation_even(1:end-1,:,1:end-1) = attenuation; 
+    attenuation_even = zeros(size(attenuation,1)+1,size(attenuation,2),size(attenuation,3)); 
+    attenuation_even(1:end-1,:,:) = attenuation; 
 else
     attenuation_even = attenuation; 
 end
@@ -111,5 +111,4 @@ end
 centers = repmat([(size(sinogram_even,1)-2)/2, (size(sinogram_even,2)-1)/2, (size(sinogram_even,1)-2)/2],size(cameras,1),1); 
 cameras = [cameras,centers];
 image = et_backproject_mex(sinogram_even, cameras, attenuation_even, psf, use_gpu, background, background_attenuation, truncate_negative_values);
-image = image(1:end-1,:,1:end-1); 
-
+image = image(1:end-1,1,1:end-1); 
