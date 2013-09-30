@@ -85,17 +85,17 @@ typedef struct{
   bool flag_bc_out;
   bool flag_manual_priors;
   bool flag_Outlierness;
-  char * filename_out_outlier;
+  const char * filename_out_outlier;
   bool flag_out_outlier;
   float OutliernessThreshold;
   float * MAP_M;
   float * MAP_V;
   bool flag_MAP;
   bool aprox;
-  char * filename_T1;
-  char * filename_out;
-  char * filename_bias;
-  char * filename_mask;
+  const char * filename_T1;
+  const char * filename_out;
+  const char * filename_bias;
+  const char * filename_mask;
   char ** filename_priors;
 }SEG_PARAM;
 

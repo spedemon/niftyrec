@@ -601,12 +601,12 @@ int reg_gradient_bending_energy(nifti_image *nodesGradientImage, nifti_image *co
 {
 	nifti_image *targetImage = reg_initialize_image(image_size, image_spacing);
 
-fprintf(stderr, "Target delta:       %f %f %f \n",targetImage->dx,targetImage->dy,targetImage->dz);
-fprintf(stderr, "Target size:        %d %d %d (nvox: %d) \n",targetImage->nx,targetImage->ny,targetImage->nz,targetImage->nvox);
+//fprintf(stderr, "Target delta:       %f %f %f \n",targetImage->dx,targetImage->dy,targetImage->dz);
+//fprintf(stderr, "Target size:        %d %d %d (nvox: %d) \n",targetImage->nx,targetImage->ny,targetImage->nz,targetImage->nvox);
 
-fprintf(stderr, "CP delta:           %f %f %f \n",controlPointImage->dx,controlPointImage->dy,controlPointImage->dz);
-fprintf(stderr, "CP size:            %d %d %d (nvox: %d) \n",controlPointImage->nx,controlPointImage->ny,controlPointImage->nz,controlPointImage->nvox);
-fprintf(stderr, "Weight:             %f \n",weight);
+//fprintf(stderr, "CP delta:           %f %f %f \n",controlPointImage->dx,controlPointImage->dy,controlPointImage->dz);
+//fprintf(stderr, "CP size:            %d %d %d (nvox: %d) \n",controlPointImage->nx,controlPointImage->ny,controlPointImage->nz,controlPointImage->nvox);
+//fprintf(stderr, "Weight:             %f \n",weight);
 
 	reg_bspline_bendingEnergyGradient<float>(		controlPointImage,
 								targetImage,

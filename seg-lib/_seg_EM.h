@@ -110,7 +110,7 @@ public:
     int SetInputImage(nifti_image *);
     int SetMaskImage(nifti_image *);
     int SetPriorImage(nifti_image *);
-    int SetFilenameOut(char *);
+    int SetFilenameOut(const char *);
     int SetMAP(float *M, float* V);
     int SetRegValue(float reg);
     int Turn_Relaxation_ON(float relax_factor,float relax_gauss_kernel);
@@ -157,7 +157,7 @@ public:
     nifti_image *GetPriorImage();
     nifti_image *GetResult();
     nifti_image *GetResultNeonate();
-    nifti_image *GetBiasCorrected(char * filename);
-    nifti_image *GetOutlierness(char * filename);
+    nifti_image *GetBiasCorrected(const char * filename);
+    nifti_image *GetOutlierness(const char * filename);
 };
 

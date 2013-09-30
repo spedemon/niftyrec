@@ -249,7 +249,7 @@ int *  Create_Long_2_Short_Matrix_from_Carray(bool * Mask,
 nifti_image * Copy_Single_ShortImage_to_Result(SegPrecisionTYPE * SingleImage,
                                                int * Short_2_Long_Indices,
                                                nifti_image * Priors,
-                                               char * filename,
+                                               const char * filename,
                                                ImageSize * CurrSizes);
 
 template <class DTYPE> int seg_convert2binary_data(nifti_image *image,
@@ -259,18 +259,18 @@ nifti_image * Copy_Expec_and_BiasCorrected_to_Result_mask(SegPrecisionTYPE * Exp
                                                           SegPrecisionTYPE * BiasField,
                                                           int * Short_2_Long_Indices,
                                                           nifti_image * T1,
-                                                          char * filename,
+                                                          const char * filename,
                                                           ImageSize * CurrSizes);
 nifti_image * Copy_Expec_and_BiasCorrected_to_Result(SegPrecisionTYPE * Expec,
                                                      SegPrecisionTYPE * BiasField,
                                                      nifti_image * T1,
-                                                     char * filename,
+                                                     const char * filename,
                                                      ImageSize * CurrSizes);
 
 nifti_image * Copy_Expec_to_Result_mask(SegPrecisionTYPE * Expec,
                                         int * Short_2_Long_Indices,
                                         nifti_image * T1,
-                                        char * filename,
+                                        const char * filename,
                                         ImageSize * CurrSizes);
 
 nifti_image * Copy_Expec_to_Result_Neonate_mask(SegPrecisionTYPE * Expec,
@@ -279,13 +279,13 @@ nifti_image * Copy_Expec_to_Result_Neonate_mask(SegPrecisionTYPE * Expec,
                                                 nifti_image * T1,
                                                 float * Biasfield,
                                                 float * M,
-                                                char * filename,
+                                                const char * filename,
                                                 ImageSize * CurrSizes);
 
 
 nifti_image * Copy_Expec_to_Result(SegPrecisionTYPE * Expec,
                                    nifti_image * T1,
-                                   char * filename,
+                                   const char * filename,
                                    ImageSize * CurrSizes);
 
 int PriorWeight_mask(float * ShortPrior,
@@ -300,17 +300,17 @@ int PriorWeight_mask(float * ShortPrior,
 
 nifti_image * Copy_single_image_to_Result(int * Mask,
                                           nifti_image * Original,
-                                          char * filename);
+                                          const char * filename);
 
 nifti_image * Copy_single_image_to_Result(bool * Mask,
-                                          nifti_image * Original,
+                                          const nifti_image * Original,
                                           char * filename);
 nifti_image * Copy_single_image_to_Result(float * Mask,
                                           nifti_image * Original,
-                                          char * filename);
+                                          const char * filename);
 nifti_image * Copy_single_image_to_Result(double * Mask,
                                           nifti_image * Original,
-                                          char * filename);
+                                          const char * filename);
 
 int quickSort(int *arr, int elements);
 
@@ -319,12 +319,12 @@ int * quickSort_order(float *arr, int elements);
 
 nifti_image * Get_Bias_Corrected(float * BiasField,
                                  nifti_image * T1,
-                                 char * filename,
+                                 const char * filename,
                                  ImageSize * CurrSizes);
 
 nifti_image * Get_Bias_Corrected_mask(float * BiasFieldCoefs,
                                       nifti_image * T1,
-                                      char * filename,
+                                      const char * filename,
                                       ImageSize * CurrSizes,
                                       int biasOrder);
 

@@ -201,7 +201,7 @@ int seg_EM::SetPriorImage(nifti_image *r)
 
 /* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
 
-int seg_EM::SetFilenameOut(char *f)
+int seg_EM::SetFilenameOut(const char *f)
 {
     this->FilenameOut = f;
     return 0;
@@ -270,10 +270,7 @@ int seg_EM::FreeBiasImage()
 
 int seg_EM::SetVerbose(unsigned int verblevel)
 {
-    if(verblevel<0){
-        this->verbose_level=0;
-    }
-    else if(verblevel>2){
+    if(verblevel>2){
         this->verbose_level=2;
     }
     else{
@@ -771,7 +768,7 @@ nifti_image * seg_EM::GetResult()
         Result = Copy_Expec_to_Result_mask(this->Expec,this->Short_2_Long_Indices,this->inputImage,(char*)this->FilenameOut.c_str(),this->CurrSizes);
     }
     else{
-        Result = Copy_Expec_to_Result(this->Expec,this->inputImage,(char*)this->FilenameOut.c_str(),this->CurrSizes);
+        Result = Copy_Expec_to_Result(this->Expec,this->inputImage,(const char*)this->FilenameOut.c_str(),this->CurrSizes);
     }
     return Result;
 
@@ -788,7 +785,7 @@ nifti_image * seg_EM::GetResultNeonate()
 {
     nifti_image * Result=NULL;
 
-    Result = Copy_Expec_to_Result_Neonate_mask(this->Expec,this->Short_2_Long_Indices,this->Long_2_Short_Indices,this->inputImage,this->BiasField,this->M,(char*)this->FilenameOut.c_str(),this->CurrSizes);
+    Result = Copy_Expec_to_Result_Neonate_mask(this->Expec,this->Short_2_Long_Indices,this->Long_2_Short_Indices,this->inputImage,this->BiasField,this->M,(const char*)this->FilenameOut.c_str(),this->CurrSizes);
 
     return Result;
 
@@ -887,7 +884,7 @@ int seg_EM::SetExpec(SegPrecisionTYPE * expec_data)
 
 /* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
 
-nifti_image * seg_EM::GetBiasCorrected(char * filename)
+nifti_image * seg_EM::GetBiasCorrected(const char * filename)
 {
     nifti_image * Result=NULL;
 
@@ -903,7 +900,7 @@ nifti_image * seg_EM::GetBiasCorrected(char * filename)
 
 /* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
 
-nifti_image * seg_EM::GetOutlierness(char * filename)
+nifti_image * seg_EM::GetOutlierness(const char * filename)
 {
     nifti_image * Result = nifti_copy_nim_info(this->inputImage);
     Result->dim[0]=3;

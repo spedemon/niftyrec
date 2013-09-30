@@ -564,6 +564,7 @@ extern "C" int seg_array_set_mask_fromfile(char *filename)
         return 1;
     }
     GlobSegmentation().SEG->SetMaskImage(Mask);
+    return 0; 
 }
 
 
