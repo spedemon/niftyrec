@@ -375,10 +375,7 @@ int seg_LabFusion::SetFilenameOut(char *f)
 
 int seg_LabFusion::SetVerbose(unsigned int verblevel)
 {
-  if(verblevel<0){
-      this->verbose_level=0;
-    }
-  else if(verblevel>2){
+  if(verblevel>2){
       this->verbose_level=2;
     }
   else{
