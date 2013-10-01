@@ -2,9 +2,9 @@
  *  _tt_line_backproject_ray_cpu.h
  *  
  *  NiftyRec
- *  Stefano Pedemonte, May 2012.
- *  CMIC - Centre for Medical Image Computing 
- *  UCL - University College London. 
+ *  Stefano Pedemonte, 2019-2013.
+ *  CMIC - Centre for Medical Image Computing, UCL, London. (2009-2013)
+ *  Aalto University School of Science, Helsinki. (2013) 
  *  Released under BSD licence, see LICENSE.txt 
  */
 
@@ -14,12 +14,8 @@
 #include <string.h>
 
 //FIXME complete the CPU version (no CUDA)
-//#include <cutil_inline.h>
-#include <cutil_math.h>
-#include "_reg_blocksize_gpu.h"
+#include <_tt_common.h>
 
-#include <vector_types.h>
-
-extern "C" int tt_line_backproject_ray_cpu(float *out_backprojection, float *current_projection, float *invViewMatrix, uint2 detectorPixels, float3 sourcePosition, uint3 volumeVoxels, float3 volumeSize, float t_step, int interpolation); 
+extern "C" int tt_line_backproject_ray_cpu(float *out_backprojection, float *current_projection, float *invViewMatrix, u_int_2 detectorPixels, float_3 sourcePosition, u_int_3 volumeVoxels, float_3 volumeSize, float t_step, int interpolation); 
 
 

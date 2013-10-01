@@ -2,30 +2,30 @@
  *  _tt_line_backproject_ray_cpu.cpp
  *  
  *  NiftyRec
- *  Stefano Pedemonte, May 2012.
- *  CMIC - Centre for Medical Image Computing 
- *  UCL - University College London. 
+ *  Stefano Pedemonte, 2019-2013.
+ *  CMIC - Centre for Medical Image Computing, UCL, London. (2009-2013)
+ *  Aalto University School of Science, Helsinki. (2013) 
  *  Released under BSD licence, see LICENSE.txt 
  */
 
 
 #include "_tt_line_backproject_ray_cpu.h"
 
-
+/*
 struct Ray_cpu {
-	float3 o;	// origin
-	float3 d;	// direction
+	float_3 o;	// origin
+	float_3 d;	// direction
 };
-int intersectBox_cpu(Ray_cpu r, float3 boxmin, float3 boxmax, float *tnear, float *tfar)
+int intersectBox_cpu(Ray_cpu r, float_3 boxmin, float_3 boxmax, float *tnear, float *tfar)
 {
     // compute intersection of ray with all six bbox planes
-    float3 invR = {1.0/r.d.x,1.0/r.d.y,1.0/r.d.z};
-    float3 tbot = {invR.x*(boxmin.x - r.o.x), invR.y*(boxmin.y - r.o.y), invR.z*(boxmin.z - r.o.z)};
-    float3 ttop = {invR.x*(boxmax.x - r.o.x), invR.y*(boxmax.y - r.o.y), invR.z*(boxmax.z - r.o.z)};
+    float_3 invR = {1.0/r.d.x,1.0/r.d.y,1.0/r.d.z};
+    float_3 tbot = {invR.x*(boxmin.x - r.o.x), invR.y*(boxmin.y - r.o.y), invR.z*(boxmin.z - r.o.z)};
+    float_3 ttop = {invR.x*(boxmax.x - r.o.x), invR.y*(boxmax.y - r.o.y), invR.z*(boxmax.z - r.o.z)};
 
     // re-order intersections to find smallest and largest on each axis
-    float3 tmin = fminf(ttop, tbot);
-    float3 tmax = fmaxf(ttop, tbot);
+    float_3 tmin = fminf(ttop, tbot);
+    float_3 tmax = fmaxf(ttop, tbot);
 
     // find the largest tmin and the smallest tmax
     float largest_tmin = fmaxf(fmaxf(tmin.x, tmin.y), fmaxf(tmin.x, tmin.z));
@@ -36,10 +36,10 @@ int intersectBox_cpu(Ray_cpu r, float3 boxmin, float3 boxmax, float *tnear, floa
 
     return smallest_tmax > largest_tmin;
 }
-float3 mul_cpu(float *M, float3 v)
+float_3 mul_cpu(float *M, float_3 v)
 {
-    float3 r;
-    float3 t = {M[0], M[1], M[2]};
+    float_3 r;
+    float_3 t = {M[0], M[1], M[2]};
     r.x = dot(v, t);
     t.x=M[4]; t.y=M[5]; t.z=M[6];
     r.y = dot(v, t);
@@ -47,10 +47,10 @@ float3 mul_cpu(float *M, float3 v)
     r.z = dot(v, t);
     return r;
 }
-float4 mul_cpu(float *M, float4 v)
+float_4 mul_cpu(float *M, float_4 v)
 {
-    float4 r;
-    float4 t = {M[0], M[1], M[2], M[3]};
+    float_4 r;
+    float_4 t = {M[0], M[1], M[2], M[3]};
     r.x = dot(v, t);
     t.x=M[4]; t.y=M[5]; t.z=M[6]; t.w=M[7];
     r.y = dot(v, t);
@@ -58,23 +58,25 @@ float4 mul_cpu(float *M, float4 v)
     r.z = dot(v, t);
     r.w = 1.0f;
     return r;}
-
-extern "C" int tt_line_backproject_ray_cpu(float *out_backprojection, float *current_projection, float *invViewMatrix, uint2 detectorPixels, float3 sourcePosition, uint3 volumeVoxels, float3 volumeSize, float t_step, int interpolation)
+*/
+extern "C" int tt_line_backproject_ray_cpu(float *out_backprojection, float *current_projection, float *invViewMatrix, u_int_2 detectorPixels, float_3 sourcePosition, u_int_3 volumeVoxels, float_3 volumeSize, float t_step, int interpolation)
+{return 1;}
+/*
 {   
     const int    maxSteps = 100000; 
-    const float3 boxMin = {0.0f, 0.0f, 0.0f};
-    const float3 boxMax = {volumeSize.x, volumeSize.y, volumeSize.z};
+    const float_3 boxMin = {0.0f, 0.0f, 0.0f};
+    const float_3 boxMax = {volumeSize.x, volumeSize.y, volumeSize.z};
     float u,v;
-    float4 temp4; 
-    float3 temp3; 
+    float_4 temp4; 
+    float_3 temp3; 
     int hits=0;
 
-    for (int x=1; x<detectorPixels.x; x++)
+    for (int x=1; x<detectorPixels.w; x++)
     {
-        for (int y=1; y<detectorPixels.y; y++)
+        for (int y=1; y<detectorPixels.h; y++)
         {
-            u = (x / (float) detectorPixels.x);
-            v = (y / (float) detectorPixels.y);
+            u = (x / (float) detectorPixels.w);
+            v = (y / (float) detectorPixels.h);
 
             Ray_cpu eyeRay;
             eyeRay.o = sourcePosition;
@@ -94,9 +96,9 @@ extern "C" int tt_line_backproject_ray_cpu(float *out_backprojection, float *cur
 
                 // march along ray from front to back, accumulating
                 float  t = tnear;
-                float3 pos = eyeRay.o + eyeRay.d*tnear;
-                float3 step = eyeRay.d*t_step;
-                float  bkpr = current_projection[y*detectorPixels.x+x];
+                float_3 pos = eyeRay.o + eyeRay.d*tnear;
+                float_3 step = eyeRay.d*t_step;
+                float  bkpr = current_projection[y*detectorPixels.w+x];
 
                 for(int i=0; i<maxSteps; i++)
                 {
@@ -112,7 +114,7 @@ extern "C" int tt_line_backproject_ray_cpu(float *out_backprojection, float *cur
                     }
                     else if (interpolation == INTERP_TRILINEAR)
                     {
-                        int3 p000, p001, p010, p011, p100, p101, p110, p111;
+                        int_3 p000, p001, p010, p011, p100, p101, p110, p111;
                         p000.x = (int)floor(pos.x); p000.y = (int)floor(pos.y); p000.z = (int)floor(pos.z); 
                         p001 = p000; p001.x+=1;
                         p010 = p000; p010.y+=1;
@@ -121,7 +123,7 @@ extern "C" int tt_line_backproject_ray_cpu(float *out_backprojection, float *cur
                         p101 = p001; p101.z+=1;
                         p110 = p100; p110.y+=1;
                         p111 = p110; p111.x+=1; 
-                        float3 d;
+                        float_3 d;
                         d.x = pos.x-p000.x;
                         d.y = pos.y-p000.y;
                         d.z = pos.z-p000.z; 
@@ -155,4 +157,5 @@ extern "C" int tt_line_backproject_ray_cpu(float *out_backprojection, float *cur
     return 0;
 }
 
+*/
 

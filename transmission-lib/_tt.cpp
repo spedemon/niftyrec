@@ -150,7 +150,7 @@ int tt_backproject_ray(float h_projections[], u_int_2 detector_pixels, u_int n_p
 
             float *current_projection = (float*) h_projections + proj * detector_pixels.w * detector_pixels.h;
 //            fprintf(stderr,"\nBack-projection %d/%d",proj+1,n_projections);
-            tt_line_backproject_ray_cpu(out_backprojection, current_projection, invViewMatrix, detectorPixels, sourcePosition, volumeVoxels, volumeSize, t_step, interpolation);
+//            tt_line_backproject_ray_cpu(out_backprojection, current_projection, invViewMatrix, detectorPixels, sourcePosition, volumeVoxels, volumeSize, t_step, interpolation);
 
         }
 

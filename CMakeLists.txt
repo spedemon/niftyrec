@@ -2,12 +2,32 @@
 #  CMakeLists.txt
 #  
 #  NiftyRec
-#  Stefano Pedemonte, May 2012.
-#  CMIC - Centre for Medical Image Computing 
-#  UCL - University College London. 
+#  Stefano Pedemonte, 2009-2013. 
+#  - CMIC - Centre for Medical Image Computing, UCL, London. (2009-2013)
+#  - Aalto University School of Science, Helsinki. (2013)
+#  - A.A. Martinos Center for Biomedical Imaging, MGH, Harvard University. Boston. (2013)
 #  Released under BSD licence, see LICENSE.txt 
 
+
 #-----------------------------------------------------------------------------
+# Set default options: 
+
+# Set default build type to Release. If -DCMAKE_BUILD_TYPE is specified on the command line, use that definition instead. 
+IF(DEFINED CMAKE_BUILD_TYPE)
+   SET(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE STRING "Choose the type of 
+build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug
+Release.") 
+ELSE()
+   SET(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build,
+options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release.") 
+ENDIF()
+
+# Set default install prefix. If -DCMAKE_INSTALL_PREFIX is specified on the command line, use that definition instead. 
+SET(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/../install/" CACHE PATH "NiftyRec install prefix")
+
+#-----------------------------------------------------------------------------
+# Setup CMake project: 
+
 PROJECT(nifty_rec)
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
@@ -16,15 +36,16 @@ INCLUDE(ExternalProject)
 ENABLE_TESTING()
 
 #-----------------------------------------------------------------------------
+# NiftyRec version: 
 SET(Nifty_Rec_VERSION_MAJOR 1)
 SET(Nifty_Rec_VERSION_MINOR 6)
-SET(Nifty_Rec_VERSION_PATCH 8)
+SET(Nifty_Rec_VERSION_PATCH 9)
 
 #-----------------------------------------------------------------------------
+# Build options: 
 OPTION(NiftyRec_BUILD_APPS          "Build command line applications (including 3D Slicer plugins)" ON)
-OPTION(NiftyRec_BUILD_MEX           "Build Matlab extension modules" ON)
-OPTION(NiftyRec_BUILD_PY            "Build Python extension modules" ON)
-OPTION(NiftyRec_USE_CUDA            "Compile GPU implementation of the code" OFF)
+OPTION(NiftyRec_BUILD_MATLAB        "Build Matlab extension modules" ON)
+OPTION(NiftyRec_BUILD_PYTHON        "Build Python extension modules" ON)
 IF(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     IF(NOT(${CMAKE_SYSTEM_NAME} MATCHES "Windows"))
         IF(NOT CMAKE_SYSTEM_VERSION VERSION_GREATER 11.0 OR CMAKE_SYSTEM_VERSION VERSION_EQUAL 11.0.0)
@@ -32,13 +53,12 @@ IF(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         ENDIF()
     ENDIF()
 ENDIF()
+OPTION(NiftyRec_INCLUDE_DATA        "Include data sets for examples and demos" ON)
+OPTION(NiftyRec_USE_CUDA            "Compile GPU implementation of the code" OFF)
 OPTION(NiftyRec_SUPPORT_NRRD        "Support NRRD image file format. Enable to generate 3D Slicer plugins." OFF)
 OPTION(NiftyRec_COMPILE_DOC         "Compile pdf documentation from the Latex source" OFF)
-OPTION(NiftyRec_INCLUDE_DATA        "Include data sets for examples and demos" ON)
-OPTION(NiftyRec_BUILD_RENDERER      "Build multi-modal volume renderer" OFF)
+OPTION(NiftyRec_BUILD_RENDERER      "Build NiftyRec volume renderer" OFF)
 OPTION(NiftyRec_VERBOSE             "Print out extra information when compiling" OFF)
-#OPTION(NiftyRec_INSTALL_NIFTYSEG    "Download and install NiftySeg" OFF)
-#OPTION(NiftyRec_BUILD_SHARED        "Build as shared libraries" ON)
 
 IF(NOT(${CMAKE_SYSTEM_NAME} MATCHES "Windows"))
     SET(NiftyRec_BUILD_SHARED ON)
@@ -53,39 +73,8 @@ ENDIF(CMAKE_CONFIGURATION_TYPES)
 SET(CMAKE_BUILD_TYPE "Release")
 
 #-----------------------------------------------------------------------------
-
-IF(NiftyRec_BUILD_PY)
-    FIND_PACKAGE(PythonInterp)
-ENDIF(NiftyRec_BUILD_PY)
-#Find NiftyReg (commented out as NiftyReg libraries have been temporarily included in the source tree)
-#SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake/nifty_reg")
-#FIND_PACKAGE(NIFTY_REG REQUIRED)
-#INCLUDE_DIRECTORIES(${NIFTY_REG_INCLUDE_DIRS}) #Nifty-Reg libraries are in NIFTY_REG_LIBRARY
-
-#-----------------------------------------------------------------------------
-
-SET(LIB_INSTALL_DIR "lib")
-SET(BIN_INSTALL_DIR "niftyrec/bin")
-SET(INC_INSTALL_DIR "include")
-SET(DOC_INSTALL_DIR "niftyrec/documentation")
-SET(MEX_INSTALL_DIR_NIFTYREC "niftyrec/matlab")
-SET(PY_INSTALL_DIR_NIFTYREC "niftyrec/python")
-SET(MEX_INSTALL_DIR_NIFTYREG "niftyreg/matlab")
-SET(PY_INSTALL_DIR_NIFTYREG "niftyreg/python")
-SET(MEX_INSTALL_DIR_NIFTYSEG "niftyseg/matlab")
-SET(PY_INSTALL_DIR_NIFTYSEG "niftyseg/python")
-SET(PYTHON_INSTALL_DIR "niftyrec/python")
-
-#-----------------------------------------------------------------------------
-
-#Point rpath of all libraries to lib install dir 
-#This avoids setting LD_LIBRARY_PATH 
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-SET(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR})
-
-#-----------------------------------------------------------------------------
+# Setup OpenMP multiprocessing environment. 
 FIND_PACKAGE(Threads)
-
 IF(NiftyRec_USE_OPENMP)
     IF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         IF(CMAKE_SYSTEM_VERSION VERSION_GREATER 11.0 OR CMAKE_SYSTEM_VERSION VERSION_EQUAL 11.0.0)
@@ -93,14 +82,11 @@ IF(NiftyRec_USE_OPENMP)
             MESSAGE(FATAL_ERROR "Please turn NiftyRec_USE_OPENMP OFF")
         ENDIF()
     ENDIF()
-	
     EXECUTE_PROCESS(COMMAND ${CMAKE_C_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
-
     IF(GCC_VERSION VERSION_GREATER 4.2 OR GCC_VERSION VERSION_EQUAL 4.2)
         SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp")
         SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
     ENDIF()
-	
     IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
         SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /openmp")
         SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /openmp")
@@ -108,45 +94,7 @@ IF(NiftyRec_USE_OPENMP)
 ENDIF(NiftyRec_USE_OPENMP)
 
 #-----------------------------------------------------------------------------
-
-IF(UNIX AND NiftyRec_BUILD_MEX AND NOT NiftyRec_BUILD_SHARED)
-        MESSAGE("Unix platform: desabling Matlab extension because libraries are not built as shared.")
-        SET(NiftyRec_BUILD_MEX OFF)
-ENDIF()
-
-IF(UNIX AND NiftyRec_BUILD_PY AND NOT NiftyRec_BUILD_SHARED)
-        MESSAGE("Unix platform: desabling Python extension because libraries are not built as shared.")
-        SET(NiftyRec_BUILD_PY OFF)
-ENDIF()
-IF(NiftyRec_BUILD_PY)
-        IF(NOT PYTHONINTERP_FOUND)
-                MESSAGE("Python interpreter not found")
-                SET(NiftyRec_BUILD_PY OFF)        
-        ENDIF()
-ENDIF(NiftyRec_BUILD_PY)
-
-#-----------------------------------------------------------------------------
-
-IF(NiftyRec_BUILD_SHARED)
-        SET(LIB_TYPE SHARED)
-        IF(UNIX)
-                IF("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
-                        ADD_DEFINITIONS(-fPIC)
-                        SET(CMAKE_CC_FLAGS_RELEASE "${CMAKE_CC_FLAGS_RELEASE} -fPIC -ldl"  )
-                        SET(CMAKE_CC_FLAGS_DEBUG "${CMAKE_CC_FLAGS_DEBUG} -fPIC -ldl"  )
-                        SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fPIC -ldl"  )
-                        SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fPIC -ldl"  )
-                ENDIF("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
-        ENDIF(UNIX)
-ELSE(NiftyRec_BUILD_SHARED)
-        SET(LIB_TYPE STATIC)
-ENDIF(NiftyRec_BUILD_SHARED)
-
-#-----------------------------------------------------------------------------
-
-IF(NiftyRec_VERBOSE)
-	ADD_DEFINITIONS(-D_VERBOSE)
-ENDIF(NiftyRec_VERBOSE)
+# Setup CUDA environment: 
 
 SET(USE_CUDA 0)
 IF(NiftyRec_USE_CUDA)
@@ -166,101 +114,176 @@ IF(NiftyRec_USE_CUDA)
         INCLUDE_DIRECTORIES(${CUDA_TOOLKIT_INCLUDE})
 ENDIF(NiftyRec_USE_CUDA)
 
+#-----------------------------------------------------------------------------
+# Setup the bindings for Matlab and Python
 
+IF(NiftyRec_BUILD_PYTHON)
+    FIND_PACKAGE(PythonInterp)
+ENDIF(NiftyRec_BUILD_PYTHON)
+
+IF(UNIX AND NiftyRec_BUILD_MATLAB AND NOT NiftyRec_BUILD_SHARED)
+        MESSAGE("Unix platform: desabling Matlab extension because libraries are not built as shared.")
+        SET(NiftyRec_BUILD_MATLAB OFF)
+ENDIF()
+
+IF(UNIX AND NiftyRec_BUILD_PYTHON AND NOT NiftyRec_BUILD_SHARED)
+        MESSAGE("Unix platform: desabling Python extension because libraries are not built as shared.")
+        SET(NiftyRec_BUILD_PYTHON OFF)
+ENDIF()
+IF(NiftyRec_BUILD_PYTHON)
+        IF(NOT PYTHONINTERP_FOUND)
+                MESSAGE("Python interpreter not found")
+                SET(NiftyRec_BUILD_PYTHON OFF)        
+        ENDIF()
+ENDIF(NiftyRec_BUILD_PYTHON)
+
+#-----------------------------------------------------------------------------
+# Set build options: 
+
+# Decide whether to build as static or shared: 
+IF(NiftyRec_BUILD_SHARED)
+        SET(LIB_TYPE SHARED)
+        IF(UNIX)
+                IF("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+                        ADD_DEFINITIONS(-fPIC)
+                        SET(CMAKE_CC_FLAGS_RELEASE "${CMAKE_CC_FLAGS_RELEASE} -fPIC -ldl"  )
+                        SET(CMAKE_CC_FLAGS_DEBUG "${CMAKE_CC_FLAGS_DEBUG} -fPIC -ldl"  )
+                        SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fPIC -ldl"  )
+                        SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fPIC -ldl"  )
+                ENDIF("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+        ENDIF(UNIX)
+ELSE(NiftyRec_BUILD_SHARED)
+        SET(LIB_TYPE STATIC)
+ENDIF(NiftyRec_BUILD_SHARED)
+
+# Print verbose information at build time: 
+IF(NiftyRec_VERBOSE)
+	ADD_DEFINITIONS(-D_VERBOSE)
+        SET(CUDA_VERBOSE_BUILD ON)
+ELSE(NiftyRec_VERBOSE)
+        SET(CUDA_VERBOSE_BUILD OFF)
+ENDIF(NiftyRec_VERBOSE)
+
+# Store relative path information in each library. This avoids setting LD_LIBRARY_PATH manually: 
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+SET(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR})
+
+# Build Teem NRRD libraries: 
 IF(NiftyRec_SUPPORT_NRRD)
         ADD_DEFINITIONS(-D_SUPPORT_NRRD)
 ENDIF(NiftyRec_SUPPORT_NRRD)
 
-#-----------------------------------------------------------------------------
-
-#Build the following libraries. Names are set here (not in the subfolders) so targets 
-#in the subfolders know what to link against. In order to add a new library, list it here. 
-SET(NIFTY_REC_ET_INTERF_LIBRARY _et_array_interface)
-SET(NIFTY_REC_TT_INTERF_LIBRARY _tt_array_interface)
-SET(NIFTY_REC_REG_INTERF_LIBRARY _reg_array_interface)
-SET(NIFTY_REC_ET_LIBRARIES _et_common _niftyrec_memory _et_line_integral _et_line_integral_attenuated _et_line_backproject_attenuated _et_line_backproject _et_accumulate _et_clear_accumulator _et_convolve2D _et_convolveSeparable2D _et_convolveFFT2D)
-SET(NIFTY_REC_ET_LIBRARIES_GPU _et_line_integral_gpu _et_line_integral_attenuated_gpu _et_line_backproject_gpu _et_line_backproject_attenuated_gpu _et_clear_accumulator_gpu _et_accumulate_gpu _et_convolveSeparable2D_gpu _et_convolveFFT2D_gpu _et_attenuation_gradient_gpu)
-SET(NIFTY_REC_ET_MEX et_project_mex et_project_partial_mex et_backproject_mex et_project_backproject_mex et_convolve_mex et_rotate_mex et_irotate_mex et_list_gpus_mex et_set_gpu_mex et_affine_mex et_reorder_activity_in et_reorder_activity_out et_variance_centre_approx_mex et_fisher_grid_mex et_fisher_grid_invprojection_mex et_gradient_attenuation_mex et_isinstalled_mex et_reset_gpu_mex et_histogram_weighted_mex)
-SET(NIFTY_REC_TT_LIBRARIES _tt_common _tt_line_project_ray_cpu _tt_line_backproject_ray_cpu)
-SET(NIFTY_REC_TT_LIBRARIES_GPU _tt_line_project_ray_gpu _tt_line_backproject_ray_gpu) 
-SET(NIFTY_REC_TT_MEX tt_project_ray_mex tt_backproject_ray_mex) 
-
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/emission-lib)
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/transmission-lib)
-
-
-
-IF(NiftyRec_USE_CUDA)
-    INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/emission-lib_gpu)
-    INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/transmission-lib_gpu)
-ENDIF(NiftyRec_USE_CUDA)
-
-#Build NiftyReg Libraries (they have been added to the source tree to remove 
-#dependency - there is currently no binary installer for NiftyReg)
+# Build nifti_io libraries:
+SUBDIRS(nifti)
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR})
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/nifti)
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/reg-lib)
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/reg-lib_gpu)
-SUBDIRS(nifti)
+
+# Build tclap libraries:
 SUBDIRS(tclap)
 IF(NiftyRec_SUPPORT_NRRD)
         SUBDIRS(teem)
 ENDIF(NiftyRec_SUPPORT_NRRD)
+
+# Build NiftyRec emission libraries:  
+SET(NIFTY_REC_ET_INTERF_LIBRARY _et_array_interface)
+SET(NIFTY_REC_ET_LIBRARIES _et_common _niftyrec_memory _et_line_integral _et_line_integral_attenuated _et_line_backproject_attenuated _et_line_backproject _et_accumulate _et_clear_accumulator _et_convolve2D _et_convolveSeparable2D _et_convolveFFT2D)
+SET(NIFTY_REC_ET_LIBRARIES_GPU _et_line_integral_gpu _et_line_integral_attenuated_gpu _et_line_backproject_gpu _et_line_backproject_attenuated_gpu _et_clear_accumulator_gpu _et_accumulate_gpu _et_convolveSeparable2D_gpu _et_convolveFFT2D_gpu _et_attenuation_gradient_gpu)
+SET(NIFTY_REC_ET_MEX et_project_mex et_project_partial_mex et_backproject_mex et_project_backproject_mex et_convolve_mex et_rotate_mex et_irotate_mex et_list_gpus_mex et_set_gpu_mex et_affine_mex et_reorder_activity_in et_reorder_activity_out et_variance_centre_approx_mex et_fisher_grid_mex et_fisher_grid_invprojection_mex et_gradient_attenuation_mex et_isinstalled_mex et_reset_gpu_mex et_histogram_weighted_mex)
+
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/emission-lib)
+IF(NiftyRec_USE_CUDA)
+    INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/emission-lib_gpu)
+ENDIF(NiftyRec_USE_CUDA)
+
+SUBDIRS(emission-lib)
+IF(NiftyRec_USE_CUDA)
+	SUBDIRS(emission-lib_gpu)
+ENDIF(NiftyRec_USE_CUDA)
+
+# Build NiftyRec transmission libraries: 
+SET(NIFTY_REC_TT_INTERF_LIBRARY _tt_array_interface)
+SET(NIFTY_REC_TT_LIBRARIES _tt_common _tt_line_project_ray_cpu _tt_line_backproject_ray_cpu)
+SET(NIFTY_REC_TT_LIBRARIES_GPU _tt_line_project_ray_gpu _tt_line_backproject_ray_gpu) 
+SET(NIFTY_REC_TT_MEX tt_project_ray_mex tt_backproject_ray_mex) 
+
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/transmission-lib)
+IF(NiftyRec_USE_CUDA)
+    INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/transmission-lib_gpu)
+ENDIF(NiftyRec_USE_CUDA)
+
+SUBDIRS(transmission-lib)
+IF(NiftyRec_USE_CUDA)
+	SUBDIRS(transmission-lib_gpu)
+ENDIF(NiftyRec_USE_CUDA)
+
+#Build NiftyReg Libraries 
+SET(NIFTY_REC_REG_INTERF_LIBRARY _reg_array_interface)
+
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/reg-lib)
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/reg-lib_gpu)
 SUBDIRS(reg-lib)
 SUBDIRS(reg-lib_gpu)
 SET(NIFTY_REG_LIBRARIES reg_nifti _reg_tools _reg_resampling _reg_affineTransformation _reg_bspline _reg_ssd _reg_mutualinformation _reg_blockMatching)
 SET(NIFTY_REG_LIBRARIES_GPU _reg_cudaCommon _reg_resampling_gpu _reg_affineTransformation_gpu _reg_mutualinformation_gpu _reg_bspline_gpu _reg_tools_gpu _reg_blockMatching_gpu)
 
+# Build NiftySeg libraries: 
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/seg-lib)
+SUBDIRS(seg-lib)
 
-SUBDIRS(emission-lib)
-IF(NiftyRec_USE_CUDA)
-    SUBDIRS(transmission-lib)
-ENDIF(NiftyRec_USE_CUDA)
-IF(NiftyRec_BUILD_MEX)
+# Build Matlab extensions
+IF(NiftyRec_BUILD_MATLAB)
         SUBDIRS(Matlab)
-ENDIF(NiftyRec_BUILD_MEX)
-IF(NiftyRec_BUILD_PY)
+ENDIF(NiftyRec_BUILD_MATLAB)
+
+# Build Python extensions 
+IF(NiftyRec_BUILD_PYTHON)
         SUBDIRS(Python)
-ENDIF(NiftyRec_BUILD_PY)
+ENDIF(NiftyRec_BUILD_PYTHON)
+
+# Build volume renderer
 IF(NiftyRec_BUILD_RENDERER)
         SUBDIRS(volume_render)
 ENDIF(NiftyRec_BUILD_RENDERER)
-IF(NiftyRec_USE_CUDA)
-	SUBDIRS(emission-lib_gpu)
-	SUBDIRS(transmission-lib_gpu)
-ENDIF(NiftyRec_USE_CUDA)
+
+# Build documentation
 IF(NiftyRec_COMPILE_DOC)
         SUBDIRS(documentation)
 ENDIF(NiftyRec_COMPILE_DOC)
+
+# Build applications
 IF(NiftyRec_BUILD_APPS)
         SUBDIRS(apps)
 ENDIF(NiftyRec_BUILD_APPS)
-SUBDIRS(misc)
+
+# Build data 
 IF(NiftyRec_INCLUDE_DATA)
     SUBDIRS(data)
 ENDIF(NiftyRec_INCLUDE_DATA)
 
-#-----------------------------------------------------------------------------
-#IF(NiftyRec_INSTALL_NIFTYSEG)
-#ExternalProject_Add(niftyseg
-#            SOURCE_DIR ${PROJECT_BINARY_DIR}/niftyseg
-#            PREFIX ${PROJECT_BINARY_DIR}/niftyseg
-#            STAMP_DIR ${PROJECT_BINARY_DIR}/niftyseg/stamps
-#            TMP_DIR ${PROJECT_BINARY_DIR}/niftyseg/stamps
-#            DOWNLOAD_DIR ${PROJECT_BINARY_DIR}/niftyseg
-#            BINARY_DIR ${PROJECT_BINARY_DIR}/niftyseg/build
-#            SVN_REPOSITORY https://niftyseg.svn.sourceforge.net/svnroot/niftyseg/
-#            UPDATE_COMMAND ""
-#            CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_INSTALL_PREFIX}/niftyseg
-#            BUILD_COMMAND ${CMAKE_BUILD_TOOL}
-#            INSTALL_COMMAND ${CMAKE_BUILD_TOOL} install
-#            )
-#SUBDIRS(nifty_seg_bindings)
-#ENDIF(NiftyRec_INSTALL_NIFTYSEG)
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/seg-lib)
-SUBDIRS(seg-lib)
+# Build miscellaneous 
+SUBDIRS(misc)
 
 #-----------------------------------------------------------------------------
+# Set installation directories: 
+SET(LIB_INSTALL_DIR "lib")
+SET(BIN_INSTALL_DIR "niftyrec/bin")
+SET(INC_INSTALL_DIR "include")
+SET(DOC_INSTALL_DIR "niftyrec/documentation")
+SET(MEX_INSTALL_DIR_NIFTYREC "niftyrec/matlab")
+SET(PY_INSTALL_DIR_NIFTYREC "niftyrec/python")
+SET(MEX_INSTALL_DIR_NIFTYREG "niftyreg/matlab")
+SET(PY_INSTALL_DIR_NIFTYREG "niftyreg/python")
+SET(MEX_INSTALL_DIR_NIFTYSEG "niftyseg/matlab")
+SET(PY_INSTALL_DIR_NIFTYSEG "niftyseg/python")
+SET(PYTHON_INSTALL_DIR "niftyrec/python")
+
+#-----------------------------------------------------------------------------
+# Build NiftyRec packages: 
+# 1) .deb installer for Linux Debian, Ubuntu, Knoppix, ..; 
+# 2) NSIS self installer for Windows;
+# 3) Drag and drop installer for MacOsX;
+# 4) Compressed source tree. 
+
 IF(NiftyRec_DO_PACKAGE)
         IF(UNIX)
             IF(APPLE)
@@ -306,11 +329,10 @@ IF(NiftyRec_DO_PACKAGE)
           ENDIF(_length GREATER 1)
         ENDIF(${CPACK_SYSTEM_NAME} MATCHES Darwin AND CMAKE_OSX_ARCHITECTURES)
 
-        #Deb
-        SET(CPACK_DEBIAN_PACKAGE_MAINTAINER "Stefano Pedemonte s.pedemonte@cs.ucl.ac.uk")
-        #SET(CPACK_DEBIAN_PACKAGE_DEPENDS "niftyreg (>= 1.2.1)")
+        # .deb package
+        SET(CPACK_DEBIAN_PACKAGE_MAINTAINER "Stefano Pedemonte stefano.pedemonte@gmail.com")
 
-        #Nsis
+        # Nsis package
         SET(CPACK_NSIS_INSTALLED_ICON_NAME "bin\\\\NiftyRec.exe")
         SET(CPACK_NSIS_DISPLAY_NAME "${CPACK_PACKAGE_INSTALL_DIRECTORY} NiftyRec")
         SET(CPACK_NSIS_HELP_LINK "http:\\\\\\\\niftyrec.scienceontheweb.net")
@@ -318,7 +340,7 @@ IF(NiftyRec_DO_PACKAGE)
         SET(CPACK_NSIS_CONTACT "stefano.pedemonte@gmail.com")
         SET(CPACK_NSIS_MODIFY_PATH ON)
 
-        #Apple drag-and-drop
+        # Apple drag-and-drop package
         IF(APPLE)
                 #SET(CPACK_PACKAGE_INSTALL_DIRECTORY "/Library/NiftyRec/")
                 SET(CPACK_BINARY_TBZ2 OFF)
@@ -331,4 +353,28 @@ IF(NiftyRec_DO_PACKAGE)
 ENDIF(NiftyRec_DO_PACKAGE)
 
 #-----------------------------------------------------------------------------
+# Hide unnecessary build options 
+MACRO ( MARK_AS_INTERNAL _var )
+  SET ( ${_var} ${${_var}} CACHE INTERNAL "hide this!" FORCE )
+ENDMACRO( MARK_AS_INTERNAL _var ) 
+
+MARK_AS_INTERNAL(Teem_PNG)
+MARK_AS_INTERNAL(Teem_PTHREAD)
+MARK_AS_INTERNAL(Teem_USE_LIB_INSTALL_SUBDIR)
+MARK_AS_INTERNAL(Teem_VTK_MANGLE)
+MARK_AS_INTERNAL(Teem_VTK_TOOLKITS_IPATH)
+MARK_AS_INTERNAL(Teem_VTK_ZLIB_MANGLE_IPATH)
+MARK_AS_INTERNAL(Teem_ZLIB)
+MARK_AS_INTERNAL(Teem_BZIP2)
+MARK_AS_INTERNAL(Teem_FFTW3)
+MARK_AS_INTERNAL(Teem_LEVMAR)
+MARK_AS_INTERNAL(BUILD_SHARED_LIBS)
+MARK_AS_INTERNAL(BUILD_HEX)
+MARK_AS_INTERNAL(BUILD_EXPERIMENTAL_APPS)
+MARK_AS_INTERNAL(BUILD_EXPERIMENTAL_LIBS)
+MARK_AS_INTERNAL(CUDA_BUILD_CUBIN) 
+MARK_AS_INTERNAL(CUDA_VERBOSE_BUILD) 
+MARK_AS_INTERNAL(CUDA_SDK_ROOT_DIR) 
+#----------------------------------------------------------------------------- 
+
 
