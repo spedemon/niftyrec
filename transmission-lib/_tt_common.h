@@ -37,6 +37,12 @@ struct float_3
 };
 typedef struct float_3 float_3;
 
+struct float_4
+{
+  float x, y, z, w;
+};
+typedef struct float_4 float_4;
+
 struct int_3
 {
   int x, y, z;

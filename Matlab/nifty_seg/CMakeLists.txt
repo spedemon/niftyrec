@@ -64,11 +64,11 @@ ENDMACRO(BUILD_INSTALL_SEG_MEX)
 
 #-----------------------------------------------------------------------------
 
-IF(BUILD_MEX)
+IF(BUILD_MATLAB)
         FOREACH(MEX_NAME ${NIFTY_REC_ET_MEX})
                 BUILD_INSTALL_ET_MEX(${MEX_NAME} ${USE_CUDA})
         ENDFOREACH(MEX_NAME)
-ENDIF(BUILD_MEX)
+ENDIF(BUILD_MATLAB)
 
 #-----------------------------------------------------------------------------
 

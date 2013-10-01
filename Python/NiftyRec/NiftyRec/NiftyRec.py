@@ -55,7 +55,7 @@ if not L:
     raise(ImportError("Cannot find NiftyRec libraries ("+lib_name+")."))
 
 
-def et_project(activity, cameras, psf=None, attenuation=None, gpu=1, background=0.0, background_attenuation=0.0):
+def et_project(activity, cameras, psf=None, attenuation=None, gpu=1, background=0.0, background_attenuation=0.0,truncate_negative_values=1):
   """Project activity to multiple cameras"""
   if gpu and not (et_is_block_multiple(activity.shape[0]) and et_is_block_multiple(activity.shape[1]) and et_is_block_multiple(activity.shape[2])):
       print "Error et_project() - With GPU acceleration enabled, the volume size has to be multiple of ",et_get_block_size()
@@ -64,6 +64,7 @@ def et_project(activity, cameras, psf=None, attenuation=None, gpu=1, background=
   gpu        = int32(gpu)
   background = float32(background)
   background_attenuation = float32(background_attenuation)
+  truncate_negative_values = int32(truncate_negative_values)
 
   cameras=cameras.transpose()
 
@@ -80,7 +81,7 @@ def et_project(activity, cameras, psf=None, attenuation=None, gpu=1, background=
       cameras = asarray(cameras,dtype=float32)
 
   L.et_array_project.restype  = c_int
-  L.et_array_project.argtypes = [P(c_float), P(c_int), P(c_float), P(c_int), P(c_float), P(c_int), P(c_float), P(c_int), P(c_float), P(c_int), c_float, c_float, c_int]
+  L.et_array_project.argtypes = [P(c_float), P(c_int), P(c_float), P(c_int), P(c_float), P(c_int), P(c_float), P(c_int), P(c_float), P(c_int), c_float, c_float, c_int, c_int]
 
   activity_p      = activity.ctypes.data_as(P(c_float))
   activity_size   = asarray(activity.shape,dtype=int32)
@@ -110,14 +111,14 @@ def et_project(activity, cameras, psf=None, attenuation=None, gpu=1, background=
   projection_size   = asarray(projection.shape,dtype=int32)
   projection_size_p = projection_size.ctypes.data_as(P(c_int))
   
-  status = L.et_array_project(activity_p, activity_size_p, projection_p, projection_size_p, cameras_p, cameras_size_p, psf_p, psf_size_p, attenuation_p, attenuation_size_p, background, background_attenuation, gpu)
+  status = L.et_array_project(activity_p, activity_size_p, projection_p, projection_size_p, cameras_p, cameras_size_p, psf_p, psf_size_p, attenuation_p, attenuation_size_p, background, background_attenuation, gpu, truncate_negative_values)
   if status:
       projection = None
   return projection
 
 
 
-def et_backproject(projections, cameras, psf=None, attenuation=None, gpu=1, background=0, background_attenuation=0.0):
+def et_backproject(projections, cameras, psf=None, attenuation=None, gpu=1, background=0, background_attenuation=0.0,truncate_negative_values=1):
   """Backproject from multiple cameras to body space"""
   if gpu and not (et_is_block_multiple(projections.shape[0]) and et_is_block_multiple(projections.shape[1])):
       print "Error et_backproject() - With GPU acceleration enabled, the volume size has to be multiple of ",et_get_block_size()
@@ -126,7 +127,7 @@ def et_backproject(projections, cameras, psf=None, attenuation=None, gpu=1, back
   gpu        = int32(gpu)
   background = float32(background)
   background_attenuation = float32(background_attenuation)
-
+  truncate_negative_values = int32(truncate_negative_values)
   cameras = cameras.transpose()  
 
   #Convert all matrices to float32
@@ -142,7 +143,7 @@ def et_backproject(projections, cameras, psf=None, attenuation=None, gpu=1, back
       cameras = asarray(cameras,dtype=float32)
 
   L.et_array_backproject.restype  = c_int
-  L.et_array_backproject.argtypes = [P(c_float), P(c_int), P(c_float), P(c_int), P(c_float), P(c_int), P(c_float), P(c_int), P(c_float), P(c_int), c_float, c_float, c_int]
+  L.et_array_backproject.argtypes = [P(c_float), P(c_int), P(c_float), P(c_int), P(c_float), P(c_int), P(c_float), P(c_int), P(c_float), P(c_int), c_float, c_float, c_int, c_int]
   
   projections_p      = projections.ctypes.data_as(P(c_float))
   projections_size   = asarray(projections.shape,dtype=int32)
@@ -172,7 +173,7 @@ def et_backproject(projections, cameras, psf=None, attenuation=None, gpu=1, back
   bkprojection_size   = asarray(bkprojection.shape,dtype=int32)
   bkprojection_size_p = bkprojection_size.ctypes.data_as(P(c_int))
   
-  status = L.et_array_backproject(projections_p, projections_size_p, bkprojection_p, bkprojection_size_p, cameras_p, cameras_size_p, psf_p, psf_size_p, attenuation_p, attenuation_size_p, background, background_attenuation, gpu)
+  status = L.et_array_backproject(projections_p, projections_size_p, bkprojection_p, bkprojection_size_p, cameras_p, cameras_size_p, psf_p, psf_size_p, attenuation_p, attenuation_size_p, background, background_attenuation, gpu, truncate_negative_values)
   if status:
       bkprojection = None
   return bkprojection
