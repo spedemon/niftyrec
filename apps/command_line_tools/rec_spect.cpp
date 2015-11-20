@@ -550,9 +550,9 @@ int main(int argc, char** argv)
             } 
 
         if (subsets<=1)
-            status = et_array_mlem_spect(activity_data, size_x, size_y, sinogram_data, n_cameras, firstcamera, lastcamera, axis, iterations, use_attenuation, attenuation_data, use_psf, psf_data, psf_size_x, psf_size_y, BACKGROUND_ACTIVITY, BACKGROUND_ATTENUATION, EPSILON, gpu);
+            status = et_array_mlem(activity_data, size_x, size_y, sinogram_data, n_cameras, firstcamera, lastcamera, axis, iterations, use_attenuation, attenuation_data, use_psf, psf_data, psf_size_x, psf_size_y, BACKGROUND_ACTIVITY, BACKGROUND_ATTENUATION, EPSILON, gpu);
         else
-            status = et_array_osem_spect(activity_data, size_x, size_y, subsets, sinogram_data, n_cameras, firstcamera, lastcamera, axis, iterations, use_attenuation, attenuation_data, use_psf, psf_data, psf_size_x, psf_size_y, BACKGROUND_ACTIVITY, BACKGROUND_ATTENUATION, EPSILON, gpu);
+            status = et_array_osem(activity_data, size_x, size_y, subsets, sinogram_data, n_cameras, firstcamera, lastcamera, axis, iterations, use_attenuation, attenuation_data, use_psf, psf_data, psf_size_x, psf_size_y, BACKGROUND_ACTIVITY, BACKGROUND_ATTENUATION, EPSILON, gpu);
 
         if (status!=0) 
             { 

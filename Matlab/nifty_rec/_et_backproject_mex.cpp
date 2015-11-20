@@ -151,13 +151,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
        enable_gpu = (int) (mxGetScalar(prhs[4]));
 
    /* Check if activity is multiple of ET_BLOCK_SIZE */
-   if (enable_gpu) {
-       if (!et_array_is_block_multiple(bkpr_size[0]) || !et_array_is_block_multiple(bkpr_size[1])) {
-           char msg[100];
-           sprintf(msg,"With GPU enabled, size of activity must be a multiple of %d",et_array_get_block_size());
-           mexErrMsgTxt(msg);
-           }
-       }
+ //  if (enable_gpu) {
+ //      if (!et_array_is_block_multiple(bkpr_size[0]) || !et_array_is_block_multiple(bkpr_size[1])) {
+ //          char msg[100];
+ //          sprintf(msg,"With GPU enabled, size of activity must be a multiple of %d",et_array_get_block_size());
+ //          mexErrMsgTxt(msg);
+ //          }
+ //      }
 
    /* Check if Background is specified */
    background = 0.0f;
@@ -245,7 +245,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
    float *bkpr_ptr = (float *)(mxGetData(plhs[0]));
 
    /* Perform backprojection */
-   status = et_array_backproject(sinogram_ptr, sino_size, bkpr_ptr, bkpr_size, cameras_ptr, cameras_size, psf_ptr, psf_size, attenuation_ptr, attenuation_size, background, background_attenuation, enable_gpu, truncate_negative_values);
+   status = SPECT_backproject_parallelholes(sinogram_ptr, sino_size, bkpr_ptr, bkpr_size, cameras_ptr, cameras_size, psf_ptr, psf_size, attenuation_ptr, attenuation_size, &background, &background_attenuation, &enable_gpu, &truncate_negative_values);
 
    /* Shutdown */
    if (mxGetClassID(prhs[0]) != mxSINGLE_CLASS) free(sinogram_ptr);

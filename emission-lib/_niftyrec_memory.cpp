@@ -40,7 +40,7 @@ int alloc_record_destroy(alloc_record *record)
 
 int free_record_element(alloc_record_element *element)
 {
-    if (element->platform == ALLOCTYPE_GUEST)
+    if (element->platform == ALLOCTYPE_HOST)
         {
         //fprintf(stderr,"_niftyrec_memory: freeing GUEST memory %d\n",(int)element->memory_section);
         free(element->memory_section);
@@ -85,9 +85,11 @@ int alloc_record_add(alloc_record *record, void* memory_section, int platform)
 int alloc_record_free_all(alloc_record *record)
 {
     int status = 0;
-    //fprintf(stderr,"_niftyrec_memory: freeing %d records..\n",record->n_elements);
     for (int i=0;i<record->n_elements;i++)
-        if (free_record_element(&(record->alloc_record_elements[i]))) status=1; 
+        if (free_record_element(&(record->alloc_record_elements[i]))) {
+        fprintf(stderr,"Unable to free memory at %lld.\n",(long long)record->alloc_record_elements[i].memory_section);
+        status=1; 
+        }
     record->n_elements=0;
     return status; 
 }

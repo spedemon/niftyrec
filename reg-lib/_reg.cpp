@@ -102,6 +102,7 @@ fprintf(stderr,"\n5\n");
 						&positionFieldImageArray_d,
 						&targetMask_d,
 						activeVoxelNumber,
+						0,
 						0);
 fprintf(stderr,"\n6\n");
 	// The result image is transfered back to the host //
@@ -122,8 +123,8 @@ fprintf(stderr,"\n6\n");
 //    fprintf(stderr,"%f ",probaJointHistogram[i]);
 //fprintf(stderr,"\n");
 fprintf(stderr,"Types: %d %d %d \n",targetImage->datatype, sourceImage->datatype, NIFTI_TYPE_FLOAT32);
-fprintf(stderr,"targetImage: %d %d %d %d \n",targetImage->nx,targetImage->ny,targetImage->nz,targetImage->nvox);
-fprintf(stderr,"tempImage:   %d %d %d %d \n",tempImage->nx,tempImage->ny,tempImage->nz,tempImage->nvox);
+//fprintf(stderr,"targetImage: %d %d %d %d \n",targetImage->nx,targetImage->ny,targetImage->nz,targetImage->nvox);
+//fprintf(stderr,"tempImage:   %d %d %d %d \n",tempImage->nx,tempImage->ny,tempImage->nz,tempImage->nvox);
 
 
 	/* Create joint histogram and transfer to the device*/
@@ -156,7 +157,8 @@ fprintf(stderr,"\nBinning: %d  Entropies: %f %f %f %f",binning, entropies[0],ent
 										&sourceImageArray_d,
 										&positionFieldImageArray_d,
 										&resultGradientArray_d,
-										activeVoxelNumber);
+										activeVoxelNumber,
+										0);
 
 	reg_getVoxelBasedNMIGradientUsingPW_gpu(				targetImage,
 										tempImage, 
@@ -195,7 +197,7 @@ fprintf(stderr,"Image size: %d %d %d\n", sourceImage->nx, sourceImage->ny, sourc
 
 
 fprintf(stderr,"Voxel number: %d\n",activeVoxelNumber);
-fprintf(stderr,"Nodes size:   %d\n",nodeGradientImage->nvox);
+//fprintf(stderr,"Nodes size:   %d\n",nodeGradientImage->nvox);
 
 //CUDA_SAFE_CALL(cudaMemcpy(nodeGradientImage->data, nodeNMIGradientArray_d, nodeGradientImage->nvox*sizeof(float), cudaMemcpyDeviceToHost));
 //CUDA_SAFE_CALL(cudaMemcpy(nodeGradientImage->data, logJointHistogram_d, binning*(binning+2)*sizeof(float), cudaMemcpyDeviceToHost));
@@ -354,6 +356,7 @@ int reg_resample_spline_gpu(nifti_image *resultImage, nifti_image *sourceImage, 
 						&positionFieldImageArray_d,
 						&targetMask_d,
 						activeVoxelNumber,
+						0,
 						0);
 
 	if(cudaCommon_transferFromDeviceToNifti(resultImage, &resultImageArray_d)) return 1;
@@ -464,7 +467,7 @@ int reg_image_gradient_gpu(nifti_image *resultGradientImage, nifti_image *source
 	CUDA_SAFE_CALL(cudaMalloc((void **)&resultGradientArray_d, activeVoxelNumber*sizeof(float4)));
 
 	// generate the position field //
-	reg_bspline_gpu(			controlPointImage,
+	reg_bspline_gpu(	controlPointImage,
 						sourceImage,  
 						&controlPointImageArray_d,
 						&positionFieldImageArray_d,
@@ -477,7 +480,8 @@ int reg_image_gradient_gpu(nifti_image *resultGradientImage, nifti_image *source
 						&sourceImageArray_d,
 						&positionFieldImageArray_d,
 						&resultGradientArray_d,
-						activeVoxelNumber);
+						activeVoxelNumber,
+						0);
 
 	if(cudaCommon_transferFromDeviceToNifti(resultGradientImage, &resultGradientArray_d)) return 1;
 
@@ -691,22 +695,22 @@ nifti_image *reg_initialize_image(int image_size[], float image_spacing[])
 	image->pixdim[6]=image->dv=1.0f;
 	image->pixdim[7]=image->dw=1.0f;
 	image->qform_code=1;
-        image->quatern_b=0.f;
-        image->quatern_c=0.f;
-        image->quatern_d=0.f;
-        image->qfac=1.f;
+    image->quatern_b=0.f;
+    image->quatern_c=0.f;
+    image->quatern_d=0.f;
+    image->qfac=1.f;
 	image->qoffset_x = 0.f;
 	image->qoffset_y = 0.f;
-        image->qoffset_z = 0.f;
+    image->qoffset_z = 0.f;
 
-        image->qto_xyz = nifti_quatern_to_mat44(0.f, 0.f, 0.f,
-		0, 0, 0,
-		image_spacing[0], image_spacing[1], image_spacing[2], 1.f);
+    image->qto_xyz = nifti_quatern_to_mat44(0.f, 0.f, 0.f,
+	0, 0, 0,
+	image_spacing[0], image_spacing[1], image_spacing[2], 1.f);
 //fprintf(stderr,"\nTransformation matrix1: %f %f %f %f",image->qto_xyz.m[0][0],image->qto_xyz.m[0][1],image->qto_xyz.m[0][2],image->qto_xyz.m[0][3]);
 //fprintf(stderr,"\nTransformation matrix2: %f %f %f %f",image->qto_xyz.m[1][0],image->qto_xyz.m[1][1],image->qto_xyz.m[1][2],image->qto_xyz.m[1][3]);
 //fprintf(stderr,"\nTransformation matrix3: %f %f %f %f",image->qto_xyz.m[2][0],image->qto_xyz.m[2][1],image->qto_xyz.m[2][2],image->qto_xyz.m[2][3]);
 //fprintf(stderr,"\nTransformation matrix4: %f %f %f %f",image->qto_xyz.m[3][0],image->qto_xyz.m[3][1],image->qto_xyz.m[3][2],image->qto_xyz.m[3][3]);
-        image->qto_ijk = nifti_mat44_inverse(image->qto_xyz);
+    image->qto_ijk = nifti_mat44_inverse(image->qto_xyz);
 	image->sform_code=0;
 	return image;	
 }
@@ -715,19 +719,33 @@ nifti_image *reg_initialize_image(int image_size[], float image_spacing[])
 nifti_image *reg_initialize_deformation_field(int image_size[], float image_spacing[])
 {
 	nifti_image *positionFieldImage = reg_initialize_image(image_size, image_spacing);
-        positionFieldImage->dim[0]=positionFieldImage->ndim=5;
-        positionFieldImage->dim[4]=positionFieldImage->nt=1;positionFieldImage->pixdim[4]=positionFieldImage->dt=1.0;
+    positionFieldImage->dim[0]=positionFieldImage->ndim=5;
+    positionFieldImage->dim[4]=positionFieldImage->nt=1;positionFieldImage->pixdim[4]=positionFieldImage->dt=1.0;
 	positionFieldImage->dim[5]=positionFieldImage->nu=3;
-        positionFieldImage->pixdim[5]=positionFieldImage->du=1.0;
-        positionFieldImage->dim[6]=positionFieldImage->nv=1;positionFieldImage->pixdim[6]=positionFieldImage->dv=1.0;
-        positionFieldImage->dim[7]=positionFieldImage->nw=1;positionFieldImage->pixdim[7]=positionFieldImage->dw=1.0;
-        positionFieldImage->nvox=positionFieldImage->nx*positionFieldImage->ny*positionFieldImage->nz*positionFieldImage->nt*positionFieldImage->nu;
-        positionFieldImage->datatype = NIFTI_TYPE_FLOAT32;
-        positionFieldImage->nbyper = sizeof(float);
+    positionFieldImage->pixdim[5]=positionFieldImage->du=1.0;
+    positionFieldImage->dim[6]=positionFieldImage->nv=1;positionFieldImage->pixdim[6]=positionFieldImage->dv=1.0;
+    positionFieldImage->dim[7]=positionFieldImage->nw=1;positionFieldImage->pixdim[7]=positionFieldImage->dw=1.0;
+    positionFieldImage->nvox=positionFieldImage->nx*positionFieldImage->ny*positionFieldImage->nz*positionFieldImage->nt*positionFieldImage->nu;
+    positionFieldImage->datatype = NIFTI_TYPE_FLOAT32;
+    positionFieldImage->nbyper = sizeof(float);
 	return positionFieldImage;
 }
 
 
+nifti_image *reg_initialize_image_4D(int image_size[], float image_spacing[])
+{
+	nifti_image *image = reg_initialize_image(image_size, image_spacing);
+    image->dim[0]=image->ndim=5;
+    image->dim[4]=image->nt=1;image->pixdim[4]=image->dt=1.0;
+	image->dim[5]=image->nu=image_size[3];
+    image->pixdim[5]=image->du=1.0;
+    image->dim[6]=image->nv=1;image->pixdim[6]=image->dv=1.0;
+    image->dim[7]=image->nw=1;image->pixdim[7]=image->dw=1.0;
+    image->nvox=image->nx*image->ny*image->nz*image->nt*image->nu;
+    image->datatype = NIFTI_TYPE_FLOAT32;
+    image->nbyper = sizeof(float);
+	return image;
+}
 
 int free_nifti_image_except_data(nifti_image *image)
 {
@@ -738,5 +756,286 @@ int free_nifti_image_except_data(nifti_image *image)
 	return 0;
 }
 
+
+
+
+
+
+
+
+
+
+
+#ifdef _USE_CUDA
+unsigned int REG_resample_image_rigid_gpu(nifti_image *resampledImage, nifti_image *inputImage, mat44 *affineTransformation)
+{
+	cudaArray *inputImageArray_d = NULL; 
+	float4    *positionFieldImageArray_d = NULL; 
+	int       *resamplingMask_d = NULL; 
+	float     *resampledImageArray_d = NULL; 
+
+	int       *resamplingMask = NULL; 
+	int       activeVoxelNumber = 0; 
+
+    /* Allocate and initialize GPU memory */ 
+    // This is a semiclever way to help not forget to free memory: 
+    // (call alloc_record_add(..) after each malloc, as follows. )
+    alloc_record *memory_record = alloc_record_create(RECORD_MAXELEMENTS);
+
+    // Input image:
+    if(cudaCommon_allocateArrayToDevice<float>(&inputImageArray_d, inputImage->dim)) {
+        alloc_record_destroy(memory_record); 
+        return niftyrec_error_allocgpu;
+    } 
+    alloc_record_add(memory_record,(void*)inputImageArray_d,ALLOCTYPE_CUDA_ARRAY);
+    if(cudaCommon_transferNiftiToArrayOnDevice<float>(&inputImageArray_d,inputImage)) {
+        alloc_record_destroy(memory_record); 
+        return niftyrec_error_transfergpu;
+    } 
+
+    // Resampled (output) image: 
+    if(cudaMalloc((void **)&resampledImageArray_d, resampledImage->nvox*sizeof(float)) != cudaSuccess) {
+        alloc_record_destroy(memory_record); 
+        return niftyrec_error_allocgpu;
+    }  
+    alloc_record_add(memory_record,(void*)resampledImageArray_d,ALLOCTYPE_CUDA); 
+
+    // Mask 
+	resamplingMask = (int *) malloc(resampledImage->nvox*sizeof(int)); 
+	alloc_record_add(memory_record,(void*)resamplingMask,ALLOCTYPE_HOST); 
+	for(unsigned int i=0; i<inputImage->nvox; i++)
+		resamplingMask[i]=i; 
+	activeVoxelNumber=inputImage->nvox;
+    if(cudaMalloc((void **)&resamplingMask_d, resampledImage->nvox*sizeof(int)) != cudaSuccess) {
+        alloc_record_destroy(memory_record); 
+        return niftyrec_error_allocgpu;
+    }  
+    alloc_record_add(memory_record,(void*)resamplingMask_d,ALLOCTYPE_CUDA); 
+	if (cudaMemcpy(resamplingMask_d, (void*) resamplingMask, resampledImage->nvox*sizeof(int), cudaMemcpyHostToDevice)) {
+        alloc_record_destroy(memory_record); 
+        return niftyrec_error_transfergpu;
+	}
+
+    // Position field 
+    if(cudaCommon_allocateArrayToDevice<float4>(&positionFieldImageArray_d, resampledImage->dim)) { 
+        alloc_record_destroy(memory_record); 
+        return niftyrec_error_allocgpu;
+    } 
+    alloc_record_add(memory_record,(void*)positionFieldImageArray_d,ALLOCTYPE_CUDA); 
+
+	/* Compute the position field */
+    reg_affine_positionField_gpu(   affineTransformation, 
+                                    resampledImage, 
+                                    &positionFieldImageArray_d);
+
+	/* Resample the image */
+	reg_resampleSourceImage_gpu(		
+	                    resampledImage,
+						inputImage,
+						&resampledImageArray_d,
+						&inputImageArray_d,
+						&positionFieldImageArray_d,
+						&resamplingMask_d,
+						resampledImage->nvox,
+						0.0,
+						0);  //background 
+						
+	/* Transfer data back to the host */					
+	if(cudaCommon_transferFromDeviceToNifti(resampledImage, &resampledImageArray_d)) 
+	    return niftyrec_error_transfergpu;
+
+
+    int dim[8];
+    dim[0]    = 4; 
+    dim[1]    = inputImage->dim[1]; 
+    dim[2]    = inputImage->dim[2];        
+    dim[3]    = inputImage->dim[3]; 
+    dim[4]    = 4; dim[5]=1; dim[6]=1; dim[7]=1; 
+    nifti_image *tfieldImage = nifti_make_new_nim(dim, NIFTI_TYPE_FLOAT32, false); 
+    tfieldImage->dim[0]=dim[0]; tfieldImage->dim[1]=dim[1]; tfieldImage->dim[2]=dim[2]; tfieldImage->dim[3]=dim[3]; tfieldImage->dim[4]=dim[4]; tfieldImage->dim[5]=dim[5]; tfieldImage->dim[6]=dim[6]; tfieldImage->dim[7]=dim[7]; 
+    tfieldImage->nx=dim[1]; tfieldImage->ny=dim[2]; tfieldImage->nz=dim[3]; tfieldImage->nt=dim[4];  
+    tfieldImage->nvox = dim[1]*dim[2]*dim[3]*dim[4];
+    tfieldImage->data = (float *)malloc(4*tfieldImage->nvox*sizeof(float));  
+    tfieldImage->pixdim[0] = 1;  
+    tfieldImage->qform_code = 0; 
+    tfieldImage->sform_code = 1; 
+    tfieldImage->sto_xyz.m[0][0]=1;     tfieldImage->sto_xyz.m[0][1]=0;    tfieldImage->sto_xyz.m[0][2]=0;     tfieldImage->sto_xyz.m[0][3]=0;
+    tfieldImage->sto_xyz.m[1][0]=0;     tfieldImage->sto_xyz.m[1][1]=1;    tfieldImage->sto_xyz.m[1][2]=0;     tfieldImage->sto_xyz.m[1][3]=0;
+    tfieldImage->sto_xyz.m[2][0]=0;     tfieldImage->sto_xyz.m[2][1]=0;    tfieldImage->sto_xyz.m[2][2]=1;     tfieldImage->sto_xyz.m[2][3]=0; 
+    tfieldImage->sto_xyz.m[3][0]=0;     tfieldImage->sto_xyz.m[3][1]=0;    tfieldImage->sto_xyz.m[3][2]=0;     tfieldImage->sto_xyz.m[3][3]=1;
+    tfieldImage->sto_ijk = nifti_mat44_inverse(tfieldImage->sto_xyz); 
+    
+    if (cudaMemcpy(((void *)tfieldImage->data), positionFieldImageArray_d, inputImage->nvox*sizeof(float)*4, cudaMemcpyDeviceToHost) != cudaSuccess) {
+        alloc_record_destroy(memory_record); 
+        return niftyrec_error_transfergpu;
+    }
+
+    nifti_set_filenames(tfieldImage,"/Users/spedemon/Desktop/tfield1.nii",0,0); 
+    nifti_image_write(tfieldImage); 
+    nifti_set_filenames(resampledImage,"/Users/spedemon/Desktop/in1.nii",0,0); 
+    nifti_image_write(resampledImage); 
+
+
+
+    /* Free */
+	if (alloc_record_destroy(memory_record) != 0)
+	    return STATUS_MEMORY_ERROR; 
+	return STATUS_SUCCESS;  
+}
+#endif
+
+
+unsigned int REG_resample_image_rigid_cpu(nifti_image *resampledImage, nifti_image *inputImage, mat44 *m)
+{
+    return 0; 
+}
+
+
+
+
+
+
+#ifdef _USE_CUDA
+unsigned int REG_d_intensity_d_space_rigid_gpu(nifti_image *resultGradientImage, nifti_image *sourceImage, mat44 *affineTransformation) 
+{
+	int status;
+
+	cudaArray *sourceImageArray_d=NULL;
+	float4 *positionFieldImageArray_d=NULL;
+	float4 *resultGradientArray_d=NULL;
+	int *targetMask_d=NULL;
+
+	int *targetMask;
+	targetMask = (int *)malloc(sourceImage->nvox*sizeof(int));
+	int activeVoxelNumber=0;
+	for(unsigned int i=0; i<sourceImage->nvox; i++)
+		targetMask[i]=i;
+	activeVoxelNumber=sourceImage->nvox;
+
+	if(cudaCommon_allocateArrayToDevice<float>(&sourceImageArray_d, sourceImage->dim)) return 1;
+	if(cudaCommon_transferNiftiToArrayOnDevice<float>(&sourceImageArray_d,sourceImage)) return 1;
+
+	// Index of the active voxel is stored
+	int *targetMask_h; CUDA_SAFE_CALL(cudaMallocHost((void **)&targetMask_h, activeVoxelNumber*sizeof(int)));
+	int *targetMask_h_ptr = &targetMask_h[0];
+	for(unsigned int i=0;i<sourceImage->nvox;i++)
+		{
+		if(targetMask[i]!=-1) 
+			*targetMask_h_ptr++=i;
+		}
+	CUDA_SAFE_CALL(cudaMalloc((void **)&targetMask_d, activeVoxelNumber*sizeof(int)));
+	CUDA_SAFE_CALL(cudaMemcpy(targetMask_d, targetMask_h, activeVoxelNumber*sizeof(int), cudaMemcpyHostToDevice));
+
+	CUDA_SAFE_CALL(cudaMalloc((void **)&positionFieldImageArray_d, activeVoxelNumber*sizeof(float4)));
+	CUDA_SAFE_CALL(cudaMalloc((void **)&resultGradientArray_d, activeVoxelNumber*sizeof(float4)));
+
+	// Compute the position field //
+    reg_affine_positionField_gpu(       affineTransformation, 
+                                        sourceImage, 
+                                        &positionFieldImageArray_d); 
+
+    // Compute gradient //
+	reg_getSourceImageGradient_gpu(		
+	                                    sourceImage,
+						                sourceImage,
+						                &sourceImageArray_d,
+						                &positionFieldImageArray_d,
+						                &resultGradientArray_d,
+						                activeVoxelNumber,
+						                0);
+
+	if(cudaCommon_transferFromDeviceToNifti(resultGradientImage, &resultGradientArray_d)) return 1;
+
+	free(targetMask);
+	CUDA_SAFE_CALL(cudaFreeHost(targetMask_h));
+	cudaCommon_free( &sourceImageArray_d );
+	cudaCommon_free( (void **)&resultGradientArray_d );
+	cudaCommon_free( (void **)&positionFieldImageArray_d );
+	cudaCommon_free( (void **)&targetMask_d );
+
+	status = STATUS_SUCCESS;
+	return status;
+}
+#endif
+
+
+
+unsigned int REG_d_intensity_d_space_rigid_cpu(nifti_image *gradientImage, nifti_image *inputImage, mat44 *m)
+{
+    return 0;
+}
+
+
+
+
+#ifdef _USE_CUDA
+unsigned int REG_d_intensity_d_transformation_rigid_gpu(nifti_image *resultGradientImage, nifti_image *sourceImage, mat44 *affineTransformation) 
+{
+	int status;
+
+	cudaArray *sourceImageArray_d=NULL;
+	float4 *positionFieldImageArray_d=NULL;
+	float4 *resultGradientArray_d=NULL;
+	int *targetMask_d=NULL;
+
+	int *targetMask;
+	targetMask = (int *)malloc(sourceImage->nvox*sizeof(int));
+	int activeVoxelNumber=0;
+	for(unsigned int i=0; i<sourceImage->nvox; i++)
+		targetMask[i]=i;
+	activeVoxelNumber=sourceImage->nvox;
+
+	if(cudaCommon_allocateArrayToDevice<float>(&sourceImageArray_d, sourceImage->dim)) return 1;
+	if(cudaCommon_transferNiftiToArrayOnDevice<float>(&sourceImageArray_d,sourceImage)) return 1;
+
+	// Index of the active voxel is stored
+	int *targetMask_h; CUDA_SAFE_CALL(cudaMallocHost((void **)&targetMask_h, activeVoxelNumber*sizeof(int)));
+	int *targetMask_h_ptr = &targetMask_h[0];
+	for(unsigned int i=0;i<sourceImage->nvox;i++)
+		{
+		if(targetMask[i]!=-1) 
+			*targetMask_h_ptr++=i;
+		}
+	CUDA_SAFE_CALL(cudaMalloc((void **)&targetMask_d, activeVoxelNumber*sizeof(int)));
+	CUDA_SAFE_CALL(cudaMemcpy(targetMask_d, targetMask_h, activeVoxelNumber*sizeof(int), cudaMemcpyHostToDevice));
+
+	CUDA_SAFE_CALL(cudaMalloc((void **)&positionFieldImageArray_d, activeVoxelNumber*sizeof(float4)));
+	CUDA_SAFE_CALL(cudaMalloc((void **)&resultGradientArray_d, activeVoxelNumber*sizeof(float4)));
+
+	// Compute the position field //
+    reg_affine_positionField_gpu(       affineTransformation, 
+                                        sourceImage, 
+                                        &positionFieldImageArray_d); 
+
+    // Compute gradient //
+	reg_getSourceImageGradient_gpu(		
+	                                    sourceImage,
+						                sourceImage,
+						                &sourceImageArray_d,
+						                &positionFieldImageArray_d,
+						                &resultGradientArray_d,
+						                activeVoxelNumber,
+						                0);
+
+	if(cudaCommon_transferFromDeviceToNifti(resultGradientImage, &resultGradientArray_d)) return 1;
+
+	free(targetMask);
+	CUDA_SAFE_CALL(cudaFreeHost(targetMask_h));
+	cudaCommon_free( &sourceImageArray_d );
+	cudaCommon_free( (void **)&resultGradientArray_d );
+	cudaCommon_free( (void **)&positionFieldImageArray_d );
+	cudaCommon_free( (void **)&targetMask_d );
+
+	status = STATUS_SUCCESS;
+	return status;
+}
+#endif
+
+
+
+unsigned int REG_d_intensity_d_transformation_rigid_cpu(nifti_image *gradientImage, nifti_image *inputImage, mat44 *m)
+{
+    return 0;
+}
 
 

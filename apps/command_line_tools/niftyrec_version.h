@@ -8,4 +8,4 @@
  *  Released under BSD licence, see LICENSE.txt 
  */
 
-#define VERSION "1.6"
+#define VERSION "2.0"

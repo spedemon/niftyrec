@@ -83,7 +83,6 @@ bool g_bQAReadback = false;
 bool g_bQAGLVerify = false;
 bool g_bFBODisplay = false;
 
-#define MAX(a,b) ((a > b) ? a : b)
 
 void initPixelBuffer();
 void stop_now(void);
@@ -148,7 +147,7 @@ void computeFPS()
     }
     if (fpsCount == fpsLimit) {
         //char fps[256];
-        //float ifps = 1.f / (cutGetAverageTimerValue(timer) / 1000.f);
+        //float ifps = 1.f / (gpuGetAverageTimerValue(timer) / 1000.f);
         //sprintf(fps, "Volume Render: %3.1f fps", ifps);  
 
         //glutSetWindowTitle(fps);
@@ -542,7 +541,7 @@ extern "C" void run_gui(int volume_x, int volume_y, int volume_z, int camera_x, 
     int argc=0;
     char **argv=NULL;
 
-    cudaGLSetGLDevice( cutGetMaxGflopsDeviceId() );
+    cudaGLSetGLDevice( gpuGetMaxGflopsDeviceId() );
     if (initGL( &argc, argv )) return;
 
     // load volume data
@@ -576,9 +575,9 @@ extern "C" void run_gui(int volume_x, int volume_y, int volume_z, int camera_x, 
     glutMotionFunc(motion);
     glutReshapeFunc(reshape);
     glutIdleFunc(idle);
-    glutCloseFunc(close);
+    //glutCloseFunc(close);
     initPixelBuffer();
-    glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
+   // glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
    // glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION);
 //    atexit(cleanup);
 

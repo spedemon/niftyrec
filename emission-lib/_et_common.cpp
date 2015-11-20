@@ -160,15 +160,109 @@ int et_create_rotation_matrix(mat44 *transformationMatrix, float theta_x, float 
 	free(rotation_z);
     free(translation); 
 
-/*	fprintf(stderr,"=============== Input: ==============\n");	
-	fprintf(stderr,"Cx: %3.3f  Cy: %3.3f  Cz: %3.3f  \n",center_x, center_y, center_z); 
-	fprintf(stderr,"Rx: %3.3f  Ry: %3.3f  Rz: %3.3f  \n",theta_x, theta_y, theta_z); 	
-	fprintf(stderr,"======= Transformation matrix: ======\n");
-	for (int i=0; i<4; i++)
-			fprintf(stderr,"[%3.3f  %3.3f  %3.3f  %3.3f]\n",transformationMatrix->m[i][0],transformationMatrix->m[i][1],transformationMatrix->m[i][2],transformationMatrix->m[i][3]);
-    fprintf(stderr,"=====================================\n"); */
+//	fprintf(stderr,"=============== Input: ==============\n");	
+//	fprintf(stderr,"Cx: %3.3f  Cy: %3.3f  Cz: %3.3f  \n",center_x, center_y, center_z); 
+//	fprintf(stderr,"Rx: %3.3f  Ry: %3.3f  Rz: %3.3f  \n",theta_x, theta_y, theta_z); 	
+//	fprintf(stderr,"=======    Rotation matrix:    ======\n");
+//	for (int i=0; i<4; i++)
+//			fprintf(stderr,"[%3.3f  %3.3f  %3.3f  %3.3f]\n",transformationMatrix->m[i][0],transformationMatrix->m[i][1],transformationMatrix->m[i][2],transformationMatrix->m[i][3]);
+//    fprintf(stderr,"=====================================\n"); 
 	return status;
 }
+
+
+int et_create_scale_matrix(mat44 *transformationMatrix, float scale_x, float scale_y, float scale_z)
+{
+	int status = 0;
+	
+	transformationMatrix->m[0][0] = scale_x;
+	transformationMatrix->m[0][1] = 0.0;
+	transformationMatrix->m[0][2] = 0.0;
+	transformationMatrix->m[0][3] = 0.0; 
+	transformationMatrix->m[1][0] = 0.0;
+	transformationMatrix->m[1][1] = scale_y;
+	transformationMatrix->m[1][2] = 0.0;
+	transformationMatrix->m[1][3] = 0.0;
+	transformationMatrix->m[2][0] = 0.0;
+	transformationMatrix->m[2][1] = 0.0;
+	transformationMatrix->m[2][2] = scale_z;
+	transformationMatrix->m[2][3] = 0.0;
+	transformationMatrix->m[3][0] = 0.0;
+	transformationMatrix->m[3][1] = 0.0;
+	transformationMatrix->m[3][2] = 0.0;
+	transformationMatrix->m[3][3] = 1.0;	
+
+/*
+	fprintf(stderr,"=============== Input: ==============\n");	
+	fprintf(stderr,"Sx: %3.3f  Sy: %3.3f  Sz: %3.3f  \n",scale_x, scale_y, scale_z);  	
+	fprintf(stderr,"=======     Scale matrix:      ======\n");
+	for (int i=0; i<4; i++)
+			fprintf(stderr,"[%3.3f  %3.3f  %3.3f  %3.3f]\n",transformationMatrix->m[i][0],transformationMatrix->m[i][1],transformationMatrix->m[i][2],transformationMatrix->m[i][3]);
+    fprintf(stderr,"=====================================\n"); 
+*/
+
+	return status;
+}
+
+
+int et_create_translation_matrix(mat44 *transformationMatrix, float t_x, float t_y, float t_z)
+{
+	int status = 0;
+	
+	transformationMatrix->m[0][0] = 1.0;
+	transformationMatrix->m[0][1] = 0.0;
+	transformationMatrix->m[0][2] = 0.0;
+	transformationMatrix->m[0][3] = t_x; 
+	transformationMatrix->m[1][0] = 0.0;
+	transformationMatrix->m[1][1] = 1.0;
+	transformationMatrix->m[1][2] = 0.0;
+	transformationMatrix->m[1][3] = t_y;
+	transformationMatrix->m[2][0] = 0.0;
+	transformationMatrix->m[2][1] = 0.0;
+	transformationMatrix->m[2][2] = 1.0;
+	transformationMatrix->m[2][3] = t_z;
+	transformationMatrix->m[3][0] = 0.0;
+	transformationMatrix->m[3][1] = 0.0;
+	transformationMatrix->m[3][2] = 0.0;
+	transformationMatrix->m[3][3] = 1.0;	
+
+/*
+	fprintf(stderr,"=============== Input: ==============\n");	
+	fprintf(stderr,"Tx: %3.3f  Ty: %3.3f  Tz: %3.3f  \n",t_x,t_y,t_z);  	
+	fprintf(stderr,"=======  Translation matrix:   ======\n");
+	for (int i=0; i<4; i++)
+			fprintf(stderr,"[%3.3f  %3.3f  %3.3f  %3.3f]\n",transformationMatrix->m[i][0],transformationMatrix->m[i][1],transformationMatrix->m[i][2],transformationMatrix->m[i][3]);
+    fprintf(stderr,"=====================================\n"); 
+*/
+
+	return status;
+}
+
+
+int et_create_affine_matrix_from_buffer(mat44 *transformationMatrix, float *buffer)
+{
+	int status = 0;
+	
+	transformationMatrix->m[0][0] = buffer[0];
+	transformationMatrix->m[0][1] = buffer[1];
+	transformationMatrix->m[0][2] = buffer[2];
+	transformationMatrix->m[0][3] = buffer[3]; 
+	transformationMatrix->m[1][0] = buffer[4];
+	transformationMatrix->m[1][1] = buffer[5];
+	transformationMatrix->m[1][2] = buffer[6];
+	transformationMatrix->m[1][3] = buffer[7];
+	transformationMatrix->m[2][0] = buffer[8];
+	transformationMatrix->m[2][1] = buffer[9];
+	transformationMatrix->m[2][2] = buffer[10];
+	transformationMatrix->m[2][3] = buffer[11];
+	transformationMatrix->m[3][0] = buffer[12];
+	transformationMatrix->m[3][1] = buffer[13];
+	transformationMatrix->m[3][2] = buffer[14];
+	transformationMatrix->m[3][3] = buffer[15];	
+
+	return status;
+}
+
 
 
 
