@@ -6,13 +6,21 @@
 #include <GL/freeglut.h>
 #endif
 
-#include <cutil_inline.h>
-#include <cutil_gl_inline.h>
-
+// CUDA Runtime, Interop, and includes
+#include <cuda_runtime.h>
+#include <cuda_gl_interop.h>
 #include <vector_types.h>
 #include <vector_functions.h>
 #include <driver_functions.h>
-#include <cuda_gl_interop.h>
+
+// CUDA utilities
+#include <helper_cuda.h>
+#include <helper_cuda_gl.h>
+
+// Helper functions
+#include <helper_cuda.h>
+#include <helper_functions.h>
+#include <helper_timer.h>
 
 #include <volumeRender_kernel.h>
 

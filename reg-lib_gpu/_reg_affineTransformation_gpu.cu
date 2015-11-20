@@ -35,7 +35,7 @@ void reg_affine_positionField_gpu(	mat44 *affineMatrix,
 	// We here performed Affine * TargetMat * voxelIndex
 	// Affine * TargetMat is constant
 	mat44 transformationMatrix = reg_mat44_mul(affineMatrix, targetMatrix);
-	
+
 	// The transformation matrix is binded to a texture
 	float4 *transformationMatrix_h;
     CUDA_SAFE_CALL(cudaMallocHost((void **)&transformationMatrix_h, 3*sizeof(float4)));

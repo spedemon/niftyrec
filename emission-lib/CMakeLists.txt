@@ -52,12 +52,6 @@ SET(LIBRARY_NAME _et_array_interface)
 BUILD_INSTALL_LIBRARY(${LIBRARY_NAME} ${LIB_TYPE} ${NiftyRec_USE_CUDA})
 TARGET_LINK_LIBRARIES(${LIBRARY_NAME} _et ${CMAKE_THREAD_LIBS_INIT})
 
-#SET(LIBRARY_NAME _reg)
-#BUILD_INSTALL_LIBRARY(${LIBRARY_NAME} ${LIB_TYPE} ${NiftyRec_USE_CUDA})
-
-#SET(LIBRARY_NAME _reg_array_interface)
-#BUILD_INSTALL_LIBRARY(${LIBRARY_NAME} ${LIB_TYPE} ${NiftyRec_USE_CUDA})
-#TARGET_LINK_LIBRARIES(${LIBRARY_NAME} _reg)
 
 #-----------------------------------------------------------------------------
 SET(TEST_NAME test_et_project)

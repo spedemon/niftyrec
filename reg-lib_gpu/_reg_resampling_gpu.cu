@@ -11,6 +11,8 @@
 
 #ifndef _REG_RESAMPLING_GPU_CU
 #define _REG_RESAMPLING_GPU_CU
+#define REG_RESAMPLING_LINEAR 0
+#define REG_RESAMPLING_POINT  1
 
 #include "_reg_resampling_gpu.h"
 #include "_reg_resampling_gpu_kernels.cu"
@@ -22,7 +24,8 @@ void reg_resampleSourceImage_gpu(       nifti_image *resultImage,
                                         float4 **positionFieldImageArray_d,
                                         int **mask_d,
                                         int activeVoxelNumber,
-                                        float sourceBGValue)
+                                        float sourceBGValue, 
+                                        unsigned int resampling_mode)
 {
         int3 sourceDim = make_int3(sourceImage->nx, sourceImage->ny, sourceImage->nz);
 
@@ -31,8 +34,13 @@ void reg_resampleSourceImage_gpu(       nifti_image *resultImage,
         CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_ActiveVoxelNumber,&activeVoxelNumber,sizeof(int)));
 
         //Bind source image array to a 3D texture
-        sourceTexture.normalized = true;
-        sourceTexture.filterMode = cudaFilterModeLinear;
+        sourceTexture.normalized = true; 
+
+        if (resampling_mode == REG_RESAMPLING_LINEAR)
+            sourceTexture.filterMode = cudaFilterModeLinear; 
+        if (resampling_mode == REG_RESAMPLING_POINT)   
+            sourceTexture.filterMode = cudaFilterModePoint; 
+            
         sourceTexture.addressMode[0] = cudaAddressModeWrap;
         sourceTexture.addressMode[1] = cudaAddressModeWrap;
         sourceTexture.addressMode[2] = cudaAddressModeWrap;
@@ -60,6 +68,15 @@ void reg_resampleSourceImage_gpu(       nifti_image *resultImage,
                 sourceRealToVoxel_h[i].z=sourceMatrix->m[i][2];
                 sourceRealToVoxel_h[i].w=sourceMatrix->m[i][3];
         }
+        
+
+//        fprintf(stderr,"@@@@@@@@  Resampling matrix source->sto_ijk: @@@@@@@@@\n");
+//        for (int i=0; i<4; i++)
+//			fprintf(stderr,"[%3.3f  %3.3f  %3.3f  %3.3f]\n",sourceMatrix->m[i][0],sourceMatrix->m[i][1],sourceMatrix->m[i][2],sourceMatrix->m[i][3]);
+//        fprintf(stderr,"@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n"); 
+            
+            
+        
         CUDA_SAFE_CALL(cudaMemcpy(sourceRealToVoxel_d, sourceRealToVoxel_h, 3*sizeof(float4), cudaMemcpyHostToDevice));
         CUDA_SAFE_CALL(cudaFreeHost((void *)sourceRealToVoxel_h));
         CUDA_SAFE_CALL(cudaBindTexture(0, sourceMatrixTexture, sourceRealToVoxel_d, 3*sizeof(float4)));
@@ -95,7 +112,8 @@ void reg_getSourceImageGradient_gpu(	nifti_image *targetImage,
 					cudaArray **sourceImageArray_d,
 					float4 **positionFieldImageArray_d,
 					float4 **resultGradientArray_d,
-                    int activeVoxelNumber)
+                    int activeVoxelNumber, 
+                    unsigned int resampling_mode )
 {
 	int3 sourceDim = make_int3(sourceImage->nx, sourceImage->ny, sourceImage->nz);
 
@@ -104,7 +122,10 @@ void reg_getSourceImageGradient_gpu(	nifti_image *targetImage,
 
 	//Bind source image array to a 3D texture
 	sourceTexture.normalized = true;
-	sourceTexture.filterMode = cudaFilterModeLinear;
+    if (resampling_mode == REG_RESAMPLING_LINEAR)
+        sourceTexture.filterMode = cudaFilterModeLinear; 
+    if (resampling_mode == REG_RESAMPLING_POINT)   
+        sourceTexture.filterMode = cudaFilterModePoint; 
 	sourceTexture.addressMode[0] = cudaAddressModeWrap;
 	sourceTexture.addressMode[1] = cudaAddressModeWrap;
 	sourceTexture.addressMode[2] = cudaAddressModeWrap;

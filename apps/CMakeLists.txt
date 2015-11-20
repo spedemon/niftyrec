@@ -8,8 +8,6 @@
 #  Released under BSD licence, see LICENSE.txt 
 
 #-----------------------------------------------------------------------------
-SUBDIRS(niftyrec_gui)
-SUBDIRS(python_simple_phantom_example)
 SUBDIRS(command_line_tools)
 
 

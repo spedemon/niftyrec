@@ -8,16 +8,24 @@
  *  Released under BSD licence, see LICENSE.txt 
  */
 
+#ifndef _NIFTYREC_MEMORY_H
+#define _NIFTYREC_MEMORY_H
+
+
+
 #include <stdlib.h>
 #include <stdio.h>
-#include "_reg_cudaCommon.h"
 #include "nifti1_io.h"
 
-#define ALLOCTYPE_GUEST 0
-#define ALLOCTYPE_CUDA  1
+#ifdef _USE_CUDA
+    #include "_reg_cudaCommon.h"
+#endif
+
+#define ALLOCTYPE_HOST       0
+#define ALLOCTYPE_CUDA       1
 #define ALLOCTYPE_CUDA_ARRAY 2
-#define ALLOCTYPE_NIFTI 3
-#define RECORD_MAXELEMENTS 1024
+#define ALLOCTYPE_NIFTI      3
+#define RECORD_MAXELEMENTS   4096
 
 typedef struct
 {
@@ -38,6 +46,9 @@ int alloc_record_destroy(alloc_record *record);
 int free_record_element(alloc_record_element *element);
 int alloc_record_add(alloc_record *record, void* memory_section, int platform);
 int alloc_record_free_all(alloc_record *record);
+
+
+#endif
 
 
 

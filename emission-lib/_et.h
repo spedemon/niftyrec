@@ -3,9 +3,10 @@
  *  
  *  NiftyRec
  *  Stefano Pedemonte, Oct. 2012.
- *  CMIC - Centre for Medical Image Computing
- *  UCL - University College London 
- *  Released under BSD licence, see LICENSE.txt 
+ *  CMIC - Centre for Medical Image Computing 
+ *  UCL - University College London. 
+ *  Harvard University, Martinos Center for Biomedical Imaging
+ *  Jan. 2014.
  */
 
 
@@ -16,12 +17,11 @@
 
 #define SIZE_OF_INFO 5
 #define MAX_DEVICES 16
-
 #define ET_BLOCK_SIZE 8
-
 #define ET_ERROR_BADGRID 2
-
 #define eps 0.000000000001f
+
+
 
 #include "_niftyrec_memory.h"
 #include "_et_common.h"
@@ -37,7 +37,6 @@
 #include "_et_convolve2D.h"
 #include "_et_convolveSeparable2D.h"
 #include "_et_convolveFFT2D.h"
-//#include "_et_joint_histogram.h"
 
 
 #ifdef _USE_CUDA
@@ -53,7 +52,8 @@
 #include "_et_clear_accumulator_gpu.h"
 #include "_et_convolveFFT2D_gpu.h"
 #include "_et_convolveSeparable2D_gpu.h"
-//#include "_et_joint_histogram_gpu.h"
+#include "_pet_line_integral_compressed_gpu.h"
+#include "_pet_line_backproject_compressed_gpu.h"
 
 int et_rotate_gpu(nifti_image *sourceImage, nifti_image *resultImage, float alpha, float beta, float gamma, float center_x, float center_y, float center_z, float background, int axis_order);
 int et_project_gpu(nifti_image *activity, nifti_image *sinoImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, float *centers, int n_cameras, float background, float backgroundAttenuation, int truncate_negative_values);
@@ -83,4 +83,56 @@ int et_fisher_grid(int from_projection, nifti_image *inputImage, nifti_image *gr
 int et_gradient_attenuation(nifti_image *gradientImage, nifti_image *sinoImage, nifti_image *activityImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, float *centers, int n_cameras, float background, float background_attenuation, int truncate_negative_values); 
 int et_project_partial(nifti_image *activityImage, nifti_image *sinoImage, nifti_image *partialsumImage, nifti_image *psfImage, nifti_image *attenuationImage, float *cameras, float *centers, int n_cameras, float background, nifti_image *backgroundImage, float background_attenuation, int truncate_negative_values, int do_rotate_partial);
 
+
+/* PET */ 
+#ifdef _USE_CUDA
+unsigned int PET_project_compressed_gpu(nifti_image *activityImage, nifti_image *attenuationImage, float *projection, 
+                int *offsets, unsigned short *locations, unsigned int *active, unsigned int N_locations, unsigned int N_axial, unsigned int N_azimuthal, 
+                float *angles_axial, float *angles_azimuthal, unsigned int N_u, unsigned int N_v, float size_u, float size_v, 
+                unsigned int N_samples, float sample_step, float background, float background_attenuation, unsigned int truncate_negative_values, 
+                unsigned int direction, unsigned int block_size); 
+#endif
+
+unsigned int PET_project_compressed_cpu(nifti_image *activityImage, nifti_image *attenuationImage, float *projection, 
+                int *offsets, unsigned short *locations, unsigned int *active, unsigned int N_locations, unsigned int N_axial, unsigned int N_azimuthal, 
+                float *angles_axial, float *angles_azimuthal, unsigned int N_u, unsigned int N_v, float size_u, float size_v, 
+                unsigned int N_samples, float sample_step, float background, float background_attenuation, unsigned int truncate_negative_values,
+                unsigned int direction);
+#ifdef _USE_CUDA
+unsigned int PET_project_compressed_gpu_test(nifti_image *activityImage, nifti_image *attenuationImage, float *projection, 
+                int *offsets, unsigned short *locations, unsigned int *active, unsigned int N_locations, unsigned int N_axial, unsigned int N_azimuthal); 
+#endif
+
+#ifdef _USE_CUDA
+unsigned int PET_backproject_compressed_gpu(nifti_image *backprojectionImage, nifti_image *attenuationImage, float *projection, 
+                int *offsets, unsigned short *locations, unsigned int *active, unsigned int N_locations, unsigned int N_axial, unsigned int N_azimuthal, 
+                float *angles_axial, float *angles_azimuthal, unsigned int N_u, unsigned int N_v, float size_u, float size_v, 
+                unsigned int N_samples, float sample_step, float background, float background_attenuation, unsigned int direction, unsigned int block_size); 
+#endif
+
+unsigned int PET_backproject_compressed_cpu(nifti_image *backprojectionImage, nifti_image *attenuationImage, float *projection, 
+                int *offsets, unsigned short *locations, unsigned int *active, unsigned int N_locations, unsigned int N_axial, unsigned int N_azimuthal, 
+                float *angles_axial, float *angles_azimuthal, unsigned int N_u, unsigned int N_v, float size_u, float size_v, 
+                unsigned int N_samples, float sample_step, float background, float background_attenuation, unsigned int direction); 
+
+unsigned int et_spherical_phantom(nifti_image *phantomImage, float centerx, float centery, float centerz, float radius, float inner_value, float outer_value); 
+unsigned int et_cylindrical_phantom(nifti_image *phantomImage, float centerx, float centery, float centerz, float radius, float length, unsigned int axis, float inner_value, float outer_value); 
+unsigned int et_spheres_ring_phantom(nifti_image *phantomImage, float centerx, float centery, float centerz, float ring_radius, float min_sphere_radius, float max_sphere_radius, unsigned int N_spheres, float inner_value, float outer_value, float taper, unsigned int ring_axis); 
+
+unsigned int tr_resample_grid_cpu(nifti_image *resampled, nifti_image *image, nifti_image *grid, float background, unsigned int interpolation_mode); 
+#ifdef _USE_CUDA
+unsigned int tr_resample_grid_gpu(nifti_image *resampled, nifti_image *image, nifti_image *grid, float background, unsigned int interpolation_mode); 
+#endif
+unsigned int ET_box_to_grid(nifti_image *image, mat44 *affine); 
+
+#ifdef _USE_CUDA
+unsigned int tr_transform_grid_gpu(nifti_image *transformed_grid, nifti_image *grid, mat44 *affine); 
+#endif
+unsigned int tr_transform_grid_cpu(nifti_image *transformed_grid, nifti_image *grid, mat44 *affine); 
+
+
+// Compress and uncompress projection data: 
+unsigned int pet_initialize_compression_structure(unsigned int *N_axial, unsigned int *N_azimuthal, unsigned int *N_u, unsigned int *N_v, int *offsets_matrix, unsigned short *locations );
+unsigned int pet_compress_projection(unsigned int *n_locations, unsigned int *n_axial, unsigned int *n_azimuthal, unsigned int *n_u, unsigned int *n_v, int *offsets_matrix, float *counts, unsigned short *locations, float *projection); 
+unsigned int pet_uncompress_projection(unsigned int *n_locations, unsigned int *n_axial, unsigned int *n_azimuthal, unsigned int *n_u, unsigned int *n_v, int *offsets_matrix, float *counts, unsigned short *locations, float *projection);
 
